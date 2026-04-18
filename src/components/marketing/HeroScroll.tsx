@@ -482,7 +482,7 @@ export default function HeroScroll() {
           </div>
 
           {/* ── RIGHT: Phone ── */}
-          <div className="hscroll-right" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div className="hscroll-right">
             <div className="hscroll-phone-card" style={{
               width: '290px',
               borderRadius: '30px',

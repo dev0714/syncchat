@@ -504,6 +504,11 @@ footer {
   gap: 60px;
   align-items: center;
 }
+.hscroll-right {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 
 /* ── RESPONSIVE ── */
 @media (max-width: 1024px) {

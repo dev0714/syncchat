@@ -252,7 +252,7 @@ export default function FlowsPage() {
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full font-medium">{info?.label ?? f.trigger_type}</span>
                     {config?.keyword && (
-                      <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-full font-mono">keyword: {config.keyword as string}</span>
+                      <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-full font-mono">keyword: {String(config.keyword)}</span>
                     )}
                     {linkedInstance && (
                       <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full flex items-center gap-1">

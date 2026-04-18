@@ -393,6 +393,9 @@ footer {
 .feature-bullets li span { font-size: 14px; color: var(--slate-600); }
 
 /* ── ABOUT PAGE ── */
+.about-mission-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+.about-stats-grid   { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 32px; }
+.about-values-grid  { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
 .about-hero {
   background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
   padding: 80px 5vw; text-align: center;
@@ -580,6 +583,10 @@ footer {
   .contact-grid { grid-template-columns: 1fr; }
   .form-row { grid-template-columns: 1fr; }
 
+  /* About */
+  .about-mission-grid { grid-template-columns: 1fr; gap: 40px; }
+  .about-values-grid  { grid-template-columns: 1fr 1fr; }
+
   /* Team */
   .team-grid { grid-template-columns: repeat(2, 1fr); }
 
@@ -604,6 +611,9 @@ footer {
   section { padding: 48px 4vw; }
 
   /* Hero scroll — already hidden at 768px, nothing extra needed */
+
+  /* About */
+  .about-values-grid { grid-template-columns: 1fr; }
 
   /* Steps */
   .steps { grid-template-columns: 1fr; }

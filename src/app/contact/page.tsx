@@ -29,13 +29,13 @@ export default function ContactPage() {
       {/* ── MISSION ── */}
       <section>
         <div className="section-inner">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '64px', alignItems: 'center' }}>
+          <div className="about-mission-grid">
             <div>
               <div className="section-label">Our Mission</div>
               <h2 className="section-title" style={{ fontSize: '2rem' }}>WhatsApp, but make it business</h2>
               <p style={{ color: 'var(--slate-500)', marginBottom: '20px' }}>South African businesses run on WhatsApp. Customers expect instant replies. Teams need structure. Automation is the only way to scale.</p>
               <p style={{ color: 'var(--slate-500)', marginBottom: '20px' }}>SyncChat gives growing businesses the tools that enterprise brands have — AI-powered automation, team workflows, and campaign management — all through the channel your customers already use every day.</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '32px' }}>
+              <div className="about-stats-grid">
                 <div style={{ background: '#f0fdf4', borderRadius: '14px', padding: '20px', border: '1.5px solid #bbf7d0' }}>
                   <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--green-mid)' }}>10k+</div>
                   <div style={{ fontSize: '14px', color: 'var(--slate-600)', marginTop: '4px' }}>Messages processed daily</div>
@@ -96,7 +96,7 @@ export default function ContactPage() {
             <div className="section-label">What We Stand For</div>
             <h2 className="section-title">Our values</h2>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
+          <div className="about-values-grid">
             <div style={{ background: 'white', borderRadius: '16px', padding: '28px', border: '1.5px solid var(--slate-200)' }}>
               <div style={{ fontSize: '2rem', marginBottom: '14px' }}>⚡</div>
               <h3 style={{ fontSize: '16px', marginBottom: '8px' }}>Speed First</h3>

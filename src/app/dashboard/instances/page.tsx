@@ -40,7 +40,7 @@ export default function InstancesPage() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", user.id).single();
+    const { data: member } = await supabase.from("org_members").select("org_id, role").eq("user_id", user.id).single();
     if (!member) return;
     setOrgId(member.org_id);
     setIsSuperAdmin(member.role === "super_admin");

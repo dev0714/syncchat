@@ -1,0 +1,517 @@
+"use client";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import {
+  FileText, Plus, Trash2, Pencil, X, Loader2, Copy, Check,
+  ToggleLeft, ToggleRight, Send, Users, Search, CheckSquare,
+  Square, Smartphone, ChevronRight, AlertCircle, CheckCircle2,
+} from "lucide-react";
+import type { MessageTemplate, WhatsAppInstance } from "@/types";
+import type { Contact } from "@/types";
+import { formatDate, cn } from "@/lib/utils";
+
+const CATEGORIES = ["custom", "marketing", "utility", "authentication"] as const;
+const defaultForm = { name: "", category: "custom" as MessageTemplate["category"], content: "" };
+
+function extractVars(content: string): string[] {
+  return Array.from(new Set(Array.from(content.matchAll(/\{\{(\w+)\}\}/g)).map((m) => m[1])));
+}
+
+function fillPreview(content: string, contact: Contact, defaults: Record<string, string>): string {
+  return content.replace(/\{\{(\w+)\}\}/g, (_m, key) => {
+    if (key === "name") return contact.name ?? defaults[key] ?? `{{${key}}}`;
+    if (key === "phone") return contact.phone ?? defaults[key] ?? `{{${key}}}`;
+    if (key === "email") return contact.email ?? defaults[key] ?? `{{${key}}}`;
+    return defaults[key] ?? `{{${key}}}`;
+  });
+}
+
+type BulkStep = "contacts" | "variables" | "preview" | "sending" | "done";
+
+export default function TemplatesPage() {
+  const supabase = createClient();
+  const [templates, setTemplates] = useState<MessageTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [orgId, setOrgId] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState<MessageTemplate | null>(null);
+  const [form, setForm] = useState({ ...defaultForm });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [copied, setCopied] = useState<string | null>(null);
+
+  // Bulk send state
+  const [sendTemplate, setSendTemplate] = useState<MessageTemplate | null>(null);
+  const [bulkStep, setBulkStep] = useState<BulkStep>("contacts");
+  const [instances, setInstances] = useState<WhatsAppInstance[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [selectedInstance, setSelectedInstance] = useState("");
+  const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
+  const [contactSearch, setContactSearch] = useState("");
+  const [varDefaults, setVarDefaults] = useState<Record<string, string>>({});
+  const [bulkResult, setBulkResult] = useState<{ sent: number; failed: number; errors: string[] } | null>(null);
+  const [sending, setSending] = useState(false);
+  const [sendProgress, setSendProgress] = useState(0);
+
+  useEffect(() => { loadData(); }, []);
+
+  async function loadData() {
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", user!.id).single();
+    if (!member) return;
+    setOrgId(member.org_id);
+    const [{ data: tmpl }, { data: inst }, { data: ctcts }] = await Promise.all([
+      supabase.from("message_templates").select("*").eq("org_id", member.org_id).order("created_at", { ascending: false }),
+      supabase.from("whatsapp_instances").select("*").eq("org_id", member.org_id).eq("status", "connected"),
+      supabase.from("contacts").select("*").eq("org_id", member.org_id).order("name"),
+    ]);
+    setTemplates((tmpl as MessageTemplate[]) ?? []);
+    setInstances((inst as WhatsAppInstance[]) ?? []);
+    setContacts((ctcts as Contact[]) ?? []);
+    setLoading(false);
+  }
+
+  function openAdd() { setEditing(null); setForm({ ...defaultForm }); setError(""); setShowModal(true); }
+  function openEdit(t: MessageTemplate) {
+    setEditing(t);
+    setForm({ name: t.name, category: t.category, content: t.content });
+    setError("");
+    setShowModal(true);
+  }
+
+  async function handleSave() {
+    if (!form.name || !form.content) { setError("Name and content are required."); return; }
+    setSaving(true);
+    const variables = extractVars(form.content);
+    if (editing) {
+      const { error } = await supabase.from("message_templates").update({ name: form.name, category: form.category, content: form.content, variables, updated_at: new Date().toISOString() }).eq("id", editing.id);
+      if (error) { setError(error.message); setSaving(false); return; }
+    } else {
+      const { error } = await supabase.from("message_templates").insert({ org_id: orgId, name: form.name, category: form.category, content: form.content, variables, is_active: true });
+      if (error) { setError(error.message); setSaving(false); return; }
+    }
+    setSaving(false);
+    setShowModal(false);
+    loadData();
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Delete this template?")) return;
+    await supabase.from("message_templates").delete().eq("id", id);
+    setTemplates((prev) => prev.filter((t) => t.id !== id));
+  }
+
+  async function toggleActive(t: MessageTemplate) {
+    await supabase.from("message_templates").update({ is_active: !t.is_active }).eq("id", t.id);
+    setTemplates((prev) => prev.map((tp) => tp.id === t.id ? { ...tp, is_active: !tp.is_active } : tp));
+  }
+
+  function copy(content: string, id: string) {
+    navigator.clipboard.writeText(content);
+    setCopied(id);
+    setTimeout(() => setCopied(null), 2000);
+  }
+
+  function openBulkSend(t: MessageTemplate) {
+    setSendTemplate(t);
+    setBulkStep("contacts");
+    setSelectedInstance(instances[0]?.id ?? "");
+    setSelectedContacts(new Set());
+    setContactSearch("");
+    const vars = extractVars(t.content).filter((v) => !["name", "phone", "email"].includes(v));
+    setVarDefaults(Object.fromEntries(vars.map((v) => [v, ""])));
+    setBulkResult(null);
+    setSendProgress(0);
+  }
+
+  function toggleContact(id: string) {
+    setSelectedContacts((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    const filtered = filteredContacts.map((c) => c.id);
+    const allSelected = filtered.every((id) => selectedContacts.has(id));
+    setSelectedContacts((prev) => {
+      const next = new Set(prev);
+      filtered.forEach((id) => allSelected ? next.delete(id) : next.add(id));
+      return next;
+    });
+  }
+
+  const filteredContacts = contacts.filter((c) =>
+    [c.name, c.phone, c.email].some((v) => v?.toLowerCase().includes(contactSearch.toLowerCase()))
+  );
+
+  const manualVars = sendTemplate ? extractVars(sendTemplate.content).filter((v) => !["name", "phone", "email"].includes(v)) : [];
+  const selectedContactObjs = contacts.filter((c) => selectedContacts.has(c.id));
+
+  async function handleBulkSend() {
+    if (!sendTemplate || !selectedInstance || selectedContacts.size === 0) return;
+    setSending(true);
+    setBulkStep("sending");
+    setSendProgress(0);
+
+    const contactList = selectedContactObjs.map((c) => ({ id: c.id, phone: c.phone, name: c.name ?? undefined, email: c.email ?? undefined }));
+    const total = contactList.length;
+    let done = 0;
+
+    // Send in batches of 5 with progress
+    const batchSize = 5;
+    let sent = 0, failed = 0;
+    const errors: string[] = [];
+
+    for (let i = 0; i < contactList.length; i += batchSize) {
+      const batch = contactList.slice(i, i + batchSize);
+      const res = await fetch("/api/messages/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ instanceId: selectedInstance, contacts: batch, template: sendTemplate.content, variableDefaults: varDefaults }),
+      });
+      const data = await res.json();
+      sent += data.sent ?? 0;
+      failed += data.failed ?? 0;
+      errors.push(...(data.errors ?? []));
+      done += batch.length;
+      setSendProgress(Math.round((done / total) * 100));
+    }
+
+    setBulkResult({ sent, failed, errors });
+    setSending(false);
+    setBulkStep("done");
+  }
+
+  const categoryColor: Record<string, string> = {
+    custom: "bg-slate-100 text-slate-700",
+    marketing: "bg-blue-100 text-blue-700",
+    utility: "bg-green-100 text-green-700",
+    authentication: "bg-purple-100 text-purple-700",
+  };
+
+  return (
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Message Templates</h1>
+          <p className="text-slate-500 text-sm mt-1">Create reusable templates and send bulk WhatsApp messages</p>
+        </div>
+        <button onClick={openAdd} className="btn-primary flex items-center gap-2">
+          <Plus className="w-4 h-4" /> New Template
+        </button>
+      </div>
+
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
+        Use <code className="bg-blue-100 px-1 rounded font-mono text-xs">{"{{variable}}"}</code> for dynamic values.
+        Auto-filled: <code className="bg-blue-100 px-1 rounded font-mono text-xs">{"{{name}}"}</code> <code className="bg-blue-100 px-1 rounded font-mono text-xs">{"{{phone}}"}</code> <code className="bg-blue-100 px-1 rounded font-mono text-xs">{"{{email}}"}</code>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-slate-300" /></div>
+      ) : templates.length === 0 ? (
+        <div className="card p-16 text-center">
+          <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+          <p className="text-slate-600 font-medium">No templates yet</p>
+          <button onClick={openAdd} className="mt-4 btn-primary inline-flex items-center gap-2"><Plus className="w-4 h-4" /> Create Template</button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {templates.map((t) => (
+            <div key={t.id} className={cn("card p-5 space-y-3", !t.is_active && "opacity-60")}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="font-semibold text-slate-900 text-sm">{t.name}</p>
+                  <span className={cn("badge mt-1", categoryColor[t.category])}>{t.category}</span>
+                </div>
+                <button onClick={() => toggleActive(t)} className="text-slate-400 hover:text-slate-600">
+                  {t.is_active ? <ToggleRight className="w-5 h-5 text-whatsapp-teal" /> : <ToggleLeft className="w-5 h-5" />}
+                </button>
+              </div>
+
+              <div className="bg-slate-50 rounded-lg p-3 text-sm text-slate-700 leading-relaxed min-h-[60px]">{t.content}</div>
+
+              {(t.variables ?? []).length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {(t.variables ?? []).map((v) => (
+                    <span key={v} className="px-2 py-0.5 bg-whatsapp-teal/10 text-whatsapp-teal rounded-full text-xs font-mono">{`{{${v}}}`}</span>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                <button
+                  onClick={() => openBulkSend(t)}
+                  disabled={!t.is_active || instances.length === 0}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium text-whatsapp-teal hover:bg-whatsapp-teal/10 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Send className="w-3.5 h-3.5" /> Send Bulk
+                </button>
+                <button onClick={() => copy(t.content, t.id)} className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
+                  {copied === t.id ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied === t.id ? "Copied!" : "Copy"}
+                </button>
+                <button onClick={() => openEdit(t)} className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
+                  <Pencil className="w-3.5 h-3.5" /> Edit
+                </button>
+                <button onClick={() => handleDelete(t.id)} className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                </button>
+              </div>
+              <p className="text-xs text-slate-300">{formatDate(t.created_at)}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Create / Edit Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h2 className="font-semibold text-slate-900">{editing ? "Edit Template" : "New Template"}</h2>
+              <button onClick={() => setShowModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="label">Template Name *</label>
+                <input className="input" placeholder="e.g. Welcome Message" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              </div>
+              <div>
+                <label className="label">Category</label>
+                <select className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as MessageTemplate["category"] })}>
+                  {CATEGORIES.map((c) => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">Message Content *</label>
+                <textarea className="input min-h-[120px] resize-y" placeholder={"Hello {{name}}, welcome to our service!"} value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} />
+                {form.content && extractVars(form.content).length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    <span className="text-xs text-slate-500">Variables:</span>
+                    {extractVars(form.content).map((v) => (
+                      <span key={v} className="px-2 py-0.5 bg-whatsapp-teal/10 text-whatsapp-teal rounded-full text-xs font-mono">{`{{${v}}}`}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {error && <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">{error}</div>}
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setShowModal(false)} className="btn-secondary flex-1">Cancel</button>
+                <button onClick={handleSave} disabled={saving} className="btn-primary flex-1 flex items-center justify-center gap-2">
+                  {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {saving ? "Saving..." : editing ? "Save Changes" : "Create Template"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Send Modal */}
+      {sendTemplate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
+              <div>
+                <h2 className="font-semibold text-slate-900">Bulk Send — {sendTemplate.name}</h2>
+                <div className="flex items-center gap-2 mt-1">
+                  {(["contacts", "variables", "preview", "sending", "done"] as BulkStep[]).filter(s => s !== "sending" && s !== "done").map((s, i, arr) => (
+                    <span key={s} className="flex items-center gap-1">
+                      <span className={cn("text-xs font-medium capitalize", bulkStep === s ? "text-whatsapp-teal" : "text-slate-400")}>{s}</span>
+                      {i < arr.length - 1 && <ChevronRight className="w-3 h-3 text-slate-300" />}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              {bulkStep !== "sending" && (
+                <button onClick={() => setSendTemplate(null)}><X className="w-5 h-5 text-slate-400" /></button>
+              )}
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+
+              {/* Step 1: Select contacts & instance */}
+              {bulkStep === "contacts" && (
+                <>
+                  {/* Instance picker */}
+                  <div>
+                    <label className="label flex items-center gap-1.5"><Smartphone className="w-3.5 h-3.5" /> Send from</label>
+                    {instances.length === 0 ? (
+                      <p className="text-sm text-red-500">No connected WhatsApp instances. Connect one first.</p>
+                    ) : (
+                      <select className="input" value={selectedInstance} onChange={(e) => setSelectedInstance(e.target.value)}>
+                        {instances.map((i) => <option key={i.id} value={i.id}>{i.name} {i.phone_number ? `(${i.phone_number})` : ""}</option>)}
+                      </select>
+                    )}
+                  </div>
+
+                  {/* Contact picker */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="label flex items-center gap-1.5 mb-0"><Users className="w-3.5 h-3.5" /> Select recipients</label>
+                      <button onClick={toggleAll} className="text-xs text-whatsapp-teal hover:underline">
+                        {filteredContacts.every((c) => selectedContacts.has(c.id)) ? "Deselect all" : "Select all"}
+                      </button>
+                    </div>
+                    <div className="relative mb-2">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                      <input className="input pl-8 text-sm" placeholder="Search contacts..." value={contactSearch} onChange={(e) => setContactSearch(e.target.value)} />
+                    </div>
+                    <div className="border border-slate-200 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
+                      {filteredContacts.length === 0 ? (
+                        <p className="text-sm text-slate-400 text-center py-6">No contacts found</p>
+                      ) : filteredContacts.map((c) => (
+                        <button key={c.id} onClick={() => toggleContact(c.id)} className={cn("w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors text-left", selectedContacts.has(c.id) && "bg-whatsapp-teal/5")}>
+                          {selectedContacts.has(c.id)
+                            ? <CheckSquare className="w-4 h-4 text-whatsapp-teal flex-shrink-0" />
+                            : <Square className="w-4 h-4 text-slate-300 flex-shrink-0" />}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-800">{c.name ?? "—"}</p>
+                            <p className="text-xs text-slate-400">{c.phone}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    {selectedContacts.size > 0 && (
+                      <p className="text-xs text-whatsapp-teal mt-1.5 font-medium">{selectedContacts.size} contact{selectedContacts.size !== 1 ? "s" : ""} selected</p>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Step 2: Variable defaults */}
+              {bulkStep === "variables" && (
+                <>
+                  <div className="bg-slate-50 rounded-xl p-4">
+                    <p className="text-xs font-medium text-slate-500 mb-2">Template preview</p>
+                    <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{sendTemplate.content}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-700 mb-1">Auto-filled variables</p>
+                    <p className="text-xs text-slate-400 mb-3">These are filled automatically from each contact's data.</p>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {["name", "phone", "email"].filter((v) => extractVars(sendTemplate.content).includes(v)).map((v) => (
+                        <span key={v} className="px-2.5 py-1 bg-green-50 text-green-700 rounded-full text-xs font-mono border border-green-200">{`{{${v}}}`} ✓ auto</span>
+                      ))}
+                    </div>
+                    {manualVars.length > 0 && (
+                      <>
+                        <p className="text-sm font-medium text-slate-700 mb-1">Custom variables</p>
+                        <p className="text-xs text-slate-400 mb-3">These will be the same for all recipients.</p>
+                        <div className="space-y-3">
+                          {manualVars.map((v) => (
+                            <div key={v}>
+                              <label className="label font-mono">{`{{${v}}}`}</label>
+                              <input className="input" placeholder={`Value for ${v}`} value={varDefaults[v] ?? ""} onChange={(e) => setVarDefaults((prev) => ({ ...prev, [v]: e.target.value }))} />
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    {manualVars.length === 0 && (
+                      <p className="text-sm text-slate-500 bg-green-50 border border-green-200 rounded-xl p-3">All variables are auto-filled — nothing to configure.</p>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Step 3: Preview */}
+              {bulkStep === "preview" && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-slate-700">Preview — first 3 recipients</p>
+                    <span className="text-xs text-slate-400">{selectedContacts.size} total recipients</span>
+                  </div>
+                  {selectedContactObjs.slice(0, 3).map((c) => (
+                    <div key={c.id} className="border border-slate-200 rounded-xl p-4 space-y-2">
+                      <p className="text-xs font-semibold text-slate-500">{c.name ?? c.phone}</p>
+                      <div className="bg-whatsapp-light/30 rounded-xl p-3 text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">
+                        {fillPreview(sendTemplate.content, c, varDefaults)}
+                      </div>
+                    </div>
+                  ))}
+                  {selectedContacts.size > 3 && (
+                    <p className="text-xs text-slate-400 text-center">+ {selectedContacts.size - 3} more messages</p>
+                  )}
+                </div>
+              )}
+
+              {/* Step 4: Sending */}
+              {bulkStep === "sending" && (
+                <div className="py-8 text-center space-y-4">
+                  <Loader2 className="w-10 h-10 animate-spin text-whatsapp-teal mx-auto" />
+                  <p className="text-sm font-medium text-slate-700">Sending messages...</p>
+                  <div className="w-full bg-slate-100 rounded-full h-2">
+                    <div className="bg-whatsapp-teal h-2 rounded-full transition-all duration-300" style={{ width: `${sendProgress}%` }} />
+                  </div>
+                  <p className="text-xs text-slate-400">{sendProgress}% complete</p>
+                </div>
+              )}
+
+              {/* Step 5: Done */}
+              {bulkStep === "done" && bulkResult && (
+                <div className="space-y-4 py-4">
+                  <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl p-4">
+                    <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold text-green-800">{bulkResult.sent} messages sent successfully</p>
+                      {bulkResult.failed > 0 && <p className="text-sm text-red-600 mt-0.5">{bulkResult.failed} failed</p>}
+                    </div>
+                  </div>
+                  {bulkResult.errors.length > 0 && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-1 max-h-40 overflow-y-auto">
+                      <p className="text-xs font-semibold text-red-700 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Errors</p>
+                      {bulkResult.errors.map((e, i) => <p key={i} className="text-xs text-red-600 font-mono">{e}</p>)}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            {bulkStep !== "sending" && (
+              <div className="px-6 py-4 border-t border-slate-100 flex gap-3 flex-shrink-0">
+                {bulkStep === "done" ? (
+                  <button onClick={() => setSendTemplate(null)} className="btn-primary flex-1">Done</button>
+                ) : (
+                  <>
+                    {bulkStep !== "contacts" && (
+                      <button onClick={() => setBulkStep(bulkStep === "preview" ? "variables" : "contacts")} className="btn-secondary flex-1">Back</button>
+                    )}
+                    {bulkStep === "contacts" && (
+                      <button onClick={() => setSendTemplate(null)} className="btn-secondary flex-1">Cancel</button>
+                    )}
+                    {bulkStep === "contacts" && (
+                      <button
+                        onClick={() => setBulkStep("variables")}
+                        disabled={selectedContacts.size === 0 || !selectedInstance}
+                        className="btn-primary flex-1 flex items-center justify-center gap-2"
+                      >
+                        Next <ChevronRight className="w-4 h-4" />
+                      </button>
+                    )}
+                    {bulkStep === "variables" && (
+                      <button onClick={() => setBulkStep("preview")} className="btn-primary flex-1 flex items-center justify-center gap-2">
+                        Preview <ChevronRight className="w-4 h-4" />
+                      </button>
+                    )}
+                    {bulkStep === "preview" && (
+                      <button onClick={handleBulkSend} className="btn-primary flex-1 flex items-center justify-center gap-2">
+                        <Send className="w-4 h-4" /> Send to {selectedContacts.size} contacts
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

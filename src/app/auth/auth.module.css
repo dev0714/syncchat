@@ -1,0 +1,298 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top, rgba(37, 211, 102, 0.18), transparent 30%),
+    linear-gradient(135deg, #0f766e 0%, #134e4a 48%, #0f172a 100%);
+}
+
+.shell {
+  width: 100%;
+  max-width: 448px;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 28px;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.backLink:hover {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.brand {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.brandIcon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(18px);
+}
+
+.brandTitle {
+  margin: 0;
+  color: #ffffff;
+  font-size: 2rem;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.brandSubtitle {
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.95rem;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 24px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
+  padding: 32px;
+}
+
+.cardTitle {
+  margin: 0 0 24px;
+  color: #0f172a;
+  font-size: 1.35rem;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.form {
+  display: grid;
+  gap: 16px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.label {
+  color: #334155;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.inputWrap {
+  position: relative;
+}
+
+.input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #fff;
+  color: #0f172a;
+  font-size: 1rem;
+  line-height: 1.5;
+  padding: 12px 14px;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.input:focus {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.14);
+}
+
+.inputPassword {
+  padding-right: 48px;
+}
+
+.toggleButton {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.toggleButton:hover {
+  color: #334155;
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.error {
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 12px 14px;
+  font-size: 0.95rem;
+}
+
+.primaryButton {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  background: #0f766e;
+  color: #ffffff;
+  font-size: 0.98rem;
+  font-weight: 700;
+  padding: 12px 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: transform 150ms ease, background-color 150ms ease, opacity 150ms ease;
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: #115e59;
+  transform: translateY(-1px);
+}
+
+.primaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.secondaryButton {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #fff;
+  color: #334155;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.secondaryButton:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.footer {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 0.92rem;
+  color: #64748b;
+}
+
+.link {
+  color: #0f766e;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.mutedFooter {
+  margin-top: 24px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 0.78rem;
+}
+
+.registerSteps {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.registerStep {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.registerStepBubble {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 800;
+  background: #e2e8f0;
+  color: #64748b;
+}
+
+.registerStepBubbleActive {
+  background: #0f766e;
+  color: #fff;
+}
+
+.registerStepLabel {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.registerDivider {
+  flex: 1;
+  height: 1px;
+  background: #e2e8f0;
+}
+
+.registerInfo {
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #475569;
+  padding: 12px 14px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.registerStack {
+  display: grid;
+  gap: 12px;
+}
+
+.registerActions {
+  display: flex;
+  gap: 12px;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.38);
+  border-top-color: #fff;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

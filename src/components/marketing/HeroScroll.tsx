@@ -523,7 +523,7 @@ export default function HeroScroll() {
               </div>
 
               {/* Phone body — screen content (flip handles transition) */}
-              <div style={{ height: '360px', overflow: 'hidden' }}>
+              <div className="hscroll-phone-body" style={{ height: '360px', overflow: 'hidden' }}>
                 {SCREENS[displayedActive].screen}
               </div>
 

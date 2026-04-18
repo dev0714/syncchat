@@ -548,10 +548,12 @@ footer {
   .section-title { font-size: clamp(1.6rem, 6vw, 2rem); }
   .section-sub { font-size: 15px; }
 
-  /* Hero scroll — phone hidden on mobile, text centred */
-  .hscroll-grid { grid-template-columns: 1fr; gap: 0; }
-  .hscroll-right { display: none; }
-  .hscroll-left { min-height: 420px !important; text-align: center; padding: 0 4vw; }
+  /* Hero scroll — single column, phone above text, compact */
+  .hscroll-grid { grid-template-columns: 1fr; gap: 20px; }
+  .hscroll-right { order: -1; }
+  .hscroll-phone-card { width: min(230px, 70vw) !important; }
+  .hscroll-phone-body { height: 200px !important; }
+  .hscroll-left { min-height: 300px !important; text-align: center; padding: 0 4vw; }
   .hscroll-left p { margin-left: auto; margin-right: auto; }
   .hero-btns { justify-content: center; }
   .hero-stats { justify-content: center; flex-wrap: wrap; gap: 20px; }
@@ -610,7 +612,10 @@ footer {
   /* Sections */
   section { padding: 48px 4vw; }
 
-  /* Hero scroll — already hidden at 768px, nothing extra needed */
+  /* Hero scroll — shrink phone further on very small screens */
+  .hscroll-phone-card { width: min(190px, 65vw) !important; }
+  .hscroll-phone-body { height: 160px !important; }
+  .hscroll-left { min-height: 260px !important; }
 
   /* About */
   .about-values-grid { grid-template-columns: 1fr; }

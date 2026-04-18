@@ -551,8 +551,8 @@ footer {
   /* Hero scroll — single column, phone above text, compact */
   .hscroll-grid { grid-template-columns: 1fr; gap: 16px; }
   .hscroll-right { order: -1; }
-  .hscroll-phone-card { width: min(220px, 68vw) !important; }
-  .hscroll-phone-body { height: 190px !important; }
+  .hscroll-phone-card { width: min(300px, 85vw) !important; }
+  .hscroll-phone-body { height: 240px !important; }
   /* Anchor panel content to top so overflow goes DOWN not UP */
   .hscroll-left { min-height: 360px !important; text-align: center; padding: 0 4vw; overflow: hidden; }
   .hscroll-left > div { justify-content: flex-start !important; padding-top: 12px !important; }

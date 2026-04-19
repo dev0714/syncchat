@@ -34,8 +34,7 @@ export default function PricingPage() {
 
       {/* ── PAGE HERO ── */}
       <div className="page-hero">
-        <div className="breadcrumb"><Link href="/">Home</Link> / Pricing</div>
-        <h1>Simple, Transparent Pricing</h1>
+<h1>Simple, Transparent Pricing</h1>
         <p>Two components — Platform + AI. Pay only for what you use. No surprises.</p>
       </div>
 

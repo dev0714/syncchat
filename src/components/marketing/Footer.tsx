@@ -40,7 +40,7 @@ export default function Footer() {
           </div>
         </div>
         <div className="footer-bottom">
-          <span>© 2025 SyncChat. All rights reserved.</span>
+          <span>© 2025 SyncChat. All rights reserved. Powered by LeadSync PTY LTD</span>
           <span>Built with ❤️ for South African businesses</span>
         </div>
       </div>

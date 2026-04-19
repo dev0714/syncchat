@@ -420,8 +420,8 @@ export default function HeroScroll() {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'flex-start',
-          paddingTop: '5vh',
+          justifyContent: 'center',
+          paddingTop: '68px',
         }}
       >
         {/* Animated gradient overlay that shifts per screen */}

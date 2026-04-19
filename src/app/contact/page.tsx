@@ -20,8 +20,7 @@ export default function ContactPage() {
       {/* ── ABOUT HERO ── */}
       <div className="about-hero">
         <div style={{ maxWidth: '1160px', margin: '0 auto' }}>
-          <div className="breadcrumb" style={{ textAlign: 'left', marginBottom: '16px' }}><Link href="/">Home</Link> / About &amp; Contact</div>
-          <h1>Built for South African Businesses</h1>
+<h1>Built for South African Businesses</h1>
           <p style={{ maxWidth: '580px', marginTop: 0 }}>SyncChat was born from a simple belief: WhatsApp is the most powerful business communication channel in South Africa — and it deserves a proper platform.</p>
         </div>
       </div>

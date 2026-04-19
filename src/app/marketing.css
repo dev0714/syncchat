@@ -501,6 +501,48 @@ footer {
 .check-icon { color: var(--green); font-size: 18px; }
 .dash-icon { color: var(--slate-300); font-size: 18px; }
 
+/* ── HERO ANIMATED BACKGROUNDS ── */
+@keyframes hero-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.hero-bg {
+  background-size: 300% 300%;
+  animation: hero-shift 8s ease infinite;
+  transition: opacity 0.8s ease;
+}
+
+/* Screen 0 — WhatsApp Green */
+.hero-bg-0 {
+  background-image: linear-gradient(
+    -45deg,
+    #022c22, #065f46, #059669, #25D366, #128C7E, #075E54, #0d9488, #022c22
+  );
+}
+/* Screen 1 — Purple */
+.hero-bg-1 {
+  background-image: linear-gradient(
+    -45deg,
+    #1e0035, #4c1d95, #7c3aed, #a855f7, #c084fc, #6d28d9, #3b0764, #1e0035
+  );
+}
+/* Screen 2 — Blue */
+.hero-bg-2 {
+  background-image: linear-gradient(
+    -45deg,
+    #082f49, #0c4a6e, #0369a1, #0ea5e9, #38bdf8, #0284c7, #075985, #082f49
+  );
+}
+/* Screen 3 — Amber */
+.hero-bg-3 {
+  background-image: linear-gradient(
+    -45deg,
+    #431407, #78350f, #b45309, #d97706, #f59e0b, #fbbf24, #92400e, #431407
+  );
+}
+
 /* ── HERO SCROLL LAYOUT (desktop base) ── */
 .hscroll-grid {
   display: grid;

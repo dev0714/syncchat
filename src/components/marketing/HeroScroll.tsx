@@ -425,17 +425,7 @@ export default function HeroScroll() {
         }}
       >
         {/* Animated gradient overlay that shifts per screen */}
-        <div style={{
-          position: 'absolute', inset: 0, zIndex: 0,
-          background: [
-            'linear-gradient(135deg, #075E54 0%, #128C7E 60%, #25D366 100%)',
-            'linear-gradient(135deg, #3b0764 0%, #6d28d9 60%, #a855f7 100%)',
-            'linear-gradient(135deg, #0c4a6e 0%, #0369a1 60%, #0ea5e9 100%)',
-            'linear-gradient(135deg, #78350f 0%, #b45309 60%, #f59e0b 100%)',
-          ][active],
-          transition: 'background 0.8s ease',
-          opacity: 1,
-        }} />
+        <div className={`hero-bg hero-bg-${active}`} style={{ position: 'absolute', inset: 0, zIndex: 0 }} />
 
         {/* Subtle dot-pattern overlay */}
         <div style={{

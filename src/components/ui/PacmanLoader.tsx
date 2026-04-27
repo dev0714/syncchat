@@ -14,9 +14,12 @@ export default function PacmanLoader({
   label = "Loading",
   backgroundColor = "#ffffff",
 }: PacmanLoaderProps) {
+  const scale = size / 60;
   const style = {
-    ["--pacman-size" as string]: `${size}px`,
     ["--pacman-bg" as string]: backgroundColor,
+    ["--pacman-scale" as string]: `${scale}`,
+    width: `${160 * scale}px`,
+    height: `${60 * scale}px`,
   } as CSSProperties;
 
   return (
@@ -26,13 +29,13 @@ export default function PacmanLoader({
       aria-label={label}
       style={style}
     >
-      <span className="pacman-loader">
-        <span className="circles" aria-hidden="true">
+      <span className="pacman-loader" aria-hidden="true">
+        <span className="circles">
           <span className="one" />
           <span className="two" />
           <span className="three" />
         </span>
-        <span className="pacman" aria-hidden="true">
+        <span className="pacman">
           <span className="top" />
           <span className="bottom" />
           <span className="left" />

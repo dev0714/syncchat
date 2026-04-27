@@ -82,56 +82,58 @@ body {
   }
   .pacman-loader {
     position: relative;
-    display: inline-block;
-    width: calc(var(--pacman-size) * 3.6);
-    height: var(--pacman-size);
+    width: 160px;
+    height: 60px;
     flex-shrink: 0;
+    transform: scale(var(--pacman-scale));
+    transform-origin: left center;
   }
   .pacman-loader-shell {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     line-height: 0;
+    overflow: visible;
   }
   .pacman-loader .circles {
     position: absolute;
-    left: calc(var(--pacman-size) * -0.12);
+    left: -5px;
     top: 0;
-    height: var(--pacman-size);
-    width: calc(var(--pacman-size) * 4.1);
+    height: 60px;
+    width: 180px;
     animation: pacman-dots 0.5s infinite linear;
   }
   .pacman-loader .circles span {
     position: absolute;
-    top: calc(var(--pacman-size) * 0.42);
-    width: calc(var(--pacman-size) * 0.18);
-    height: calc(var(--pacman-size) * 0.18);
-    border-radius: 999px;
+    top: 25px;
+    width: 12px;
+    height: 12px;
+    border-radius: 12px;
     background-color: #16a34a;
   }
   .pacman-loader .circles span.one {
-    right: calc(var(--pacman-size) * 1.8);
+    right: 80px;
   }
   .pacman-loader .circles span.two {
-    right: calc(var(--pacman-size) * 0.9);
+    right: 40px;
   }
   .pacman-loader .circles span.three {
-    right: 0;
+    right: 0px;
   }
   .pacman-loader .pacman {
     position: absolute;
     left: 0;
     top: 0;
-    height: var(--pacman-size);
-    width: var(--pacman-size);
+    height: 60px;
+    width: 60px;
   }
   .pacman-loader .pacman .eye {
     position: absolute;
-    top: calc(var(--pacman-size) * 0.16);
-    left: calc(var(--pacman-size) * 0.48);
-    height: calc(var(--pacman-size) * 0.12);
-    width: calc(var(--pacman-size) * 0.12);
-    border-radius: 999px;
+    top: 10px;
+    left: 30px;
+    height: 7px;
+    width: 7px;
+    border-radius: 7px;
     background-color: #14532d;
     z-index: 2;
   }
@@ -139,36 +141,38 @@ body {
     position: absolute;
     top: 0;
     left: 0;
-    height: var(--pacman-size);
-    width: var(--pacman-size);
+    height: 60px;
+    width: 60px;
   }
   .pacman-loader .pacman span::before {
     content: "";
     position: absolute;
     left: 0;
-    height: calc(var(--pacman-size) * 0.5);
-    width: var(--pacman-size);
+    height: 30px;
+    width: 60px;
     background-color: #16a34a;
   }
   .pacman-loader .pacman .top::before {
     top: 0;
-    border-radius: 999px 999px 0 0;
+    border-radius: 60px 60px 0 0;
   }
   .pacman-loader .pacman .bottom::before {
     bottom: 0;
-    border-radius: 0 0 999px 999px;
+    border-radius: 0 0 60px 60px;
   }
   .pacman-loader .pacman .left::before {
     bottom: 0;
-    height: var(--pacman-size);
-    width: calc(var(--pacman-size) * 0.5);
-    border-radius: 999px 0 0 999px;
+    height: 60px;
+    width: 30px;
+    border-radius: 60px 0 0 60px;
   }
   .pacman-loader .pacman .top {
     animation: pacman-top 0.5s infinite;
+    transform-origin: bottom;
   }
   .pacman-loader .pacman .bottom {
     animation: pacman-bottom 0.5s infinite;
+    transform-origin: top;
   }
   .pacman-loader .pacman .left {
     animation: pacman-left 0.5s infinite;
@@ -245,6 +249,6 @@ body {
     transform: translateX(0);
   }
   100% {
-    transform: translateX(calc(var(--pacman-size) * -0.8));
+    transform: translateX(-40px);
   }
 }

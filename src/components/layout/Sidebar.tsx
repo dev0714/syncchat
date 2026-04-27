@@ -42,7 +42,7 @@ export default function Sidebar({ member }: SidebarProps) {
     href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
 
   return (
-    <aside className="w-64 min-h-screen bg-white border-r border-slate-200 flex flex-col">
+    <aside className="relative z-20 w-64 shrink-0 min-h-screen bg-white border-r border-slate-200 flex flex-col pointer-events-auto">
       {/* Logo */}
       <div className="p-5 border-b border-slate-100">
         <div className="flex items-center gap-3">

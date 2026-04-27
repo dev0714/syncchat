@@ -1,3 +1,8 @@
+import {
+  buildUltraMsgMessageRequest,
+  type UltraMsgMessageFeature,
+} from "@/lib/message-features";
+
 const ULTRAMSG_BASE = "https://api.ultramsg.com";
 
 export interface UltraMsgSendTextPayload {
@@ -22,6 +27,12 @@ export interface UltraMsgResponse {
   sent: string;
   id?: string;
   message?: string;
+}
+
+export interface UltraMsgGenericMessagePayload {
+  token: string;
+  type: UltraMsgMessageFeature;
+  values: Record<string, string>;
 }
 
 export interface UltraMsgInstanceStatus {
@@ -92,6 +103,44 @@ class UltraMsgClient {
       document: payload.document,
       caption: payload.caption,
     });
+  }
+
+  async sendVoice(instanceId: string, payload: UltraMsgSendMediaPayload): Promise<UltraMsgResponse> {
+    return this.request(instanceId, payload.token, "POST", "messages/voice", {
+      to: payload.to,
+      audio: payload.audio,
+    });
+  }
+
+  async sendContact(instanceId: string, payload: { token: string; to: string; contact: string }): Promise<UltraMsgResponse> {
+    return this.request(instanceId, payload.token, "POST", "messages/contact", {
+      to: payload.to,
+      contact: payload.contact,
+    });
+  }
+
+  async sendReaction(instanceId: string, payload: { token: string; msgId: string; emoji?: string }): Promise<UltraMsgResponse> {
+    return this.request(instanceId, payload.token, "POST", "messages/reaction", {
+      msgId: payload.msgId,
+      emoji: payload.emoji,
+    });
+  }
+
+  async sendGenericMessage(instanceId: string, payload: UltraMsgGenericMessagePayload): Promise<UltraMsgResponse> {
+    const request = buildUltraMsgMessageRequest(payload.type, payload.values);
+    return this.request(instanceId, payload.token, "POST", request.endpoint, request.body);
+  }
+
+  async clearMessages(instanceId: string, token: string, status: "queue" | "sent" | "unsent" | "invalid"): Promise<UltraMsgResponse> {
+    return this.request(instanceId, token, "POST", "messages/clear", { status });
+  }
+
+  async resendById(instanceId: string, token: string, id: string): Promise<UltraMsgResponse> {
+    return this.request(instanceId, token, "POST", "messages/resendById", { id });
+  }
+
+  async resendByStatus(instanceId: string, token: string, status: "unsent" | "expired"): Promise<UltraMsgResponse> {
+    return this.request(instanceId, token, "POST", "messages/resendByStatus", { status });
   }
 
   async getMessages(instanceId: string, token: string, chatId?: string): Promise<unknown[]> {

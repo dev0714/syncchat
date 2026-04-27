@@ -57,6 +57,7 @@ export default function TemplatesPage() {
   const [bulkResult, setBulkResult] = useState<{ sent: number; failed: number; errors: string[] } | null>(null);
   const [sending, setSending] = useState(false);
   const [sendProgress, setSendProgress] = useState(0);
+  const [bulkTemplateId, setBulkTemplateId] = useState("");
 
   const [featureType, setFeatureType] = useState<UltraMsgMessageFeature>("text");
   const [featureInstanceId, setFeatureInstanceId] = useState("");
@@ -80,6 +81,12 @@ export default function TemplatesPage() {
     setFeatureSuccess("");
     setFeatureResponse("");
   }, [featureType]);
+
+  useEffect(() => {
+    if (!bulkTemplateId && templates[0]) {
+      setBulkTemplateId(templates[0].id);
+    }
+  }, [templates, bulkTemplateId]);
 
   async function loadData() {
     setLoading(true);
@@ -380,6 +387,43 @@ export default function TemplatesPage() {
           <pre className="bg-slate-950 text-slate-100 rounded-xl p-4 text-xs overflow-x-auto whitespace-pre-wrap">
             {featureResponse}
           </pre>
+        )}
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Bulk Messaging</h2>
+            <p className="text-sm text-slate-500 mt-1">Pick a template and launch the bulk sender from here.</p>
+          </div>
+          <div className="text-xs text-slate-400">{templates.length} template{templates.length === 1 ? "" : "s"} available</div>
+        </div>
+
+        {templates.length > 0 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] gap-3 items-end">
+            <div>
+              <label className="label">Template</label>
+              <select className="input" value={bulkTemplateId} onChange={(e) => setBulkTemplateId(e.target.value)}>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name} {template.is_active ? "" : "(inactive)"}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={() => {
+                const selectedTemplate = templates.find((template) => template.id === bulkTemplateId);
+                if (selectedTemplate) openBulkSend(selectedTemplate);
+              }}
+              disabled={!bulkTemplateId}
+              className="btn-primary inline-flex items-center justify-center gap-2 lg:min-w-44"
+            >
+              <Send className="w-4 h-4" /> Open Bulk Sender
+            </button>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">Create a template first to use bulk messaging.</p>
         )}
       </div>
 

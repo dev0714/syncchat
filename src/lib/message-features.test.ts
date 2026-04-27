@@ -31,6 +31,6 @@ test("builds a reaction request", () => {
 test("exposes all message features", () => {
   assert.deepEqual(
     MESSAGE_FEATURES.map((feature) => feature.type),
-    ["text", "image", "audio", "voice", "video", "document", "location", "contact", "reaction"]
+    ["text", "image", "audio", "voice", "video", "document", "location", "vcard", "contact", "reaction"]
   );
 });

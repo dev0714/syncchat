@@ -78,7 +78,7 @@ export interface Message {
   conversation_id: string;
   org_id: string;
   direction: "inbound" | "outbound";
-  type: "text" | "image" | "video" | "audio" | "document" | "location";
+  type: "text" | "image" | "video" | "audio" | "document" | "location" | "vcard" | "contact" | "reaction";
   content: string;
   media_url?: string;
   status: "sending" | "sent" | "delivered" | "read" | "failed";

@@ -6,6 +6,7 @@ import type { UltraMsgMessageFeature } from "@/lib/message-features";
 function getMessageContent(type: UltraMsgMessageFeature, values: Record<string, string>): string {
   if (type === "text") return values.body ?? "";
   if (type === "reaction") return `Reacted with ${values.emoji ?? ""} to ${values.msgId ?? ""}`.trim();
+  if (type === "vcard") return values.vcard ?? "";
   if (type === "location") {
     const address = values.address ?? "";
     const coords = [values.lat, values.lng].filter(Boolean).join(", ");

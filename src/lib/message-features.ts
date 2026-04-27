@@ -6,6 +6,7 @@ export type UltraMsgMessageFeature =
   | "video"
   | "document"
   | "location"
+  | "vcard"
   | "contact"
   | "reaction";
 
@@ -111,6 +112,23 @@ export const MESSAGE_FEATURES: FeatureDefinition[] = [
       { key: "address", label: "Address", placeholder: "1600 Amphitheatre Pkwy", type: "textarea", required: true },
       { key: "lat", label: "Latitude", placeholder: "25.197197", type: "number", required: true },
       { key: "lng", label: "Longitude", placeholder: "55.2721877", type: "number", required: true },
+    ],
+  },
+  {
+    type: "vcard",
+    label: "vCard",
+    description: "Send a contact card in vCard 3.0 format.",
+    endpoint: "messages/vcard",
+    sendLabel: "Send vCard",
+    fields: [
+      { key: "to", label: "Recipient", placeholder: "+14155552671", required: true },
+      {
+        key: "vcard",
+        label: "vCard",
+        placeholder: "BEGIN:VCARD\nVERSION:3.0\nFN:John Doe\nTEL;TYPE=CELL;waid=14000000001:14000000001\nEND:VCARD",
+        type: "textarea",
+        required: true,
+      },
     ],
   },
   {

@@ -1,3 +1,6 @@
+ "use client";
+
+import { useId } from "react";
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
@@ -5,21 +8,16 @@ interface PacmanLoaderProps {
   size?: number;
   className?: string;
   label?: string;
-  backgroundColor?: string;
 }
 
 export default function PacmanLoader({
   size = 44,
   className = "",
   label = "Loading",
-  backgroundColor = "#ffffff",
 }: PacmanLoaderProps) {
-  const scale = size / 60;
+  const id = useId().replace(/:/g, "");
   const style = {
-    ["--pacman-bg" as string]: backgroundColor,
-    ["--pacman-scale" as string]: `${scale}`,
-    width: `${160 * scale}px`,
-    height: `${60 * scale}px`,
+    ["--pacman-scale" as string]: `${size / 60}`,
   } as CSSProperties;
 
   return (
@@ -29,19 +27,40 @@ export default function PacmanLoader({
       aria-label={label}
       style={style}
     >
-      <span className="pacman-loader" aria-hidden="true">
-        <span className="circles">
-          <span className="one" />
-          <span className="two" />
-          <span className="three" />
-        </span>
-        <span className="pacman">
-          <span className="top" />
-          <span className="bottom" />
-          <span className="left" />
-          <span className="eye" />
-        </span>
-      </span>
+      <svg
+        className="pacman-loader"
+        aria-hidden="true"
+        width="160"
+        height="60"
+        viewBox="0 0 160 60"
+      >
+        <defs>
+          <mask id={`pacman-mouth-${id}`}>
+            <rect width="160" height="60" fill="white" />
+            <path
+              className="pacman-loader__mouth"
+              d="M 30 30 L 54 16 L 54 44 Z"
+              fill="black"
+            />
+          </mask>
+        </defs>
+
+        <circle
+          className="pacman-loader__pacman"
+          cx="30"
+          cy="30"
+          r="22"
+          mask={`url(#pacman-mouth-${id})`}
+        />
+
+        <circle className="pacman-loader__eye" cx="38" cy="22" r="3.5" />
+
+        <g className="pacman-loader__dots">
+          <circle cx="74" cy="30" r="4" />
+          <circle cx="102" cy="30" r="4" />
+          <circle cx="130" cy="30" r="4" />
+        </g>
+      </svg>
     </span>
   );
 }

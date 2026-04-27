@@ -1,3 +1,6 @@
+CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA cron;
+CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA net;
+
 CREATE TABLE IF NOT EXISTS syncchat.scheduled_bulk_messages (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id              UUID NOT NULL REFERENCES syncchat.organizations(id) ON DELETE CASCADE,

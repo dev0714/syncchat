@@ -3,6 +3,9 @@
 -- Run this in Supabase SQL Editor to set up your DB
 -- =====================================================
 
+CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA cron;
+CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA net;
+
 --=====================================================
 -- SCHEMA
 -- =====================================================

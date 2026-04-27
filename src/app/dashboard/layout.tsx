@@ -35,8 +35,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <div className="fixed inset-y-0 left-0 z-50 w-64">
         <Sidebar member={member} />
       </div>
-      <main className="relative z-0 min-h-screen min-w-0 overflow-x-hidden pl-64">
-        {children}
+      <main className="relative z-0 min-h-screen min-w-0 overflow-x-hidden pl-64 pointer-events-none">
+        <div className="pointer-events-auto">
+          {children}
+        </div>
       </main>
     </div>
   );

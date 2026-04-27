@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { MESSAGE_FEATURES, getMessageFeature, type UltraMsgMessageFeature } from "@/lib/message-features";
 import {
   FileText, Plus, Trash2, Pencil, X, Loader2, Copy, Check,
   ToggleLeft, ToggleRight, Send, Users, Search, CheckSquare,
@@ -28,6 +29,10 @@ function fillPreview(content: string, contact: Contact, defaults: Record<string,
 
 type BulkStep = "contacts" | "variables" | "preview" | "sending" | "done";
 
+function createFeatureDefaults(type: UltraMsgMessageFeature): Record<string, string> {
+  return Object.fromEntries(getMessageFeature(type).fields.map((field) => [field.key, ""]));
+}
+
 export default function TemplatesPage() {
   const supabase = createClient();
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
@@ -53,7 +58,28 @@ export default function TemplatesPage() {
   const [sending, setSending] = useState(false);
   const [sendProgress, setSendProgress] = useState(0);
 
+  const [featureType, setFeatureType] = useState<UltraMsgMessageFeature>("text");
+  const [featureInstanceId, setFeatureInstanceId] = useState("");
+  const [featureValues, setFeatureValues] = useState<Record<string, string>>(createFeatureDefaults("text"));
+  const [featureSending, setFeatureSending] = useState(false);
+  const [featureError, setFeatureError] = useState("");
+  const [featureSuccess, setFeatureSuccess] = useState("");
+  const [featureResponse, setFeatureResponse] = useState<string>("");
+
   useEffect(() => { loadData(); }, []);
+
+  useEffect(() => {
+    if (!featureInstanceId && instances[0]) {
+      setFeatureInstanceId(instances[0].id);
+    }
+  }, [instances, featureInstanceId]);
+
+  useEffect(() => {
+    setFeatureValues(createFeatureDefaults(featureType));
+    setFeatureError("");
+    setFeatureSuccess("");
+    setFeatureResponse("");
+  }, [featureType]);
 
   async function loadData() {
     setLoading(true);
@@ -111,6 +137,13 @@ export default function TemplatesPage() {
     navigator.clipboard.writeText(content);
     setCopied(id);
     setTimeout(() => setCopied(null), 2000);
+  }
+
+  function openFeatureLab(type: UltraMsgMessageFeature) {
+    setFeatureType(type);
+    setFeatureError("");
+    setFeatureSuccess("");
+    setFeatureResponse("");
   }
 
   function openBulkSend(t: MessageTemplate) {
@@ -185,6 +218,54 @@ export default function TemplatesPage() {
     setBulkStep("done");
   }
 
+  function updateFeatureValue(key: string, value: string) {
+    setFeatureValues((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function handleFeatureSend() {
+    const feature = getMessageFeature(featureType);
+    if (!featureInstanceId) {
+      setFeatureError("Select a WhatsApp instance first.");
+      return;
+    }
+
+    const missing = feature.fields.filter((field) => field.required && !featureValues[field.key]?.trim());
+    if (missing.length > 0) {
+      setFeatureError(`Missing required fields: ${missing.map((field) => field.label).join(", ")}`);
+      return;
+    }
+
+    setFeatureSending(true);
+    setFeatureError("");
+    setFeatureSuccess("");
+    setFeatureResponse("");
+
+    try {
+      const res = await fetch("/api/messages/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instanceId: featureInstanceId,
+          type: featureType,
+          values: featureValues,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Failed to send message");
+      }
+
+      setFeatureSuccess(`Sent ${feature.label.toLowerCase()} message successfully.`);
+      setFeatureResponse(JSON.stringify(data.result ?? data, null, 2));
+      setFeatureValues(createFeatureDefaults(featureType));
+    } catch (err) {
+      setFeatureError(err instanceof Error ? err.message : "Failed to send message");
+    } finally {
+      setFeatureSending(false);
+    }
+  }
+
   const categoryColor: Record<string, string> = {
     custom: "bg-slate-100 text-slate-700",
     marketing: "bg-blue-100 text-blue-700",
@@ -207,6 +288,99 @@ export default function TemplatesPage() {
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
         Use <code className="bg-blue-100 px-1 rounded font-mono text-xs">{"{{variable}}"}</code> for dynamic values.
         Auto-filled: <code className="bg-blue-100 px-1 rounded font-mono text-xs">{"{{name}}"}</code> <code className="bg-blue-100 px-1 rounded font-mono text-xs">{"{{phone}}"}</code> <code className="bg-blue-100 px-1 rounded font-mono text-xs">{"{{email}}"}</code>
+      </div>
+
+      <div className="card p-6 space-y-6">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Message Lab</h2>
+            <p className="text-sm text-slate-500 mt-1">Test every UltraMsg message type directly from Templates.</p>
+          </div>
+          <div className="text-xs text-slate-400">Available types: {MESSAGE_FEATURES.length}</div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+          {MESSAGE_FEATURES.map((feature) => (
+            <button
+              key={feature.type}
+              onClick={() => openFeatureLab(feature.type)}
+              className={cn(
+                "rounded-xl border px-3 py-3 text-left transition-colors",
+                featureType === feature.type
+                  ? "border-whatsapp-teal bg-whatsapp-teal/5"
+                  : "border-slate-200 bg-white hover:bg-slate-50"
+              )}
+            >
+              <p className={cn("text-sm font-semibold", featureType === feature.type ? "text-whatsapp-teal" : "text-slate-900")}>{feature.label}</p>
+              <p className="text-xs text-slate-500 mt-1 line-clamp-2">{feature.description}</p>
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-4">
+          <div>
+            <label className="label flex items-center gap-1.5"><Smartphone className="w-3.5 h-3.5" /> Send from</label>
+            {instances.length === 0 ? (
+              <p className="text-sm text-red-500">No connected WhatsApp instances. Connect one first.</p>
+            ) : (
+              <select className="input" value={featureInstanceId} onChange={(e) => setFeatureInstanceId(e.target.value)}>
+                {instances.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.name} {i.phone_number ? `(${i.phone_number})` : ""}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {getMessageFeature(featureType).fields.map((field) => (
+              <div key={field.key} className={field.type === "textarea" ? "md:col-span-2" : ""}>
+                <label className="label">
+                  {field.label}{field.required ? " *" : ""}
+                </label>
+                {field.type === "textarea" ? (
+                  <textarea
+                    className="input min-h-[110px] resize-y"
+                    placeholder={field.placeholder}
+                    value={featureValues[field.key] ?? ""}
+                    onChange={(e) => updateFeatureValue(field.key, e.target.value)}
+                  />
+                ) : (
+                  <input
+                    className="input"
+                    type={field.type === "number" ? "number" : "text"}
+                    placeholder={field.placeholder}
+                    value={featureValues[field.key] ?? ""}
+                    onChange={(e) => updateFeatureValue(field.key, e.target.value)}
+                  />
+                )}
+                {field.help && <p className="text-xs text-slate-400 mt-1">{field.help}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {featureError && <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">{featureError}</div>}
+        {featureSuccess && <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">{featureSuccess}</div>}
+
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+          <button
+            onClick={handleFeatureSend}
+            disabled={featureSending || instances.length === 0}
+            className="btn-primary inline-flex items-center justify-center gap-2 sm:min-w-40"
+          >
+            {featureSending && <Loader2 className="w-4 h-4 animate-spin" />}
+            {featureSending ? "Sending..." : getMessageFeature(featureType).sendLabel}
+          </button>
+          <p className="text-xs text-slate-400">This uses `/api/messages/send` and the active UltraMsg instance token.</p>
+        </div>
+
+        {featureResponse && (
+          <pre className="bg-slate-950 text-slate-100 rounded-xl p-4 text-xs overflow-x-auto whitespace-pre-wrap">
+            {featureResponse}
+          </pre>
+        )}
       </div>
 
       {loading ? (

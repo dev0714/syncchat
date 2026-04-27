@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MESSAGE_FEATURES, getMessageFeature, type UltraMsgMessageFeature } from "@/lib/message-features";
 import {
@@ -13,9 +13,21 @@ import { formatDate, cn } from "@/lib/utils";
 
 const CATEGORIES = ["custom", "marketing", "utility", "authentication"] as const;
 const defaultForm = { name: "", category: "custom" as MessageTemplate["category"], content: "" };
+const VARIABLE_PILLS = ["name", "phone", "email"];
 
 function extractVars(content: string): string[] {
   return Array.from(new Set(Array.from(content.matchAll(/\{\{(\w+)\}\}/g)).map((m) => m[1])));
+}
+
+function insertAtCursor(
+  value: string,
+  insert: string,
+  selectionStart: number | null | undefined,
+  selectionEnd: number | null | undefined
+): string {
+  const start = selectionStart ?? value.length;
+  const end = selectionEnd ?? value.length;
+  return `${value.slice(0, start)}${insert}${value.slice(end)}`;
 }
 
 function fillPreview(content: string, contact: Contact, defaults: Record<string, string>): string {
@@ -66,6 +78,8 @@ export default function TemplatesPage() {
   const [featureError, setFeatureError] = useState("");
   const [featureSuccess, setFeatureSuccess] = useState("");
   const [featureResponse, setFeatureResponse] = useState<string>("");
+  const formContentRef = useRef<HTMLTextAreaElement | null>(null);
+  const featureFieldRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({});
 
   useEffect(() => { loadData(); }, []);
 
@@ -144,6 +158,68 @@ export default function TemplatesPage() {
     navigator.clipboard.writeText(content);
     setCopied(id);
     setTimeout(() => setCopied(null), 2000);
+  }
+
+  function dropVariableIntoForm(variable: string) {
+    const token = `{{${variable}}}`;
+    const el = formContentRef.current;
+    if (!el) {
+      setForm((prev) => ({ ...prev, content: `${prev.content}${token}` }));
+      return;
+    }
+
+    const next = insertAtCursor(el.value, token, el.selectionStart, el.selectionEnd);
+    setForm((prev) => ({ ...prev, content: next }));
+    requestAnimationFrame(() => {
+      const caret = (el.selectionStart ?? el.value.length) + token.length;
+      el.focus();
+      el.setSelectionRange(caret, caret);
+    });
+  }
+
+  function handleDropIntoField(
+    variable: string,
+    key: string,
+    currentValue: string,
+    selectionStart?: number | null,
+    selectionEnd?: number | null
+  ) {
+    const token = `{{${variable}}}`;
+    const next = insertAtCursor(currentValue, token, selectionStart, selectionEnd);
+    setFeatureValues((prev) => ({ ...prev, [key]: next }));
+    requestAnimationFrame(() => {
+      const el = featureFieldRefs.current[key];
+      if (!el) return;
+      const caret = (selectionStart ?? currentValue.length) + token.length;
+      el.focus();
+      el.setSelectionRange(caret, caret);
+    });
+  }
+
+  function renderVariablePill(variable: string, className = "") {
+    return (
+      <button
+        key={variable}
+        type="button"
+        draggable
+        onDragStart={(event) => {
+          event.dataTransfer.setData("text/plain", `{{${variable}}}`);
+          event.dataTransfer.effectAllowed = "copy";
+        }}
+        onClick={() => {
+          if (showModal) {
+            dropVariableIntoForm(variable);
+          }
+        }}
+        className={cn(
+          "inline-flex items-center rounded-full border border-whatsapp-teal/20 bg-whatsapp-teal/10 px-3 py-1 text-xs font-mono text-whatsapp-teal transition-colors hover:bg-whatsapp-teal/20 cursor-grab active:cursor-grabbing",
+          className
+        )}
+        title="Drag into a field or click to insert into the template editor"
+      >
+        {`{{${variable}}}`}
+      </button>
+    );
   }
 
   function openFeatureLab(type: UltraMsgMessageFeature) {
@@ -294,7 +370,10 @@ export default function TemplatesPage() {
 
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
         Use <code className="bg-blue-100 px-1 rounded font-mono text-xs">{"{{variable}}"}</code> for dynamic values.
-        Auto-filled: <code className="bg-blue-100 px-1 rounded font-mono text-xs">{"{{name}}"}</code> <code className="bg-blue-100 px-1 rounded font-mono text-xs">{"{{phone}}"}</code> <code className="bg-blue-100 px-1 rounded font-mono text-xs">{"{{email}}"}</code>
+        Auto-filled:
+        <span className="ml-2 flex flex-wrap gap-2 mt-2">
+          {VARIABLE_PILLS.map((variable) => renderVariablePill(variable))}
+        </span>
       </div>
 
       <div className="card p-6 space-y-6">
@@ -348,18 +427,46 @@ export default function TemplatesPage() {
                 </label>
                 {field.type === "textarea" ? (
                   <textarea
+                    ref={(el) => { featureFieldRefs.current[field.key] = el; }}
                     className="input min-h-[110px] resize-y"
                     placeholder={field.placeholder}
                     value={featureValues[field.key] ?? ""}
                     onChange={(e) => updateFeatureValue(field.key, e.target.value)}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      const variable = event.dataTransfer.getData("text/plain").replace(/\{|\}/g, "");
+                      if (!variable) return;
+                      handleDropIntoField(
+                        variable,
+                        field.key,
+                        featureValues[field.key] ?? "",
+                        event.currentTarget.selectionStart,
+                        event.currentTarget.selectionEnd
+                      );
+                    }}
+                    onDragOver={(event) => event.preventDefault()}
                   />
                 ) : (
                   <input
+                    ref={(el) => { featureFieldRefs.current[field.key] = el; }}
                     className="input"
                     type={field.type === "number" ? "number" : "text"}
                     placeholder={field.placeholder}
                     value={featureValues[field.key] ?? ""}
                     onChange={(e) => updateFeatureValue(field.key, e.target.value)}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      const variable = event.dataTransfer.getData("text/plain").replace(/\{|\}/g, "");
+                      if (!variable) return;
+                      handleDropIntoField(
+                        variable,
+                        field.key,
+                        featureValues[field.key] ?? "",
+                        event.currentTarget.selectionStart,
+                        event.currentTarget.selectionEnd
+                      );
+                    }}
+                    onDragOver={(event) => event.preventDefault()}
                   />
                 )}
                 {field.help && <p className="text-xs text-slate-400 mt-1">{field.help}</p>}
@@ -505,7 +612,21 @@ export default function TemplatesPage() {
               </div>
               <div>
                 <label className="label">Message Content *</label>
-                <textarea className="input min-h-[120px] resize-y" placeholder={"Hello {{name}}, welcome to our service!"} value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} />
+                <textarea
+                  ref={formContentRef}
+                  className="input min-h-[120px] resize-y"
+                  placeholder={"Hello {{name}}, welcome to our service!"}
+                  value={form.content}
+                  onChange={(e) => setForm({ ...form, content: e.target.value })}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    const variable = event.dataTransfer.getData("text/plain").replace(/\{|\}/g, "");
+                    if (!variable) return;
+                    const next = insertAtCursor(form.content, `{{${variable}}}`, event.currentTarget.selectionStart, event.currentTarget.selectionEnd);
+                    setForm({ ...form, content: next });
+                  }}
+                  onDragOver={(event) => event.preventDefault()}
+                />
                 {form.content && extractVars(form.content).length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     <span className="text-xs text-slate-500">Variables:</span>
@@ -522,6 +643,13 @@ export default function TemplatesPage() {
                   {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                   {saving ? "Saving..." : editing ? "Save Changes" : "Create Template"}
                 </button>
+              </div>
+
+              <div className="border-t border-slate-100 pt-4">
+                <p className="text-xs font-medium text-slate-500 mb-2">Drag variables into the template</p>
+                <div className="flex flex-wrap gap-2">
+                  {VARIABLE_PILLS.map((variable) => renderVariablePill(variable, "text-xs"))}
+                </div>
               </div>
             </div>
           </div>

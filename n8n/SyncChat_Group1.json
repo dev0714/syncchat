@@ -501,38 +501,38 @@
       ]
     },
     "Templates Lookup": {
-      "main": [
+      "ai_tool": [
         {
           "node": "AI Agent",
-          "index": 0,
-          "type": "ai_tool"
+          "type": "ai_tool",
+          "index": 0
         }
       ]
     },
     "Scheduled Bulk Lookup": {
-      "main": [
+      "ai_tool": [
         {
           "node": "AI Agent",
-          "index": 0,
-          "type": "ai_tool"
+          "type": "ai_tool",
+          "index": 0
         }
       ]
     },
     "Flows Lookup": {
-      "main": [
+      "ai_tool": [
         {
           "node": "AI Agent",
-          "index": 0,
-          "type": "ai_tool"
+          "type": "ai_tool",
+          "index": 0
         }
       ]
     },
     "Instances Lookup": {
-      "main": [
+      "ai_tool": [
         {
           "node": "AI Agent",
-          "index": 0,
-          "type": "ai_tool"
+          "type": "ai_tool",
+          "index": 0
         }
       ]
     }

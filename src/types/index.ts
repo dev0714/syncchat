@@ -78,6 +78,7 @@ export interface Message {
   conversation_id: string;
   org_id: string;
   direction: "inbound" | "outbound";
+  source: "direct" | "bulk" | "scheduled_bulk" | "system";
   type: "text" | "image" | "video" | "audio" | "document" | "location" | "vcard" | "contact" | "reaction";
   content: string;
   media_url?: string;

@@ -1,14 +1,40 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { Wifi, WifiOff, Smartphone, MessageCircle, Users, Zap, QrCode } from "lucide-react";
+import { format, subDays } from "date-fns";
+import { MessageCircle, Users, Zap, CalendarClock } from "lucide-react";
+import TrendChart, { type DashboardTrendPoint } from "@/components/dashboard/TrendChart";
 import { cn } from "@/lib/utils";
 
-const STATUS_COLORS: Record<string, string> = {
-  connected: "bg-green-100 text-green-700",
-  disconnected: "bg-slate-100 text-slate-500",
-  qr_required: "bg-yellow-100 text-yellow-700",
-  loading: "bg-blue-100 text-blue-700",
-};
+function buildSeries(
+  days: number,
+  conversations: { created_at: string }[],
+  bulkMessages: { created_at: string }[]
+): DashboardTrendPoint[] {
+  const points: DashboardTrendPoint[] = [];
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const day = subDays(new Date(), i);
+    const start = new Date(day);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(day);
+    end.setHours(23, 59, 59, 999);
+    const startMs = start.getTime();
+    const endMs = end.getTime();
+
+    points.push({
+      label: format(day, "MMM d"),
+      conversations: conversations.filter((item) => {
+        const created = new Date(item.created_at).getTime();
+        return created >= startMs && created <= endMs;
+      }).length,
+      bulkMessages: bulkMessages.filter((item) => {
+        const created = new Date(item.created_at).getTime();
+        return created >= startMs && created <= endMs;
+      }).length,
+    });
+  }
+
+  return points;
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -26,27 +52,46 @@ export default async function DashboardPage() {
   if (!member) redirect("/dashboard/settings");
 
   const orgId = member.org_id;
+  const startDate = subDays(new Date(), 13);
+  const startISO = startDate.toISOString();
 
   const [
-    { data: instances },
-    { count: contactCount },
-    { count: conversationCount },
-    { count: messageCount },
+    contactsRes,
+    conversationsRes,
+    messagesRes,
+    bulkMessagesRes,
+    recentConversationsRes,
+    recentBulkRes,
   ] = await Promise.all([
-    supabase.from("whatsapp_instances").select("*").eq("org_id", orgId).order("created_at"),
     supabase.from("contacts").select("*", { count: "exact", head: true }).eq("org_id", orgId),
     supabase.from("conversations").select("*", { count: "exact", head: true }).eq("org_id", orgId),
     supabase.from("messages").select("*", { count: "exact", head: true }).eq("org_id", orgId),
+    supabase.from("messages").select("*", { count: "exact", head: true }).eq("org_id", orgId).in("source", ["bulk", "scheduled_bulk"]),
+    supabase.from("conversations").select("created_at").eq("org_id", orgId).gte("created_at", startISO),
+    supabase
+      .from("messages")
+      .select("created_at")
+      .eq("org_id", orgId)
+      .eq("direction", "outbound")
+      .in("source", ["bulk", "scheduled_bulk"])
+      .gte("created_at", startISO)
+      .order("created_at", { ascending: true }),
   ]);
 
-  const connectedCount = (instances ?? []).filter((i) => i.status === "connected").length;
-  const totalInstances = (instances ?? []).length;
+  const contactCount = contactsRes.count ?? 0;
+  const conversationCount = conversationsRes.count ?? 0;
+  const messageCount = messagesRes.count ?? 0;
+  const bulkMessageCount = bulkMessagesRes.count ?? 0;
+  const recentConversations = recentConversationsRes.data ?? [];
+  const recentBulkMessages = recentBulkRes.data ?? [];
+
+  const trendData = buildSeries(14, recentConversations, recentBulkMessages);
 
   const stats = [
-    { label: "Connected Instances", value: `${connectedCount} / ${totalInstances}`, icon: Smartphone, color: "text-whatsapp-teal", bg: "bg-whatsapp-teal/10" },
-    { label: "Contacts", value: (contactCount ?? 0).toLocaleString(), icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
-    { label: "Conversations", value: (conversationCount ?? 0).toLocaleString(), icon: MessageCircle, color: "text-purple-600", bg: "bg-purple-50" },
-    { label: "Messages Sent", value: (messageCount ?? 0).toLocaleString(), icon: Zap, color: "text-orange-600", bg: "bg-orange-50" },
+    { label: "Contacts", value: contactCount.toLocaleString(), icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "Conversations", value: conversationCount.toLocaleString(), icon: MessageCircle, color: "text-purple-600", bg: "bg-purple-50" },
+    { label: "Messages Sent", value: messageCount.toLocaleString(), icon: Zap, color: "text-orange-600", bg: "bg-orange-50" },
+    { label: "Bulk Messages", value: bulkMessageCount.toLocaleString(), icon: CalendarClock, color: "text-whatsapp-teal", bg: "bg-whatsapp-teal/10" },
   ];
 
   return (
@@ -56,7 +101,6 @@ export default async function DashboardPage() {
         <p className="text-slate-500 text-sm mt-1">Overview of your WhatsApp platform</p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map(({ label, value, icon: Icon, color, bg }) => (
           <div key={label} className="card p-5">
@@ -69,51 +113,39 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      {/* WhatsApp Instances */}
-      <div className="card overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="font-semibold text-slate-900">WhatsApp Instances</h2>
-          <span className="text-xs text-slate-400">{totalInstances} total</span>
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.6fr)] gap-6">
+        <div className="card p-6">
+          <div className="flex items-start justify-between gap-4 mb-6">
+            <div>
+              <h2 className="font-semibold text-slate-900">Activity Trend</h2>
+              <p className="text-sm text-slate-500 mt-1">Conversations started vs bulk messages sent over the last 14 days.</p>
+            </div>
+            <div className="text-xs text-slate-400">South Africa time</div>
+          </div>
+          <TrendChart data={trendData} />
         </div>
 
-        {totalInstances === 0 ? (
-          <div className="px-5 py-10 text-center">
-            <Smartphone className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-            <p className="text-sm text-slate-500">No instances assigned yet.</p>
-            <p className="text-xs text-slate-400 mt-1">Contact your administrator to get a WhatsApp instance set up.</p>
+        <div className="card p-6 space-y-4">
+          <div>
+            <h2 className="font-semibold text-slate-900">Quick Notes</h2>
+            <p className="text-sm text-slate-500 mt-1">Your live operational summary.</p>
           </div>
-        ) : (
-          <div className="divide-y divide-slate-50">
-            {(instances ?? []).map((inst) => (
-              <div key={inst.id} className="flex items-center gap-4 px-5 py-4">
-                <div className={cn(
-                  "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0",
-                  inst.status === "connected" ? "bg-green-50" : "bg-slate-100"
-                )}>
-                  {inst.status === "connected"
-                    ? <Wifi className="w-5 h-5 text-green-600" />
-                    : inst.status === "qr_required"
-                    ? <QrCode className="w-5 h-5 text-yellow-500" />
-                    : <WifiOff className="w-5 h-5 text-slate-400" />}
-                </div>
 
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-800">{inst.name}</p>
-                  <p className="text-xs text-slate-400">{inst.phone_number ?? "No phone linked"}</p>
-                </div>
-
-                <div className="text-right">
-                  <span className={cn("badge", STATUS_COLORS[inst.status] ?? "bg-slate-100 text-slate-500")}>
-                    {inst.status === "qr_required" ? "Needs Scan" : inst.status}
-                  </span>
-                  {inst.status === "qr_required" && (
-                    <p className="text-xs text-yellow-600 mt-1">Go to Instances → Refresh to scan QR</p>
-                  )}
-                </div>
-              </div>
-            ))}
+          <div className="space-y-3">
+            <div className="rounded-xl bg-slate-50 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Active contacts</p>
+              <p className="text-xl font-semibold text-slate-900 mt-1">{contactCount.toLocaleString()}</p>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Conversation count</p>
+              <p className="text-xl font-semibold text-slate-900 mt-1">{conversationCount.toLocaleString()}</p>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Bulk volume</p>
+              <p className="text-xl font-semibold text-slate-900 mt-1">{bulkMessageCount.toLocaleString()} messages</p>
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

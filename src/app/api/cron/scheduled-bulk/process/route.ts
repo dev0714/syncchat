@@ -93,6 +93,7 @@ export async function POST(req: NextRequest) {
             conversation_id: conversation.id,
             org_id: schedule.org_id,
             direction: "outbound",
+            source: "scheduled_bulk",
             type: "text",
             content: message,
             status,

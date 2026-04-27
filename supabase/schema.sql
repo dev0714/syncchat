@@ -138,6 +138,7 @@ CREATE TABLE IF NOT EXISTS syncchat.messages (
   conversation_id  UUID NOT NULL REFERENCES syncchat.conversations(id) ON DELETE CASCADE,
   org_id           UUID NOT NULL REFERENCES syncchat.organizations(id) ON DELETE CASCADE,
   direction        TEXT NOT NULL CHECK (direction IN ('inbound', 'outbound')),
+  source           TEXT NOT NULL DEFAULT 'direct' CHECK (source IN ('direct', 'bulk', 'scheduled_bulk', 'system')),
   type             TEXT NOT NULL DEFAULT 'text' CHECK (type IN ('text', 'image', 'video', 'audio', 'document', 'location', 'vcard', 'contact', 'reaction')),
   content          TEXT NOT NULL,
   media_url        TEXT,

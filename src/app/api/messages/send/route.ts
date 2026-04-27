@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
         conversation_id: conversationId,
         org_id: member?.org_id,
         direction: "outbound",
+        source: "direct",
         type: type ?? "text",
         content,
         status: result.sent === "true" ? "sent" : "failed",

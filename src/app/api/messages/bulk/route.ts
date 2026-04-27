@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
             .eq("contact_id", contact.id)
             .maybeSingle()).data?.id ?? undefined,
           direction: "outbound",
+          source: "bulk",
           type: "text",
           content: message,
           status: "sent",

@@ -31,6 +31,7 @@ export default function Sidebar({ member }: SidebarProps) {
   const router = useRouter();
   const supabase = createClient();
   const [orgOpen, setOrgOpen] = useState(false);
+  const asideRef = useRef<HTMLElement | null>(null);
   const navRef = useRef<HTMLElement | null>(null);
   const itemRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
   const [indicator, setIndicator] = useState<{ top: number; height: number; visible: boolean }>({
@@ -52,14 +53,17 @@ export default function Sidebar({ member }: SidebarProps) {
     const updateIndicator = () => {
       const activeEntry = NAV_ITEMS.find(({ href }) => isActive(href));
       const activeEl = activeEntry ? itemRefs.current[activeEntry.href] : null;
+      const asideEl = asideRef.current;
       const navEl = navRef.current;
 
-      if (!activeEl || !navEl) {
+      if (!activeEl || !navEl || !asideEl) {
         setIndicator((current) => current.visible ? { ...current, visible: false } : current);
         return;
       }
 
-      const top = activeEl.offsetTop - navEl.offsetTop;
+      const sidebarRect = asideEl.getBoundingClientRect();
+      const activeRect = activeEl.getBoundingClientRect();
+      const top = activeRect.top - sidebarRect.top;
       const height = activeEl.offsetHeight;
       setIndicator({ top, height, visible: true });
     };
@@ -70,7 +74,7 @@ export default function Sidebar({ member }: SidebarProps) {
   }, [pathname]);
 
   return (
-    <aside className="relative z-20 w-64 shrink-0 min-h-screen bg-white border-r border-slate-200 flex flex-col pointer-events-auto">
+    <aside ref={asideRef} className="relative z-20 w-64 shrink-0 min-h-screen bg-white border-r border-slate-200 flex flex-col pointer-events-auto">
       {/* Logo */}
       <div className="p-5 border-b border-slate-100">
         <div className="flex items-center gap-3">
@@ -104,16 +108,17 @@ export default function Sidebar({ member }: SidebarProps) {
       </div>
 
       {/* Nav */}
+      <div
+        aria-hidden="true"
+        className="absolute left-3 right-3 rounded-xl bg-whatsapp-teal/12 border border-whatsapp-teal/20 shadow-sm transition-all duration-300 ease-out pointer-events-none"
+        style={{
+          top: indicator.visible ? indicator.top : 0,
+          height: indicator.visible ? indicator.height : 0,
+          opacity: indicator.visible ? 1 : 0,
+        }}
+      />
+
       <nav ref={navRef} className="relative flex-1 p-3 space-y-0.5">
-        <div
-          aria-hidden="true"
-          className="absolute left-3 right-3 rounded-xl bg-whatsapp-teal/12 border border-whatsapp-teal/20 shadow-sm transition-all duration-300 ease-out"
-          style={{
-            top: indicator.visible ? indicator.top : 0,
-            height: indicator.visible ? indicator.height : 0,
-            opacity: indicator.visible ? 1 : 0,
-          }}
-        />
         {NAV_ITEMS.map(({ href, icon: Icon, label }) => (
           <Link
             key={href}

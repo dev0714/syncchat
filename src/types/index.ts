@@ -99,6 +99,44 @@ export interface MessageTemplate {
   updated_at: string;
 }
 
+export interface ScheduledBulkRecipientSnapshot {
+  id: string;
+  phone: string;
+  name?: string;
+  email?: string;
+  tags?: string[];
+}
+
+export interface ScheduledBulkTemplateSnapshot {
+  name: string;
+  content: string;
+  variables: string[];
+}
+
+export interface ScheduledBulkMessage {
+  id: string;
+  org_id: string;
+  template_id?: string;
+  instance_id: string;
+  name: string;
+  schedule_type: "one_time" | "recurring";
+  status: "scheduled" | "paused" | "processing" | "completed" | "failed" | "cancelled";
+  timezone: string;
+  scheduled_for?: string;
+  next_run_at: string;
+  recurrence?: Record<string, unknown>;
+  template_snapshot: ScheduledBulkTemplateSnapshot;
+  recipient_snapshot: ScheduledBulkRecipientSnapshot[];
+  variable_defaults: Record<string, string>;
+  last_run_at?: string;
+  last_result?: Record<string, unknown>;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+  template?: MessageTemplate;
+  instance?: WhatsAppInstance;
+}
+
 export interface N8nFlow {
   id: string;
   org_id: string;

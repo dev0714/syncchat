@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS syncchat.messages (
   conversation_id  UUID NOT NULL REFERENCES syncchat.conversations(id) ON DELETE CASCADE,
   org_id           UUID NOT NULL REFERENCES syncchat.organizations(id) ON DELETE CASCADE,
   direction        TEXT NOT NULL CHECK (direction IN ('inbound', 'outbound')),
-  type             TEXT NOT NULL DEFAULT 'text' CHECK (type IN ('text', 'image', 'video', 'audio', 'document', 'location')),
+  type             TEXT NOT NULL DEFAULT 'text' CHECK (type IN ('text', 'image', 'video', 'audio', 'document', 'location', 'vcard', 'contact', 'reaction')),
   content          TEXT NOT NULL,
   media_url        TEXT,
   status           TEXT NOT NULL DEFAULT 'sending' CHECK (status IN ('sending', 'sent', 'delivered', 'read', 'failed')),
@@ -158,6 +158,34 @@ CREATE TABLE IF NOT EXISTS syncchat.message_templates (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- =====================================================
+-- SCHEDULED BULK MESSAGES
+-- =====================================================
+CREATE TABLE IF NOT EXISTS syncchat.scheduled_bulk_messages (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id              UUID NOT NULL REFERENCES syncchat.organizations(id) ON DELETE CASCADE,
+  template_id         UUID REFERENCES syncchat.message_templates(id) ON DELETE SET NULL,
+  instance_id         UUID NOT NULL REFERENCES syncchat.whatsapp_instances(id) ON DELETE CASCADE,
+  name                TEXT NOT NULL,
+  schedule_type       TEXT NOT NULL CHECK (schedule_type IN ('one_time', 'recurring')),
+  status              TEXT NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'paused', 'processing', 'completed', 'failed', 'cancelled')),
+  timezone            TEXT NOT NULL DEFAULT 'Africa/Johannesburg',
+  scheduled_for       TIMESTAMPTZ,
+  next_run_at         TIMESTAMPTZ NOT NULL,
+  recurrence          JSONB,
+  template_snapshot   JSONB NOT NULL,
+  recipient_snapshot  JSONB NOT NULL DEFAULT '[]'::jsonb,
+  variable_defaults   JSONB NOT NULL DEFAULT '{}'::jsonb,
+  last_run_at         TIMESTAMPTZ,
+  last_result         JSONB,
+  created_by          UUID REFERENCES syncchat.profiles(id),
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_scheduled_bulk_org_status_next_run
+  ON syncchat.scheduled_bulk_messages(org_id, status, next_run_at);
 
 -- =====================================================
 -- N8N FLOWS
@@ -205,6 +233,9 @@ CREATE INDEX IF NOT EXISTS idx_conversations_contact  ON syncchat.conversations(
 CREATE INDEX IF NOT EXISTS idx_conversations_status   ON syncchat.conversations(status);
 CREATE INDEX IF NOT EXISTS idx_messages_conv_id       ON syncchat.messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_messages_org_id        ON syncchat.messages(org_id);
+CREATE INDEX IF NOT EXISTS idx_scheduled_bulk_org_status_next_run ON syncchat.scheduled_bulk_messages(org_id, status, next_run_at);
+CREATE INDEX IF NOT EXISTS idx_scheduled_bulk_instance_id         ON syncchat.scheduled_bulk_messages(instance_id);
+CREATE INDEX IF NOT EXISTS idx_scheduled_bulk_template_id         ON syncchat.scheduled_bulk_messages(template_id);
 CREATE INDEX IF NOT EXISTS idx_contacts_org_id        ON syncchat.contacts(org_id);
 CREATE INDEX IF NOT EXISTS idx_contacts_phone         ON syncchat.contacts(phone);
 CREATE INDEX IF NOT EXISTS idx_instances_org_id       ON syncchat.whatsapp_instances(org_id);
@@ -221,6 +252,7 @@ ALTER TABLE syncchat.contacts           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE syncchat.conversations      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE syncchat.messages           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE syncchat.message_templates  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE syncchat.scheduled_bulk_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE syncchat.n8n_flows          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE syncchat.org_settings       ENABLE ROW LEVEL SECURITY;
 
@@ -337,6 +369,7 @@ DROP POLICY IF EXISTS "contacts_all" ON syncchat.contacts;
 DROP POLICY IF EXISTS "conversations_all" ON syncchat.conversations;
 DROP POLICY IF EXISTS "messages_all" ON syncchat.messages;
 DROP POLICY IF EXISTS "templates_all" ON syncchat.message_templates;
+DROP POLICY IF EXISTS "scheduled_bulk_all" ON syncchat.scheduled_bulk_messages;
 DROP POLICY IF EXISTS "flows_all" ON syncchat.n8n_flows;
 DROP POLICY IF EXISTS "settings_all" ON syncchat.org_settings;
 CREATE POLICY "instances_all" ON syncchat.whatsapp_instances FOR ALL
@@ -348,6 +381,8 @@ CREATE POLICY "conversations_all" ON syncchat.conversations FOR ALL
 CREATE POLICY "messages_all" ON syncchat.messages FOR ALL
   USING (org_id = ANY(syncchat.auth_user_org_ids()) OR syncchat.is_super_admin());
 CREATE POLICY "templates_all" ON syncchat.message_templates FOR ALL
+  USING (org_id = ANY(syncchat.auth_user_org_ids()) OR syncchat.is_super_admin());
+CREATE POLICY "scheduled_bulk_all" ON syncchat.scheduled_bulk_messages FOR ALL
   USING (org_id = ANY(syncchat.auth_user_org_ids()) OR syncchat.is_super_admin());
 CREATE POLICY "flows_all" ON syncchat.n8n_flows FOR ALL
   USING (org_id = ANY(syncchat.auth_user_org_ids()) OR syncchat.is_super_admin());

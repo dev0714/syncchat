@@ -1,6 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA cron;
-CREATE SCHEMA IF NOT EXISTS net;
-CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA net;
+CREATE EXTENSION IF NOT EXISTS pg_net;
 
 CREATE TABLE IF NOT EXISTS syncchat.scheduled_bulk_messages (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),

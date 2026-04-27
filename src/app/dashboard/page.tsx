@@ -5,14 +5,42 @@ import { MessageCircle, Users, Zap, CalendarClock } from "lucide-react";
 import TrendChart, { type DashboardTrendPoint } from "@/components/dashboard/TrendChart";
 import { cn } from "@/lib/utils";
 
+interface DashboardPageProps {
+  searchParams?: {
+    start?: string;
+    end?: string;
+  };
+}
+
+function parseDateInput(value?: string, fallback?: Date): Date {
+  if (!value) {
+    if (!fallback) throw new Error("Missing date input.");
+    return fallback;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    if (!fallback) throw new Error("Invalid date input.");
+    return fallback;
+  }
+
+  return parsed;
+}
+
 function buildSeries(
-  days: number,
+  startDate: Date,
+  endDate: Date,
   conversations: { created_at: string }[],
   bulkMessages: { created_at: string }[]
 ): DashboardTrendPoint[] {
   const points: DashboardTrendPoint[] = [];
-  for (let i = days - 1; i >= 0; i -= 1) {
-    const day = subDays(new Date(), i);
+  const cursor = new Date(startDate);
+  cursor.setHours(0, 0, 0, 0);
+  const finalDay = new Date(endDate);
+  finalDay.setHours(23, 59, 59, 999);
+
+  while (cursor.getTime() <= finalDay.getTime()) {
+    const day = new Date(cursor);
     const start = new Date(day);
     start.setHours(0, 0, 0, 0);
     const end = new Date(day);
@@ -31,12 +59,14 @@ function buildSeries(
         return created >= startMs && created <= endMs;
       }).length,
     });
+
+    cursor.setDate(cursor.getDate() + 1);
   }
 
   return points;
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -52,8 +82,14 @@ export default async function DashboardPage() {
   if (!member) redirect("/dashboard/settings");
 
   const orgId = member.org_id;
-  const startDate = subDays(new Date(), 13);
-  const startISO = startDate.toISOString();
+  const endDate = parseDateInput(searchParams?.end, new Date());
+  const startDate = parseDateInput(searchParams?.start, subDays(endDate, 13));
+  const normalizedStart = new Date(startDate);
+  normalizedStart.setHours(0, 0, 0, 0);
+  const normalizedEnd = new Date(endDate);
+  normalizedEnd.setHours(23, 59, 59, 999);
+  const startISO = normalizedStart.toISOString();
+  const endISO = normalizedEnd.toISOString();
 
   const [
     contactsRes,
@@ -67,7 +103,7 @@ export default async function DashboardPage() {
     supabase.from("conversations").select("*", { count: "exact", head: true }).eq("org_id", orgId),
     supabase.from("messages").select("*", { count: "exact", head: true }).eq("org_id", orgId),
     supabase.from("messages").select("*", { count: "exact", head: true }).eq("org_id", orgId).in("source", ["bulk", "scheduled_bulk"]),
-    supabase.from("conversations").select("created_at").eq("org_id", orgId).gte("created_at", startISO),
+    supabase.from("conversations").select("created_at").eq("org_id", orgId).gte("created_at", startISO).lte("created_at", endISO),
     supabase
       .from("messages")
       .select("created_at")
@@ -75,6 +111,7 @@ export default async function DashboardPage() {
       .eq("direction", "outbound")
       .in("source", ["bulk", "scheduled_bulk"])
       .gte("created_at", startISO)
+      .lte("created_at", endISO)
       .order("created_at", { ascending: true }),
   ]);
 
@@ -85,7 +122,7 @@ export default async function DashboardPage() {
   const recentConversations = recentConversationsRes.data ?? [];
   const recentBulkMessages = recentBulkRes.data ?? [];
 
-  const trendData = buildSeries(14, recentConversations, recentBulkMessages);
+  const trendData = buildSeries(startDate, endDate, recentConversations, recentBulkMessages);
 
   const stats = [
     { label: "Contacts", value: contactCount.toLocaleString(), icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
@@ -100,6 +137,30 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
         <p className="text-slate-500 text-sm mt-1">Overview of your WhatsApp platform</p>
       </div>
+
+      <form className="card p-4 flex flex-col md:flex-row md:items-end gap-4" action="/dashboard" method="get">
+        <div className="flex-1">
+          <label className="label">Start date</label>
+          <input
+            className="input"
+            type="date"
+            name="start"
+            defaultValue={normalizedStart.toISOString().slice(0, 10)}
+          />
+        </div>
+        <div className="flex-1">
+          <label className="label">End date</label>
+          <input
+            className="input"
+            type="date"
+            name="end"
+            defaultValue={normalizedEnd.toISOString().slice(0, 10)}
+          />
+        </div>
+        <button type="submit" className="btn-primary inline-flex items-center justify-center gap-2 md:min-w-40">
+          Apply Filter
+        </button>
+      </form>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map(({ label, value, icon: Icon, color, bg }) => (
@@ -118,7 +179,9 @@ export default async function DashboardPage() {
           <div className="flex items-start justify-between gap-4 mb-6">
             <div>
               <h2 className="font-semibold text-slate-900">Activity Trend</h2>
-              <p className="text-sm text-slate-500 mt-1">Conversations started vs bulk messages sent over the last 14 days.</p>
+              <p className="text-sm text-slate-500 mt-1">
+                Conversations started vs bulk messages sent from {format(normalizedStart, "PP")} to {format(normalizedEnd, "PP")}.
+              </p>
             </div>
             <div className="text-xs text-slate-400">South Africa time</div>
           </div>

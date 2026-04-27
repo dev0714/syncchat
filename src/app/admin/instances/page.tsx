@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   Shield, Smartphone, Building2, Plus, Pencil, Trash2,
-  X, Loader2, Check, Wifi, WifiOff, ChevronDown, ChevronRight,
+  X, Check, Wifi, WifiOff, ChevronDown, ChevronRight,
   RefreshCw, QrCode,
 } from "lucide-react";
 import { cn, STATUS_COLORS } from "@/lib/utils";
 import type { Organization, WhatsAppInstance } from "@/types";
+import PacmanLoader from "@/components/ui/PacmanLoader";
 
 const defaultForm = { name: "", instance_id: "", token: "", phone_number: "" };
 
@@ -194,7 +195,7 @@ export default function AdminInstancesPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+          <PacmanLoader size={40} label="Loading admin instances" />
         </div>
       ) : (
         <div className="space-y-3">
@@ -280,7 +281,7 @@ export default function AdminInstancesPage() {
                               {/* Live data panel */}
                               {isFetching && (
                                 <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 rounded-xl text-xs text-slate-400">
-                                  <Loader2 className="w-4 h-4 animate-spin" /> Fetching live data from instance...
+                                  <PacmanLoader size={14} className="mr-1.5" label="Fetching live data" /> Fetching live data from instance...
                                 </div>
                               )}
 
@@ -436,7 +437,7 @@ export default function AdminInstancesPage() {
                   {saved
                     ? <><Check className="w-4 h-4" /> Saved!</>
                     : saving
-                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+                    ? <><PacmanLoader size={14} className="mr-1.5" label="Saving instance" /> Saving...</>
                     : modal.editing ? "Save Changes" : "Assign Instance"}
                 </button>
               </div>

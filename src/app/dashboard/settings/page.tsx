@@ -3,12 +3,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
-  Settings, Users, Building2, Save, Loader2, Plus, Trash2,
+  Settings, Users, Building2, Save, Plus, Trash2,
   Mail, Shield, X, Check,
 } from "lucide-react";
 import type { OrgMember, OrgSettings } from "@/types";
 import { shouldShowSettingsOnboarding } from "@/lib/onboarding";
 import { ROLE_LABELS, ROLE_COLORS, cn } from "@/lib/utils";
+import PacmanLoader from "@/components/ui/PacmanLoader";
 
 type Tab = "general" | "team" | "integrations" | "notifications";
 
@@ -190,7 +191,7 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+        <PacmanLoader size={40} label="Loading settings" />
       </div>
     );
   }
@@ -228,7 +229,7 @@ export default function SettingsPage() {
             disabled={onboardingSaving || !orgName.trim()}
             className="btn-primary flex items-center gap-2 ml-auto"
           >
-            {onboardingSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Building2 className="w-4 h-4" />}
+            {onboardingSaving ? <PacmanLoader size={14} className="mr-1.5" label="Creating organization" /> : <Building2 className="w-4 h-4" />}
             {onboardingSaving ? "Creating..." : "Create organization"}
           </button>
         </div>
@@ -311,7 +312,7 @@ export default function SettingsPage() {
               disabled={saving}
               className="btn-primary flex items-center gap-2 ml-auto"
             >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+              {saving ? <PacmanLoader size={14} className="mr-1.5" label="Saving settings" /> : saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
               {saved ? "Saved!" : saving ? "Saving..." : "Save Changes"}
             </button>
           )}
@@ -347,7 +348,7 @@ export default function SettingsPage() {
                   disabled={inviting || !inviteEmail}
                   className="btn-primary flex items-center gap-2 whitespace-nowrap"
                 >
-                  {inviting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  {inviting ? <PacmanLoader size={14} className="mr-1.5" label="Inviting member" /> : <Plus className="w-4 h-4" />}
                   Invite
                 </button>
               </div>
@@ -439,7 +440,7 @@ export default function SettingsPage() {
           </div>
           {isAdmin && (
             <button onClick={saveIntegrations} disabled={saving} className="btn-primary flex items-center gap-2 ml-auto">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+              {saving ? <PacmanLoader size={14} className="mr-1.5" label="Saving settings" /> : saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
               {saved ? "Saved!" : saving ? "Saving..." : "Save Changes"}
             </button>
           )}

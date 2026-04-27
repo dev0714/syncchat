@@ -2,11 +2,12 @@
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
-  MessageCircle, Search, Send, Loader2, Phone, X,
+  MessageCircle, Search, Send, Phone, X,
   CheckCheck, Check, Clock,
 } from "lucide-react";
 import type { Conversation, Message } from "@/types";
 import { cn, formatRelativeTime } from "@/lib/utils";
+import PacmanLoader from "@/components/ui/PacmanLoader";
 
 export default function ConversationsPage() {
   const supabase = createClient();
@@ -123,7 +124,7 @@ export default function ConversationsPage() {
 
         <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
           {loading ? (
-            <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-slate-300" /></div>
+            <div className="flex items-center justify-center py-12"><PacmanLoader size={32} label="Loading conversations" /></div>
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center text-slate-400 text-sm"><MessageCircle className="w-8 h-8 mx-auto mb-2 text-slate-200" />No conversations</div>
           ) : (
@@ -204,7 +205,7 @@ export default function ConversationsPage() {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {loadingMsgs ? (
-                <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-slate-300" /></div>
+                <div className="flex items-center justify-center py-12"><PacmanLoader size={32} label="Loading messages" /></div>
               ) : messages.length === 0 ? (
                 <div className="text-center text-slate-400 text-sm py-8">No messages yet</div>
               ) : (
@@ -238,7 +239,7 @@ export default function ConversationsPage() {
                 <button onClick={sendMessage} disabled={sending || !msgText.trim()}
                   className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
                     msgText.trim() ? "bg-whatsapp-teal text-white hover:bg-whatsapp-dark" : "bg-slate-100 text-slate-400")}>
-                  {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {sending ? <PacmanLoader size={14} className="mr-1.5" label="Sending message" /> : <Send className="w-4 h-4" />}
                 </button>
               </div>
             </div>

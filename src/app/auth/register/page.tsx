@@ -3,8 +3,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { MessageSquare, Loader2 } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { generateSlug } from "@/lib/utils";
+import PacmanLoader from "@/components/ui/PacmanLoader";
 import styles from "../auth.module.css";
 
 export default function RegisterPage() {
@@ -185,7 +186,7 @@ export default function RegisterPage() {
                 </button>
               )}
               <button type="submit" disabled={loading} className={styles.primaryButton}>
-                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {loading && <PacmanLoader size={14} className="mr-1.5" label="Creating account" />}
                 {step === "account" ? "Continue" : loading ? "Creating..." : "Create account"}
               </button>
             </div>

@@ -2,13 +2,14 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
-  Zap, Plus, Trash2, Pencil, X, Loader2, Play, ToggleLeft, ToggleRight,
+  Zap, Plus, Trash2, Pencil, X, Play, ToggleLeft, ToggleRight,
   Globe, Clock, MessageSquare, UserPlus, Hash, Bot, Shield, Palette,
   BookOpen, Wrench, ChevronRight, Smartphone,
 } from "lucide-react";
 import type { N8nFlow } from "@/types";
 import { formatDateTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import PacmanLoader from "@/components/ui/PacmanLoader";
 
 const TRIGGER_TYPES = [
   { value: "inbound_message", label: "Inbound Message", icon: MessageSquare, description: "Triggers on every incoming WhatsApp message" },
@@ -212,7 +213,7 @@ export default function FlowsPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-slate-300" /></div>
+        <div className="flex items-center justify-center py-16"><PacmanLoader size={40} label="Loading flows" /></div>
       ) : flows.length === 0 ? (
         <div className="card p-16 text-center">
           <Zap className="w-12 h-12 text-slate-300 mx-auto mb-4" />
@@ -286,7 +287,7 @@ export default function FlowsPage() {
                   {f.trigger_type === "manual" && (
                     <button onClick={() => triggerManual(f)} disabled={triggering === f.id || !f.is_active}
                       className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-purple-600 hover:bg-purple-50 rounded-lg transition-colors">
-                      {triggering === f.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+                      {triggering === f.id ? <PacmanLoader size={12} className="mr-1" label="Triggering flow" /> : <Play className="w-3.5 h-3.5" />}
                       Trigger Now
                     </button>
                   )}
@@ -564,7 +565,7 @@ export default function FlowsPage() {
                 <>
                   <button onClick={() => setModalStep("basics")} className="btn-secondary flex-1">Back</button>
                   <button onClick={handleSave} disabled={saving} className="btn-primary flex-1 flex items-center justify-center gap-2">
-                    {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {saving && <PacmanLoader size={14} className="mr-1.5" label="Saving flow" />}
                     {saving ? "Saving..." : editing ? "Save Changes" : "Create Flow"}
                   </button>
                 </>

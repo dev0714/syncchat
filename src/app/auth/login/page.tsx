@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { MessageSquare, Eye, EyeOff } from "lucide-react";
+import PacmanLoader from "@/components/ui/PacmanLoader";
 import styles from "../auth.module.css";
 
 export default function LoginPage() {
@@ -99,7 +100,7 @@ export default function LoginPage() {
             {error && <div className={styles.error}>{error}</div>}
 
             <button type="submit" disabled={loading} className={styles.primaryButton}>
-              {loading && <span className={styles.spinner} />}
+              {loading && <PacmanLoader size={14} className="mr-1.5" label="Signing in" />}
               {loading ? "Signing in..." : "Sign in"}
             </button>
           </form>

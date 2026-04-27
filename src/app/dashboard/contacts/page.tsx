@@ -2,10 +2,11 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
-  Users, Plus, Trash2, Pencil, Search, X, Loader2, Phone, Mail, Tag, Upload, FileText, CheckCircle2, AlertCircle,
+  Users, Plus, Trash2, Pencil, Search, X, Phone, Mail, Tag, Upload, FileText, CheckCircle2, AlertCircle,
 } from "lucide-react";
 import type { Contact } from "@/types";
 import { formatDate, cn } from "@/lib/utils";
+import PacmanLoader from "@/components/ui/PacmanLoader";
 
 const defaultForm = { name: "", phone: "", email: "", tags: "" };
 
@@ -186,7 +187,7 @@ export default function ContactsPage() {
       {/* Table */}
       <div className="card overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-slate-300" /></div>
+          <div className="flex items-center justify-center py-16"><PacmanLoader size={40} label="Loading contacts" /></div>
         ) : filtered.length === 0 ? (
           <div className="p-16 text-center">
             <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
@@ -283,7 +284,7 @@ export default function ContactsPage() {
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setShowModal(false)} className="btn-secondary flex-1">Cancel</button>
                 <button onClick={handleSave} disabled={saving} className="btn-primary flex-1 flex items-center justify-center gap-2">
-                  {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {saving && <PacmanLoader size={14} className="mr-1.5" label="Saving contact" />}
                   {saving ? "Saving..." : editing ? "Save Changes" : "Add Contact"}
                 </button>
               </div>
@@ -390,7 +391,7 @@ export default function ContactsPage() {
               </button>
               {csvRows.length > 0 && !importResult && (
                 <button onClick={handleBulkImport} disabled={importing || validRows.length === 0} className="btn-primary flex-1 flex items-center justify-center gap-2">
-                  {importing ? <><Loader2 className="w-4 h-4 animate-spin" /> Importing...</> : <><Upload className="w-4 h-4" /> Import {validRows.length} Contacts</>}
+                  {importing ? <><PacmanLoader size={14} className="mr-1.5" label="Importing contacts" /> Importing...</> : <><Upload className="w-4 h-4" /> Import {validRows.length} Contacts</>}
                 </button>
               )}
             </div>

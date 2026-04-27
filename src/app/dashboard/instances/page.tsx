@@ -3,10 +3,11 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   Smartphone, Plus, Trash2, RefreshCw, Wifi, WifiOff,
-  QrCode, Copy, Check, Pencil, X, Loader2, Link,
+  QrCode, Copy, Check, Pencil, X, Link,
 } from "lucide-react";
 import type { WhatsAppInstance } from "@/types";
 import { cn, STATUS_COLORS, formatDateTime } from "@/lib/utils";
+import PacmanLoader from "@/components/ui/PacmanLoader";
 
 const defaultForm = {
   name: "",
@@ -169,9 +170,9 @@ export default function InstancesPage() {
       </div>
 
       {/* Grid */}
-      {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+          <PacmanLoader size={40} label="Loading instances" />
         </div>
       ) : instances.length === 0 ? (
         <div className="card p-16 text-center">
@@ -232,7 +233,7 @@ export default function InstancesPage() {
                       className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition-colors disabled:opacity-50"
                     >
                       {fetchingQr === inst.id
-                        ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading QR...</>
+                        ? <><PacmanLoader size={12} className="mr-1" label="Loading QR" /> Loading QR...</>
                         : <><QrCode className="w-3.5 h-3.5" /> Show QR Code</>}
                     </button>
                   )}
@@ -305,7 +306,7 @@ export default function InstancesPage() {
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setShowModal(false)} className="btn-secondary flex-1">Cancel</button>
                 <button onClick={handleSave} disabled={saving} className="btn-primary flex-1 flex items-center justify-center gap-2">
-                  {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {saving && <PacmanLoader size={14} className="mr-1.5" label="Saving instance" />}
                   {saving ? "Saving..." : editing ? "Save Changes" : "Add Instance"}
                 </button>
               </div>

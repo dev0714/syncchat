@@ -5,11 +5,12 @@ import { createClient } from "@/lib/supabase/client";
 import { extractTemplateVariables, toJohannesburgLocalInput } from "@/lib/scheduled-bulk";
 import { format } from "date-fns";
 import {
-  CalendarClock, Loader2, Pause, Play, Plus, Search,
+  CalendarClock, Pause, Play, Plus, Search,
   Smartphone, Square, CheckSquare, Users, Trash2, AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Contact, MessageTemplate, ScheduledBulkMessage, WhatsAppInstance } from "@/types";
+import PacmanLoader from "@/components/ui/PacmanLoader";
 
 const AUTO_VARS = ["name", "phone", "email"];
 
@@ -248,7 +249,7 @@ export default function ScheduledBulkPage() {
         </div>
 
         {loading ? (
-          <div className="py-10 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-slate-300" /></div>
+          <div className="py-10 flex justify-center"><PacmanLoader size={40} label="Loading schedule editor" /></div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-4">
@@ -410,7 +411,7 @@ export default function ScheduledBulkPage() {
 
         <div className="flex items-center gap-3 flex-wrap">
           <button onClick={handleCreateSchedule} disabled={saving} className="btn-primary inline-flex items-center gap-2">
-            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {saving && <PacmanLoader size={14} className="mr-1.5" label="Creating schedule" />}
             {saving ? "Saving..." : <><Plus className="w-4 h-4" /> Create schedule</>}
           </button>
           <p className="text-xs text-slate-400">Runs in Africa/Johannesburg time. Recurring jobs are picked up by the Supabase cron dispatcher.</p>
@@ -427,7 +428,7 @@ export default function ScheduledBulkPage() {
         </div>
 
         {loadingSchedules ? (
-          <div className="py-10 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-slate-300" /></div>
+          <div className="py-10 flex justify-center"><PacmanLoader size={40} label="Loading scheduled campaigns" /></div>
         ) : schedules.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-200 p-10 text-center">
             <CalendarClock className="w-10 h-10 text-slate-300 mx-auto mb-3" />

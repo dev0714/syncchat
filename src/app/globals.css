@@ -94,24 +94,28 @@ body {
   .pacman-loader__pacman circle {
     fill: #16a34a;
   }
+  .pacman-loader__eye {
+    fill: #14532d;
+    opacity: 0.95;
+  }
   .pacman-loader__mouth {
     fill: var(--pacman-bg);
     transform-box: fill-box;
     transform-origin: left center;
-    animation: pacman-mouth 0.38s infinite ease-in-out;
+    animation: pacman-mouth 0.48s infinite ease-in-out;
   }
   .pacman-loader__dots circle {
     fill: #16a34a;
-    animation: pacman-dots 0.62s linear infinite;
+    animation: pacman-dots 0.72s linear infinite;
   }
   .pacman-loader__dots circle:nth-child(2) {
-    animation-delay: 0.12s;
+    animation-delay: 0.14s;
   }
   .pacman-loader__dots circle:nth-child(3) {
-    animation-delay: 0.24s;
+    animation-delay: 0.28s;
   }
   .pacman-loader__dots circle:nth-child(4) {
-    animation-delay: 0.36s;
+    animation-delay: 0.42s;
   }
 }
 
@@ -155,7 +159,7 @@ body {
 
 @keyframes pacman-mouth {
   0%, 100% {
-    transform: scaleX(0.2) rotate(-8deg);
+    transform: scaleX(0.22) rotate(-6deg);
   }
   50% {
     transform: scaleX(1) rotate(0deg);
@@ -168,7 +172,7 @@ body {
     opacity: 0.95;
   }
   100% {
-    transform: translateX(calc(var(--pacman-size) * -0.55));
+    transform: translateX(calc(var(--pacman-size) * -0.7));
     opacity: 0.9;
   }
 }

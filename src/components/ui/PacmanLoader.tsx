@@ -16,6 +16,11 @@ export default function PacmanLoader({
 }: PacmanLoaderProps) {
   const width = Math.round(size * 2.9);
   const height = size;
+  const cx = size * 0.52;
+  const cy = size * 0.5;
+  const r = size * 0.44;
+  const mouthX = cx + r * 0.98;
+  const mouthY = r * 0.56;
 
   return (
     <span
@@ -37,10 +42,14 @@ export default function PacmanLoader({
         aria-hidden="true"
       >
         <g className="pacman-loader__pacman">
-          <circle cx={size * 0.52} cy={size * 0.5} r={size * 0.44} />
+          <circle cx={cx} cy={cy} r={r} />
+          <circle className="pacman-loader__eye" cx={cx - r * 0.18} cy={cy - r * 0.24} r={size * 0.045} />
           <path
             className="pacman-loader__mouth"
-            d={`M ${size * 0.52} ${size * 0.5} L ${size * 1.02} ${size * 0.2} L ${size * 1.02} ${size * 0.8} Z`}
+            d={`M ${cx} ${cy}
+               L ${mouthX} ${cy - mouthY}
+               A ${r} ${r} 0 0 1 ${mouthX} ${cy + mouthY}
+               Z`}
           />
         </g>
         <g className="pacman-loader__dots">

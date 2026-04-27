@@ -31,11 +31,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 grid grid-cols-[16rem_1fr] isolate">
-      <div className="sticky top-0 h-screen w-64 shrink-0 relative z-50">
+    <div className="relative min-h-screen bg-slate-50">
+      <div className="fixed inset-y-0 left-0 z-50 w-64">
         <Sidebar member={member} />
       </div>
-      <main className="relative z-0 min-h-screen min-w-0 overflow-y-auto">
+      <main className="relative z-0 min-h-screen min-w-0 overflow-x-hidden pl-64">
         {children}
       </main>
     </div>

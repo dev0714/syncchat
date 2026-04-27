@@ -357,7 +357,7 @@ export default function TemplatesPage() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-6 max-w-6xl mx-auto space-y-6 page-reveal">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Message Templates</h1>
@@ -368,7 +368,7 @@ export default function TemplatesPage() {
         </button>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700 reveal-card" style={{ animationDelay: "60ms" }}>
         Use <code className="bg-blue-100 px-1 rounded font-mono text-xs">{"{{variable}}"}</code> for dynamic values.
         Auto-filled:
         <span className="ml-2 flex flex-wrap gap-2 mt-2">
@@ -376,7 +376,7 @@ export default function TemplatesPage() {
         </span>
       </div>
 
-      <div className="card p-6 space-y-6">
+      <div className="card p-6 space-y-6 reveal-card" style={{ animationDelay: "120ms" }}>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Message Lab</h2>
@@ -497,7 +497,7 @@ export default function TemplatesPage() {
         )}
       </div>
 
-      <div className="card p-6 space-y-4">
+      <div className="card p-6 space-y-4 reveal-card" style={{ animationDelay: "180ms" }}>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Bulk Messaging</h2>
@@ -537,15 +537,15 @@ export default function TemplatesPage() {
       {loading ? (
         <div className="flex items-center justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-slate-300" /></div>
       ) : templates.length === 0 ? (
-        <div className="card p-16 text-center">
+        <div className="card p-16 text-center reveal-card" style={{ animationDelay: "140ms" }}>
           <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
           <p className="text-slate-600 font-medium">No templates yet</p>
           <button onClick={openAdd} className="mt-4 btn-primary inline-flex items-center gap-2"><Plus className="w-4 h-4" /> Create Template</button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {templates.map((t) => (
-            <div key={t.id} className={cn("card p-5 space-y-3", !t.is_active && "opacity-60")}>
+          {templates.map((t, index) => (
+            <div key={t.id} className={cn("card p-5 space-y-3 reveal-card reveal-lift", !t.is_active && "opacity-60")} style={{ animationDelay: `${index * 60}ms` }}>
               <div className="flex items-start justify-between">
                 <div>
                   <p className="font-semibold text-slate-900 text-sm">{t.name}</p>
@@ -594,7 +594,7 @@ export default function TemplatesPage() {
       {/* Create / Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg reveal-card" style={{ animationDelay: "40ms" }}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h2 className="font-semibold text-slate-900">{editing ? "Edit Template" : "New Template"}</h2>
               <button onClick={() => setShowModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
@@ -659,7 +659,7 @@ export default function TemplatesPage() {
       {/* Bulk Send Modal */}
       {sendTemplate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col reveal-card" style={{ animationDelay: "40ms" }}>
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
               <div>

@@ -68,6 +68,18 @@ body {
   .label {
     @apply block text-sm font-medium text-slate-700 mb-1;
   }
+  .page-reveal {
+    animation: page-reveal 420ms ease-out both;
+  }
+  .reveal-card {
+    animation: card-reveal 520ms ease-out both;
+  }
+  .reveal-lift {
+    transition: transform 220ms ease, box-shadow 220ms ease, opacity 220ms ease;
+  }
+  .reveal-lift:hover {
+    transform: translateY(-3px);
+  }
 }
 
 /* Scrollbar */
@@ -82,4 +94,28 @@ body {
 }
 .bubble-in {
   @apply bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-3 py-2 max-w-xs;
+}
+
+@keyframes page-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes card-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }

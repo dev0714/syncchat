@@ -228,7 +228,7 @@ export default function ScheduledBulkPage() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-6 max-w-6xl mx-auto space-y-6 page-reveal">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Scheduled Bulk</h1>
@@ -236,7 +236,7 @@ export default function ScheduledBulkPage() {
         </div>
       </div>
 
-      <div className="card p-6 space-y-6">
+      <div className="card p-6 space-y-6 reveal-card" style={{ animationDelay: "80ms" }}>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Create Schedule</h2>
@@ -417,7 +417,7 @@ export default function ScheduledBulkPage() {
         </div>
       </div>
 
-      <div className="card p-6 space-y-4">
+      <div className="card p-6 space-y-4 reveal-card" style={{ animationDelay: "160ms" }}>
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Scheduled Campaigns</h2>
@@ -436,8 +436,8 @@ export default function ScheduledBulkPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {schedules.map((schedule) => (
-              <div key={schedule.id} className={cn("rounded-2xl border p-4 space-y-3", schedule.status === "paused" ? "border-amber-200 bg-amber-50/40" : "border-slate-200 bg-white")}>
+            {schedules.map((schedule, index) => (
+              <div key={schedule.id} className={cn("rounded-2xl border p-4 space-y-3 reveal-card reveal-lift", schedule.status === "paused" ? "border-amber-200 bg-amber-50/40" : "border-slate-200 bg-white")} style={{ animationDelay: `${index * 70}ms` }}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold text-slate-900">{schedule.name}</p>
@@ -489,7 +489,7 @@ export default function ScheduledBulkPage() {
         )}
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700 reveal-card" style={{ animationDelay: "220ms" }}>
         <div className="flex items-start gap-2">
           <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
           <p>Set up a Supabase cron job to `POST /api/cron/scheduled-bulk/process` with your `CRON_SECRET` in the `x-cron-secret` header. The app will do the rest.</p>

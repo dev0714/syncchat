@@ -132,13 +132,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   ];
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-6 space-y-6 max-w-7xl mx-auto page-reveal">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
         <p className="text-slate-500 text-sm mt-1">Overview of your WhatsApp platform</p>
       </div>
 
-      <form className="card p-4 flex flex-col md:flex-row md:items-end gap-4" action="/dashboard" method="get">
+      <form className="card p-4 flex flex-col md:flex-row md:items-end gap-4 reveal-card" style={{ animationDelay: "40ms" }} action="/dashboard" method="get">
         <div className="flex-1">
           <label className="label">Start date</label>
           <input
@@ -164,7 +164,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map(({ label, value, icon: Icon, color, bg }) => (
-          <div key={label} className="card p-5">
+          <div
+            key={label}
+            className="card p-5 reveal-card"
+            style={{ animationDelay: `${80 + stats.findIndex((item) => item.label === label) * 70}ms` }}
+          >
             <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-3", bg)}>
               <Icon className={cn("w-5 h-5", color)} />
             </div>
@@ -175,7 +179,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.6fr)] gap-6">
-        <div className="card p-6">
+        <div className="card p-6 reveal-card" style={{ animationDelay: "360ms" }}>
           <div className="flex items-start justify-between gap-4 mb-6">
             <div>
               <h2 className="font-semibold text-slate-900">Activity Trend</h2>
@@ -188,7 +192,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <TrendChart data={trendData} />
         </div>
 
-        <div className="card p-6 space-y-4">
+        <div className="card p-6 space-y-4 reveal-card" style={{ animationDelay: "440ms" }}>
           <div>
             <h2 className="font-semibold text-slate-900">Quick Notes</h2>
             <p className="text-sm text-slate-500 mt-1">Your live operational summary.</p>

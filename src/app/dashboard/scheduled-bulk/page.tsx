@@ -57,8 +57,14 @@ export default function ScheduledBulkPage() {
   }, [instances, instanceId]);
 
   const selectedTemplate = templates.find((template) => template.id === templateId) ?? null;
-  const templateVariables = selectedTemplate ? extractTemplateVariables(selectedTemplate.content) : [];
-  const customVariables = templateVariables.filter((variable) => !AUTO_VARS.includes(variable));
+  const templateVariables = useMemo(
+    () => (selectedTemplate ? extractTemplateVariables(selectedTemplate.content) : []),
+    [selectedTemplate?.content]
+  );
+  const customVariables = useMemo(
+    () => templateVariables.filter((variable) => !AUTO_VARS.includes(variable)),
+    [templateVariables]
+  );
 
   useEffect(() => {
     if (!selectedTemplate) return;

@@ -134,7 +134,7 @@ body {
     width: 7px;
     border-radius: 999px;
     background-color: #14532d;
-    z-index: 2;
+    z-index: 4;
   }
   .pacman-loader .pacman span {
     position: absolute;
@@ -142,6 +142,7 @@ body {
     left: 0;
     height: 60px;
     width: 60px;
+    will-change: transform;
   }
   .pacman-loader .pacman span::before {
     content: "";
@@ -166,15 +167,15 @@ body {
     border-radius: 60px 0 0 60px;
   }
   .pacman-loader .pacman .top {
-    transform-origin: bottom;
+    z-index: 3;
     animation: pacman-top 0.5s infinite;
   }
   .pacman-loader .pacman .bottom {
-    transform-origin: top;
+    z-index: 2;
     animation: pacman-bottom 0.5s infinite;
   }
   .pacman-loader .pacman .left {
-    animation: pacman-left 0.5s infinite;
+    z-index: 1;
   }
 }
 
@@ -249,14 +250,5 @@ body {
   }
   50% {
     transform: rotate(45deg);
-  }
-}
-
-@keyframes pacman-left {
-  0%, 100% {
-    transform: rotate(0deg);
-  }
-  50% {
-    transform: rotate(0deg);
   }
 }

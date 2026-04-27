@@ -1,0 +1,438 @@
+{
+  "name": "SyncChat_Support_Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.data.body }}",
+        "options": {
+          "systemMessage": "=# SyncChat Support Assistant\n\n## Identity\nYou are SyncChat Assistant, the automated WhatsApp assistant for SyncChat, a WhatsApp business platform.\nAlways present yourself as an automated assistant, not a human.\n\n## What SyncChat covers\nHelp users with:\n- WhatsApp Instances\n- Contacts\n- Conversations\n- Message Templates\n- Scheduled Bulk messages\n- Flows\n- Settings\n- Billing\n- Super Admin\n\n## Core behavior\n- Be concise, friendly, and practical.\n- Use the user's language when possible; default to English.\n- Stay focused on SyncChat features and dashboard workflows.\n- Never mention Erase Debt SA, debt services, QRY references, or unrelated business info.\n- Do not invent backend actions you cannot perform. If something must be done in the dashboard, explain where to do it.\n- When helping with support issues, ask for the page name, exact error, instance name, and what they were trying to do.\n\n## Routing guidance\n- WhatsApp Instances: connecting numbers, scanning QR, connection errors\n- Contacts: import, search, edit, tags\n- Conversations: view history, reply, follow up\n- Templates: create reusable message templates, variables like {{name}}, {{phone}}, {{email}}\n- Scheduled Bulk: one-time and recurring bulk sends in Africa/Johannesburg time\n- Flows: automation, triggers, webhooks, workflow status\n- Settings: organization setup, business preferences, notifications\n- Billing: plans, payments, invoices\n- Super Admin: administrative controls\n\n## Greeting\nWhen a conversation starts, send:\n\"👋 Welcome to SyncChat\n\nI'm SyncChat Assistant, the automated helper for your WhatsApp business platform.\n\nI can help with WhatsApp instances, contacts, conversations, templates, scheduled bulk messages, flows, settings, billing, and troubleshooting.\n\nWhat do you need help with today?\"\n\n## Troubleshooting pattern\nWhen a user reports an issue:\n1. Acknowledge the problem.\n2. Ask for the page or feature they were using.\n3. Ask for the exact error message or screenshot.\n4. If relevant, ask whether the WhatsApp instance is connected.\n5. Give the shortest possible next step.\n\n## Safety and tone\n- Keep replies polite and human-friendly.\n- Prefer one clear next step over a long explanation.\n- If the request is outside SyncChat, say you can only help with SyncChat platform operations and guide them to the right support channel."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        192,
+        -96
+      ],
+      "id": "105fdd10-512d-42c5-a746-1f9b77c49038",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        160,
+        160
+      ],
+      "id": "706b52c8-ac9f-4004-9409-5417688dc33c",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "REzLR7ZhbkQEyp1C",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.body.data.from }}",
+        "contextWindowLength": 20
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        304,
+        160
+      ],
+      "id": "e620a564-6aaa-47c2-9cbe-e32f2b917e4e",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ca7623a1-8b07-4c9c-884a-691a1d02b75e",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -480,
+        -64
+      ],
+      "id": "fedc81a4-1377-4c80-b73c-ef5539ac9f4b",
+      "name": "Whatsapp",
+      "webhookId": "ca7623a1-8b07-4c9c-884a-691a1d02b75e"
+    },
+    {
+      "parameters": {
+        "content": "Webhooks",
+        "height": 320,
+        "width": 176,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -512,
+        -240
+      ],
+      "typeVersion": 1,
+      "id": "94155ecf-9fc0-423e-aadc-c8a9aed68cfd",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "SyncChat Assistant",
+        "width": 352,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        80,
+        112
+      ],
+      "typeVersion": 1,
+      "id": "abacfae4-ee53-41f7-a3ae-cfd9f56a35ee",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "path": "586ab6f4-6c45-486b-8de3-114fe88f9795",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -480,
+        -208
+      ],
+      "id": "6bd35590-c75e-447d-931b-668aa2b986df",
+      "name": "whatsapp send",
+      "webhookId": "586ab6f4-6c45-486b-8de3-114fe88f9795"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.ultramsg.com/instance158401/messages/chat",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "xz36h6w9nj36lo65"
+            },
+            {
+              "name": "to",
+              "value": "={{ $('Whatsapp').item.json.body.data.from }}"
+            },
+            {
+              "name": "body",
+              "value": "={{ $json.output }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        576,
+        -176
+      ],
+      "id": "7ac509f0-41c4-4984-9d6c-85fd5f6c9b3e",
+      "name": "Ultra MSG"
+    },
+    {
+      "parameters": {
+        "tableId": "whatsapp_messages",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "conversation_id",
+              "fieldValue": "={{ $('Whatsapp').item.json.body.data.from }}"
+            },
+            {
+              "fieldId": "sender_type",
+              "fieldValue": "user"
+            },
+            {
+              "fieldId": "sender_phone",
+              "fieldValue": "={{ $('Whatsapp').item.json.body.data.from }}"
+            },
+            {
+              "fieldId": "sender_name",
+              "fieldValue": "={{ $('Whatsapp').item.json.body.data.pushname }}"
+            },
+            {
+              "fieldId": "message_text",
+              "fieldValue": "={{ $('Whatsapp').item.json.body.data.body }}"
+            },
+            {
+              "fieldId": "message_id",
+              "fieldValue": "={{ $('Whatsapp').item.json.body.data.id }}"
+            },
+            {
+              "fieldId": "message_type",
+              "fieldValue": "=text"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1056,
+        -176
+      ],
+      "id": "7cfbbf11-127d-431a-958e-b0949d826863",
+      "name": "Insert user chat",
+      "credentials": {
+        "supabaseApi": {
+          "id": "0OanPjVk08gK5Hxc",
+          "name": "Supabase account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "whatsapp_messages",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "conversation_id",
+              "fieldValue": "={{ $('Whatsapp').item.json.body.data.from }}"
+            },
+            {
+              "fieldId": "sender_type",
+              "fieldValue": "ai"
+            },
+            {
+              "fieldId": "message_text",
+              "fieldValue": "={{ $('AI Agent').item.json.output }}"
+            },
+            {
+              "fieldId": "message_type",
+              "fieldValue": "=text"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1056,
+        48
+      ],
+      "id": "acad8851-f4b0-4891-b054-120fcd9a6491",
+      "name": "Insert AI chat",
+      "credentials": {
+        "supabaseApi": {
+          "id": "0OanPjVk08gK5Hxc",
+          "name": "Supabase account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "Store messages",
+        "height": 416,
+        "width": 192,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1008,
+        -224
+      ],
+      "typeVersion": 1,
+      "id": "a2780e20-588e-45cc-a1c5-b89d9e486213",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "operation": "get"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        -64
+      ],
+      "id": "233e660c-f7e6-4648-afb5-181d6b501805",
+      "name": "Get a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "0OanPjVk08gK5Hxc",
+          "name": "Supabase account 4"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Whatsapp": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.leadsync.co.za",
+            "user-agent": "axios/1.13.2",
+            "content-length": "474",
+            "accept": "application/json, text/plain, */*",
+            "accept-encoding": "gzip, compress, deflate, br",
+            "content-type": "application/json",
+            "via": "1.1 Caddy",
+            "x-forwarded-for": "157.180.15.140",
+            "x-forwarded-host": "n8n.leadsync.co.za",
+            "x-forwarded-proto": "https"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "event_type": "message_received",
+            "instanceId": "158401",
+            "id": "",
+            "referenceId": "",
+            "hash": "c62896a8d87fd143898598d9b2d66c41",
+            "data": {
+              "id": "false_27608505868@c.us_3EB0E8551D8C4465116B82",
+              "sid": "3EB0E8551D8C4465116B82",
+              "from": "27608505868@c.us",
+              "to": "27810300012@c.us",
+              "author": "",
+              "pushname": "Andre",
+              "ack": "",
+              "type": "chat",
+              "body": "Hi, I need help with templates.",
+              "media": "",
+              "fromMe": false,
+              "self": false,
+              "isForwarded": false,
+              "isMentioned": false,
+              "quotedMsg": {},
+              "mentionedIds": [],
+              "time": 1769037132
+            }
+          },
+          "webhookUrl": "https://n8n.leadsync.co.za/webhook/40dc93c0-9919-460b-947b-9916deab2d76",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Ultra MSG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Whatsapp": {
+      "main": [
+        [
+          {
+            "node": "Get a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "whatsapp send": {
+      "main": [
+        [
+          {
+            "node": "Ultra MSG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ultra MSG": {
+      "main": [
+        [
+          {
+            "node": "Insert user chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert user chat": {
+      "main": [
+        [
+          {
+            "node": "Insert AI chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5f27d093-7cd7-4488-9551-c6ac2e9cfe9f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "01754e91e8cbe79da81d7e9f6fabd574a6aa8aeff80ba78d75ed162a3b1dd690"
+  },
+  "id": "hUWnNuc81rDkCUTb",
+  "tags": [
+    {
+      "updatedAt": "2025-11-18T14:27:01.633Z",
+      "createdAt": "2025-11-18T14:27:01.633Z",
+      "id": "CM4tqk8UjhgKnP36",
+      "name": "development"
+    }
+  ]
+}

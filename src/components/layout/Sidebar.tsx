@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { cn, getInitials, ROLE_LABELS } from "@/lib/utils";
 import type { OrgMember } from "@/types";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const NAV_ITEMS = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -31,6 +31,13 @@ export default function Sidebar({ member }: SidebarProps) {
   const router = useRouter();
   const supabase = createClient();
   const [orgOpen, setOrgOpen] = useState(false);
+  const navRef = useRef<HTMLElement | null>(null);
+  const itemRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
+  const [indicator, setIndicator] = useState<{ top: number; height: number; visible: boolean }>({
+    top: 0,
+    height: 0,
+    visible: false,
+  });
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -40,6 +47,27 @@ export default function Sidebar({ member }: SidebarProps) {
 
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
+
+  useEffect(() => {
+    const updateIndicator = () => {
+      const activeEntry = NAV_ITEMS.find(({ href }) => isActive(href));
+      const activeEl = activeEntry ? itemRefs.current[activeEntry.href] : null;
+      const navEl = navRef.current;
+
+      if (!activeEl || !navEl) {
+        setIndicator((current) => current.visible ? { ...current, visible: false } : current);
+        return;
+      }
+
+      const top = activeEl.offsetTop - navEl.offsetTop;
+      const height = activeEl.offsetHeight;
+      setIndicator({ top, height, visible: true });
+    };
+
+    updateIndicator();
+    window.addEventListener("resize", updateIndicator);
+    return () => window.removeEventListener("resize", updateIndicator);
+  }, [pathname]);
 
   return (
     <aside className="relative z-20 w-64 shrink-0 min-h-screen bg-white border-r border-slate-200 flex flex-col pointer-events-auto">
@@ -76,14 +104,26 @@ export default function Sidebar({ member }: SidebarProps) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 p-3 space-y-0.5">
+      <nav ref={navRef} className="relative flex-1 p-3 space-y-0.5">
+        <div
+          aria-hidden="true"
+          className="absolute left-3 right-3 rounded-xl bg-whatsapp-teal/12 border border-whatsapp-teal/20 shadow-sm transition-all duration-300 ease-out"
+          style={{
+            top: indicator.visible ? indicator.top : 0,
+            height: indicator.visible ? indicator.height : 0,
+            opacity: indicator.visible ? 1 : 0,
+          }}
+        />
         {NAV_ITEMS.map(({ href, icon: Icon, label }) => (
           <Link
             key={href}
             href={href}
-            className={cn("sidebar-item", isActive(href) ? "sidebar-item-active" : "sidebar-item-inactive")}
+            ref={(node) => {
+              itemRefs.current[href] = node;
+            }}
+            className={cn("sidebar-item relative z-10", isActive(href) ? "sidebar-item-active" : "sidebar-item-inactive")}
           >
-            <Icon className="w-4 h-4 flex-shrink-0" />
+            <Icon className="w-4 h-4 flex-shrink-0 transition-transform duration-300 ease-out" />
             <span>{label}</span>
           </Link>
         ))}
@@ -92,7 +132,7 @@ export default function Sidebar({ member }: SidebarProps) {
         {member.role === "super_admin" && (
           <Link
             href="/admin"
-            className={cn("sidebar-item mt-2", isActive("/admin") ? "sidebar-item-active" : "sidebar-item-inactive")}
+            className={cn("sidebar-item relative z-10 mt-2", isActive("/admin") ? "sidebar-item-active" : "sidebar-item-inactive")}
           >
             <Shield className="w-4 h-4 flex-shrink-0" />
             <span>Super Admin</span>

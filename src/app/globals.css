@@ -39,13 +39,13 @@ body {
 
 @layer components {
   .sidebar-item {
-    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer;
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 ease-out cursor-pointer;
   }
   .sidebar-item-active {
-    @apply bg-whatsapp-teal text-white;
+    @apply bg-whatsapp-teal text-white shadow-sm;
   }
   .sidebar-item-inactive {
-    @apply text-slate-600 hover:bg-slate-100 hover:text-slate-900;
+    @apply text-slate-600 hover:bg-slate-100 hover:text-slate-900 hover:translate-x-1;
   }
   .card {
     @apply bg-white rounded-xl border border-slate-200 shadow-sm;

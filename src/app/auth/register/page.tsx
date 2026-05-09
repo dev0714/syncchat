@@ -42,20 +42,26 @@ export default function RegisterPage() {
           email: form.email,
           password: form.password,
           orgName: form.orgName,
-        }),
+          }),
       });
 
-      const data = await res.json();
+      const raw = await res.text();
+      let data: { error?: string; success?: boolean } = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        data = { error: raw || "Failed to create account" };
+      }
 
       if (!res.ok || data.error) {
-        setError(data.error ?? "Failed to create account");
+        setError(data.error ?? `Failed to create account (${res.status})`);
         return;
       }
 
       router.replace("/dashboard");
       router.refresh();
-    } catch {
-      setError("An unexpected error occurred. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
     }

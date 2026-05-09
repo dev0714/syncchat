@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcrypt";
-import { createClient } from "@/lib/supabase/client";
+import crypto from "node:crypto";
 import { createSession } from "@/lib/auth/session";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,34 +22,109 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
     const passwordHash = await bcrypt.hash(password, 12);
-    const supabase = createClient();
-    const { data, error } = await supabase.rpc("register_account_and_organization", {
-      p_name: name.trim(),
-      p_email: email.trim().toLowerCase(),
-      p_password_hash: passwordHash,
-      p_org_name: orgName.trim(),
-    });
+    const supabase = createAdminClient();
+    const { data: existingUser, error: lookupError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
 
-    if (error) {
-      console.error("[register] rpc error:", error);
+    if (lookupError) {
+      console.error("[register] lookup error:", lookupError);
       return NextResponse.json(
-        { error: error.message || "Failed to create account" },
-        { status: 400 }
-      );
-    }
-
-    const created = Array.isArray(data) ? data[0] : data;
-    const userId = created?.user_id;
-    const userEmail = email.trim().toLowerCase();
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Failed to create account" },
+        { error: "Unable to verify account state. Please try again." },
         { status: 500 }
       );
     }
 
-    const sessionToken = createSession(userId, userEmail);
+    if (existingUser) {
+      return NextResponse.json(
+        { error: "An account with this email already exists" },
+        { status: 400 }
+      );
+    }
+
+    const slugBase = orgName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "organization";
+    const slug = `${slugBase}-${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;
+
+    const { data: organization, error: orgError } = await supabase
+      .from("organizations")
+      .insert({ name: orgName.trim(), slug, plan: "free" })
+      .select("id")
+      .single();
+
+    if (orgError || !organization?.id) {
+      console.error("[register] organization insert error:", orgError);
+      return NextResponse.json(
+        { error: orgError?.message ?? "Failed to create organization" },
+        { status: 400 }
+      );
+    }
+
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .insert({
+        email: normalizedEmail,
+        name: name.trim(),
+        password_hash: passwordHash,
+        org_id: organization.id,
+        role: "admin",
+        is_active: true,
+      })
+      .select("id")
+      .single();
+
+    if (userError || !user?.id) {
+      console.error("[register] user insert error:", userError);
+      await supabase.from("organizations").delete().eq("id", organization.id);
+      return NextResponse.json(
+        { error: userError?.message ?? "Failed to create account" },
+        { status: 400 }
+      );
+    }
+
+    const { error: memberError } = await supabase.from("org_members").insert({
+      org_id: organization.id,
+      user_id: user.id,
+      role: "org_admin",
+      is_active: true,
+    });
+
+    if (memberError) {
+      console.error("[register] org_members insert error:", memberError);
+      await supabase.from("users").delete().eq("id", user.id);
+      await supabase.from("organizations").delete().eq("id", organization.id);
+      return NextResponse.json(
+        { error: memberError.message ?? "Failed to create team membership" },
+        { status: 400 }
+      );
+    }
+
+    const { error: settingsError } = await supabase.from("org_settings").insert({
+      org_id: organization.id,
+      auto_reply_enabled: false,
+      auto_reply_message: "",
+      business_hours_enabled: false,
+    });
+
+    if (settingsError) {
+      console.error("[register] org_settings insert error:", settingsError);
+      await supabase.from("org_members").delete().eq("user_id", user.id);
+      await supabase.from("users").delete().eq("id", user.id);
+      await supabase.from("organizations").delete().eq("id", organization.id);
+      return NextResponse.json(
+        { error: settingsError.message ?? "Failed to create organization settings" },
+        { status: 400 }
+      );
+    }
+
+    const sessionToken = createSession(user.id, normalizedEmail);
     const response = NextResponse.json({ success: true });
     response.cookies.set("session", sessionToken, {
       httpOnly: true,

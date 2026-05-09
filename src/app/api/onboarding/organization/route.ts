@@ -1,5 +1,6 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,40 +11,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Organization name is required" }, { status: 400 });
     }
 
-    const response = NextResponse.json({ success: true });
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            const value = request.cookies.get(name)?.value;
-            if (!value) return undefined;
-            try {
-              return decodeURIComponent(value);
-            } catch {
-              return value;
-            }
-          },
-          set(name: string, value: string, options: Record<string, unknown>) {
-            response.cookies.set(name, value, options);
-          },
-          remove(name: string) {
-            response.cookies.delete(name);
-          },
-        },
-      }
-    );
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const supabase = createAdminClient();
     const { data, error } = await supabase.rpc("create_onboarding_organization", {
       org_name: trimmedName,
     });

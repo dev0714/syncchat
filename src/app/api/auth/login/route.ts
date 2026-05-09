@@ -1,5 +1,7 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcrypt";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createSession } from "@/lib/auth/session";
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,50 +14,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const response = NextResponse.json({ success: true });
+    const supabase = createAdminClient();
+    const { data: user } = await supabase
+      .from("users")
+      .select("id, email, name, password_hash, is_active")
+      .eq("email", email.trim().toLowerCase())
+      .maybeSingle();
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        db: { schema: "syncchat" },
-        cookies: {
-          get(name: string) {
-            const value = request.cookies.get(name)?.value;
-            if (!value) return undefined;
-            try {
-              return decodeURIComponent(value);
-            } catch {
-              return value;
-            }
-          },
-          set(name: string, value: string, options: Record<string, unknown>) {
-            response.cookies.set(name, value, options);
-          },
-          remove(name: string) {
-            response.cookies.delete(name);
-          },
-        },
-      }
-    );
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
-
-    if (error) {
+    if (!user || !user.is_active) {
       return NextResponse.json(
-        { error: error.message || "Invalid email or password" },
+        { error: "Invalid email or password" },
         { status: 401 }
       );
     }
 
+    const passwordMatches = await bcrypt.compare(password, user.password_hash);
+    if (!passwordMatches) {
+      return NextResponse.json(
+        { error: "Invalid email or password" },
+        { status: 401 }
+      );
+    }
+
+    const sessionToken = createSession(user.id, user.email);
+    const response = NextResponse.json({ success: true });
+    response.cookies.set("session", sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60,
+      path: "/",
+    });
+
     return response;
-  } catch (error) {
-    console.error("[auth/login] unexpected error:", error);
+  } catch (err) {
+    console.error("[auth/login]", err);
     return NextResponse.json(
-      { error: "Unable to sign in right now. Please try again." },
+      { error: "Unable to sign in. Please try again." },
       { status: 500 }
     );
   }

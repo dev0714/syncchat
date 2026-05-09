@@ -1,7 +1,6 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import {
   MessageSquare, LayoutDashboard, Smartphone, Users, MessageCircle,
   FileText, Zap, Settings, Shield, LogOut, ChevronDown, Building2, CreditCard, CalendarClock,
@@ -29,7 +28,6 @@ interface SidebarProps {
 export default function Sidebar({ member }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const supabase = createClient();
   const [orgOpen, setOrgOpen] = useState(false);
   const asideRef = useRef<HTMLElement | null>(null);
   const navRef = useRef<HTMLElement | null>(null);
@@ -41,7 +39,7 @@ export default function Sidebar({ member }: SidebarProps) {
   });
 
   async function handleLogout() {
-    await supabase.auth.signOut();
+    await fetch("/api/auth/logout", { method: "POST" });
     router.replace("/auth/login");
     router.refresh();
   }
@@ -149,13 +147,15 @@ export default function Sidebar({ member }: SidebarProps) {
       <div className="p-3 border-t border-slate-100">
         <div className="flex items-center gap-3 px-3 py-2">
           <div className="w-8 h-8 bg-whatsapp-teal rounded-full flex items-center justify-center text-white text-xs font-bold">
-            {getInitials(member.profile?.full_name ?? member.profile?.email ?? "U")}
+            {getInitials(member.user?.name ?? member.user?.email ?? member.profile?.full_name ?? member.profile?.email ?? "U")}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-slate-800 truncate">
-              {member.profile?.full_name ?? "User"}
+              {member.user?.name ?? member.profile?.full_name ?? "User"}
             </p>
-            <p className="text-xs text-slate-400 truncate">{member.profile?.email}</p>
+            <p className="text-xs text-slate-400 truncate">
+              {member.user?.email ?? member.profile?.email}
+            </p>
           </div>
           <button onClick={handleLogout} className="text-slate-400 hover:text-red-500 transition-colors" title="Sign out">
             <LogOut className="w-4 h-4" />

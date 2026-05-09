@@ -1,4 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getCurrentUser } from "@/lib/auth/server";
 import { redirect } from "next/navigation";
 import { format, subDays } from "date-fns";
 import { MessageCircle, Users, Zap, CalendarClock } from "lucide-react";
@@ -67,15 +68,15 @@ function buildSeries(
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const currentUser = await getCurrentUser();
+  if (!currentUser) redirect("/auth/login");
 
-  if (!user) redirect("/auth/login");
+  const supabase = createAdminClient();
 
   const { data: member } = await supabase
     .from("org_members")
     .select("org_id")
-    .eq("user_id", user.id)
+    .eq("user_id", currentUser.userId)
     .eq("is_active", true)
     .maybeSingle();
 

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { parseJohannesburgDateTime } from "@/lib/scheduled-bulk";
 
 export async function GET() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const supabase = createAdminClient();
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", user.id).single();
+  const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", currentUser.userId).single();
   if (!member) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
 
   const { data, error } = await supabase
@@ -25,11 +26,11 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const supabase = createAdminClient();
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", user.id).single();
+  const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", currentUser.userId).single();
   if (!member) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
 
   const body = await req.json();
@@ -96,7 +97,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Selected recipients were not found." }, { status: 404 });
   }
 
-  const { data: orgMember } = await supabase.from("org_members").select("user_id").eq("user_id", user.id).single();
+  const { data: orgMember } = await supabase.from("org_members").select("user_id").eq("user_id", currentUser.userId).single();
 
   const { error } = await supabase.from("scheduled_bulk_messages").insert({
     org_id: member.org_id,
@@ -122,7 +123,7 @@ export async function POST(req: NextRequest) {
       tags: contact.tags ?? [],
     })),
     variable_defaults: variableDefaults ?? {},
-    created_by: orgMember?.user_id ?? user.id,
+    created_by: orgMember?.user_id ?? currentUser.userId,
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -131,11 +132,11 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const supabase = createAdminClient();
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", user.id).single();
+  const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", currentUser.userId).single();
   if (!member) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
 
   const { id, action } = await req.json() as { id?: string; action?: "pause" | "resume" };
@@ -160,11 +161,11 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const supabase = createAdminClient();
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", user.id).single();
+  const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", currentUser.userId).single();
   if (!member) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
 
   const { id } = await req.json() as { id?: string };

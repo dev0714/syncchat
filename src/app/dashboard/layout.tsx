@@ -1,23 +1,23 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getCurrentUser } from "@/lib/auth/server";
 import Sidebar from "@/components/layout/Sidebar";
 import DashboardTransition from "@/components/layout/DashboardTransition";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const currentUser = await getCurrentUser();
+  if (!currentUser) redirect("/auth/login");
 
-  if (!user) redirect("/auth/login");
+  const supabase = createAdminClient();
 
-  // Get member record with org + profile
   const { data: member } = await supabase
     .from("org_members")
     .select(`
       *,
       organization:organizations(*),
-      profile:profiles(*)
+      user:users(id, name, email)
     `)
-    .eq("user_id", user.id)
+    .eq("user_id", currentUser.userId)
     .eq("is_active", true)
     .order("created_at", { ascending: true })
     .limit(1)

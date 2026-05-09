@@ -41,9 +41,12 @@ export default function SettingsPage() {
 
   async function loadData() {
     setLoading(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const authRes = await fetch("/api/auth/me");
+    if (!authRes.ok) {
+      setLoading(false);
+      return;
+    }
+    const { user } = await authRes.json();
 
     if (!user) {
       setLoading(false);

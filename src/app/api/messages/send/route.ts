@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { ultraMsg } from "@/lib/ultramsg";
 import type { UltraMsgMessageFeature } from "@/lib/message-features";
 
@@ -17,9 +18,9 @@ function getMessageContent(type: UltraMsgMessageFeature, values: Record<string, 
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const supabase = createAdminClient();
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
   const { instanceId, to, message, conversationId, type, values } = body as {
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
 
     // Save message to DB
     if (conversationId) {
-      const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", user.id).single();
+      const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", currentUser.userId).single();
       const content = isGeneric && type ? getMessageContent(type, values ?? {}) : (message ?? "");
       await supabase.from("messages").insert({
         conversation_id: conversationId,
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
         type: type ?? "text",
         content,
         status: result.sent === "true" ? "sent" : "failed",
-        sent_by: user.id,
+        sent_by: currentUser.userId,
         ultramsg_id: result.id,
       });
 

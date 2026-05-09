@@ -28,6 +28,10 @@ export interface OrgMember {
   created_at: string;
   profile?: Profile;
   organization?: Organization;
+  user?: {
+    name?: string;
+    email?: string;
+  };
 }
 
 export interface WhatsAppInstance {

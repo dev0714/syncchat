@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { MessageSquare } from "lucide-react";
 import { generateSlug } from "@/lib/utils";
 import PacmanLoader from "@/components/ui/PacmanLoader";
@@ -10,7 +9,6 @@ import styles from "../auth.module.css";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const supabase = createClient();
   const [step, setStep] = useState<"account" | "org">("account");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -35,48 +33,32 @@ export default function RegisterPage() {
     setError("");
     setLoading(true);
 
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: {
-        data: { full_name: form.fullName },
-      },
-    });
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.fullName,
+          email: form.email,
+          password: form.password,
+          orgName: form.orgName,
+        }),
+      });
 
-    if (authError || !authData.user) {
-      setError(authError?.message ?? "Failed to create account");
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        setError(data.error ?? "Failed to create account");
+        return;
+      }
+
+      router.replace("/dashboard");
+      router.refresh();
+    } catch {
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const userId = authData.user.id;
-    const slug = generateSlug(form.orgName);
-
-    const { data: org, error: orgError } = await supabase
-      .from("organizations")
-      .insert({ name: form.orgName, slug, plan: "free" })
-      .select()
-      .single();
-
-    if (orgError || !org) {
-      setError(orgError?.message ?? "Failed to create organization");
-      setLoading(false);
-      return;
-    }
-
-    await supabase.from("profiles").insert({
-      id: userId,
-      email: form.email,
-      full_name: form.fullName,
-    });
-
-    await supabase.from("org_members").insert({
-      org_id: org.id,
-      user_id: userId,
-      role: "org_admin",
-    });
-
-    router.push("/dashboard");
   }
 
   return (

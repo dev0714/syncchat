@@ -88,7 +88,9 @@ export default function ScheduledBulkPage() {
   async function loadData() {
     setLoading(true);
     setLoadingSchedules(true);
-    const { data: { user } } = await supabase.auth.getUser();
+    const authRes = await fetch("/api/auth/me");
+    if (!authRes.ok) { setLoading(false); return; }
+    const { user } = await authRes.json();
     const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", user!.id).single();
     if (!member) return;
 
@@ -499,3 +501,4 @@ export default function ScheduledBulkPage() {
     </div>
   );
 }
+

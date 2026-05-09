@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const BASE = "https://api.ultramsg.com";
 
@@ -20,9 +21,9 @@ function fillTemplate(template: string, contact: BulkPayload["contacts"][0], def
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const supabase = createAdminClient();
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body: BulkPayload = await req.json();
   const { instanceId, contacts, template, variableDefaults } = body;
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
   const { data: member } = await supabase
     .from("org_members")
     .select("org_id")
-    .eq("user_id", user.id)
+    .eq("user_id", currentUser.userId)
     .single();
 
   const results = { sent: 0, failed: 0, errors: [] as string[] };
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
           type: "text",
           content: message,
           status: "sent",
-          sent_by: user.id,
+          sent_by: currentUser.userId,
         }).maybeSingle();
       } else {
         results.failed++;

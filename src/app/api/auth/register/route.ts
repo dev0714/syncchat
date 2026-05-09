@@ -3,6 +3,137 @@ import bcrypt from "bcrypt";
 import crypto from "node:crypto";
 import { createSession } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/client";
+
+type RegistrationResult = {
+  userId: string;
+  orgId: string;
+  email: string;
+};
+
+async function registerWithAdminClient(args: {
+  name: string;
+  email: string;
+  passwordHash: string;
+  orgName: string;
+}): Promise<RegistrationResult> {
+  const { name, email, passwordHash, orgName } = args;
+  const supabase = createAdminClient();
+
+  const { data: existingUser, error: lookupError } = await supabase
+    .from("users")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (lookupError) {
+    throw new Error(`Unable to verify account state. ${lookupError.message}`);
+  }
+
+  if (existingUser) {
+    throw new Error("An account with this email already exists");
+  }
+
+  const slugBase =
+    orgName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "organization";
+  const slug = `${slugBase}-${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;
+
+  const { data: organization, error: orgError } = await supabase
+    .from("organizations")
+    .insert({ name: orgName.trim(), slug, plan: "free" })
+    .select("id")
+    .single();
+
+  if (orgError || !organization?.id) {
+    throw new Error(orgError?.message ?? "Failed to create organization");
+  }
+
+  const { data: user, error: userError } = await supabase
+    .from("users")
+    .insert({
+      email,
+      name: name.trim(),
+      password_hash: passwordHash,
+      org_id: organization.id,
+      role: "admin",
+      is_active: true,
+    })
+    .select("id")
+    .single();
+
+  if (userError || !user?.id) {
+    await supabase.from("organizations").delete().eq("id", organization.id);
+    throw new Error(userError?.message ?? "Failed to create account");
+  }
+
+  const { error: memberError } = await supabase.from("org_members").insert({
+    org_id: organization.id,
+    user_id: user.id,
+    role: "org_admin",
+    is_active: true,
+  });
+
+  if (memberError) {
+    await supabase.from("users").delete().eq("id", user.id);
+    await supabase.from("organizations").delete().eq("id", organization.id);
+    throw new Error(memberError.message ?? "Failed to create team membership");
+  }
+
+  const { error: settingsError } = await supabase.from("org_settings").insert({
+    org_id: organization.id,
+    auto_reply_enabled: false,
+    auto_reply_message: "",
+    business_hours_enabled: false,
+  });
+
+  if (settingsError) {
+    await supabase.from("org_members").delete().eq("user_id", user.id);
+    await supabase.from("users").delete().eq("id", user.id);
+    await supabase.from("organizations").delete().eq("id", organization.id);
+    throw new Error(
+      settingsError.message ?? "Failed to create organization settings"
+    );
+  }
+
+  return { userId: user.id, orgId: organization.id, email };
+}
+
+async function registerWithRpc(args: {
+  name: string;
+  email: string;
+  passwordHash: string;
+  orgName: string;
+}): Promise<RegistrationResult> {
+  const { name, email, passwordHash, orgName } = args;
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("register_account_and_organization", {
+    p_name: name.trim(),
+    p_email: email,
+    p_password_hash: passwordHash,
+    p_org_name: orgName.trim(),
+  });
+
+  if (error) {
+    throw new Error(
+      error.message.includes("register_account_and_organization")
+        ? "Signup database function is missing. Apply the register_account_and_organization migration in Supabase."
+        : error.message
+    );
+  }
+
+  const created = Array.isArray(data) ? data[0] : data;
+  const userId = created?.user_id;
+  const orgId = created?.org_id;
+  if (!userId || !orgId) {
+    throw new Error("Failed to create account");
+  }
+
+  return { userId, orgId, email };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,107 +155,31 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = email.trim().toLowerCase();
     const passwordHash = await bcrypt.hash(password, 12);
-    const supabase = createAdminClient();
-    const { data: existingUser, error: lookupError } = await supabase
-      .from("users")
-      .select("id")
-      .eq("email", normalizedEmail)
-      .maybeSingle();
+    let account: RegistrationResult | null = null;
+    let adminError: unknown = null;
 
-    if (lookupError) {
-      console.error("[register] lookup error:", lookupError);
-      return NextResponse.json(
-        { error: "Unable to verify account state. Please try again." },
-        { status: 500 }
-      );
-    }
-
-    if (existingUser) {
-      return NextResponse.json(
-        { error: "An account with this email already exists" },
-        { status: 400 }
-      );
-    }
-
-    const slugBase = orgName
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "organization";
-    const slug = `${slugBase}-${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;
-
-    const { data: organization, error: orgError } = await supabase
-      .from("organizations")
-      .insert({ name: orgName.trim(), slug, plan: "free" })
-      .select("id")
-      .single();
-
-    if (orgError || !organization?.id) {
-      console.error("[register] organization insert error:", orgError);
-      return NextResponse.json(
-        { error: orgError?.message ?? "Failed to create organization" },
-        { status: 400 }
-      );
-    }
-
-    const { data: user, error: userError } = await supabase
-      .from("users")
-      .insert({
+    try {
+      account = await registerWithAdminClient({
+        name,
         email: normalizedEmail,
-        name: name.trim(),
-        password_hash: passwordHash,
-        org_id: organization.id,
-        role: "admin",
-        is_active: true,
-      })
-      .select("id")
-      .single();
-
-    if (userError || !user?.id) {
-      console.error("[register] user insert error:", userError);
-      await supabase.from("organizations").delete().eq("id", organization.id);
-      return NextResponse.json(
-        { error: userError?.message ?? "Failed to create account" },
-        { status: 400 }
-      );
+        passwordHash,
+        orgName,
+      });
+    } catch (err) {
+      adminError = err;
+      console.warn("[register] admin path failed, falling back to rpc:", err);
     }
 
-    const { error: memberError } = await supabase.from("org_members").insert({
-      org_id: organization.id,
-      user_id: user.id,
-      role: "org_admin",
-      is_active: true,
-    });
-
-    if (memberError) {
-      console.error("[register] org_members insert error:", memberError);
-      await supabase.from("users").delete().eq("id", user.id);
-      await supabase.from("organizations").delete().eq("id", organization.id);
-      return NextResponse.json(
-        { error: memberError.message ?? "Failed to create team membership" },
-        { status: 400 }
-      );
+    if (!account) {
+      account = await registerWithRpc({
+        name,
+        email: normalizedEmail,
+        passwordHash,
+        orgName,
+      });
     }
 
-    const { error: settingsError } = await supabase.from("org_settings").insert({
-      org_id: organization.id,
-      auto_reply_enabled: false,
-      auto_reply_message: "",
-      business_hours_enabled: false,
-    });
-
-    if (settingsError) {
-      console.error("[register] org_settings insert error:", settingsError);
-      await supabase.from("org_members").delete().eq("user_id", user.id);
-      await supabase.from("users").delete().eq("id", user.id);
-      await supabase.from("organizations").delete().eq("id", organization.id);
-      return NextResponse.json(
-        { error: settingsError.message ?? "Failed to create organization settings" },
-        { status: 400 }
-      );
-    }
-
-    const sessionToken = createSession(user.id, normalizedEmail);
+    const sessionToken = createSession(account.userId, normalizedEmail);
     const response = NextResponse.json({ success: true });
     response.cookies.set("session", sessionToken, {
       httpOnly: true,
@@ -136,7 +191,8 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unable to create account";
+    const message =
+      err instanceof Error ? err.message : "Unable to create account";
     console.error("[auth/register]", err);
     return NextResponse.json(
       { error: message },

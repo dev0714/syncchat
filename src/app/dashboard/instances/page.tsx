@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import {
   Smartphone, Plus, Trash2, RefreshCw, Wifi, WifiOff,
   QrCode, Copy, Check, Pencil, X, Link,
@@ -18,7 +17,6 @@ const defaultForm = {
 };
 
 export default function InstancesPage() {
-  const supabase = createClient();
   const [instances, setInstances] = useState<WhatsAppInstance[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -41,51 +39,17 @@ export default function InstancesPage() {
     setLoading(true);
     setError("");
     try {
-      const authRes = await fetch("/api/auth/me");
-      if (!authRes.ok) {
-        setError("Unable to load your session.");
+      const res = await fetch("/api/instances", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Unable to load instances.");
         setInstances([]);
         return;
       }
 
-      const { user } = await authRes.json();
-      if (!user) {
-        setError("No signed-in user found.");
-        setInstances([]);
-        return;
-      }
-
-      const { data: members, error: memberError } = await supabase
-        .from("org_members")
-        .select("org_id, role")
-        .eq("user_id", user.userId)
-        .eq("is_active", true)
-        .order("created_at", { ascending: true });
-
-      const member = members?.[0] ?? null;
-
-      if (memberError || !member) {
-        setError(memberError?.message ?? "No organization membership found.");
-        setInstances([]);
-        return;
-      }
-
-      setOrgId(member.org_id);
-      setIsSuperAdmin(user.role === "super_admin" || member.role === "super_admin");
-
-      const { data, error } = await supabase
-        .from("whatsapp_instances")
-        .select("*")
-        .eq("org_id", member.org_id)
-        .order("created_at");
-
-      if (error) {
-        setError(error.message);
-        setInstances([]);
-        return;
-      }
-
-      setInstances(data ?? []);
+      setOrgId(data.orgId ?? "");
+      setIsSuperAdmin(Boolean(data.isSuperAdmin));
+      setInstances((data.instances ?? []) as WhatsAppInstance[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load instances.");
       setInstances([]);
@@ -121,28 +85,34 @@ export default function InstancesPage() {
     }
     setSaving(true);
     setError("");
-    if (editing) {
-      const { error } = await supabase.from("whatsapp_instances").update({
-        name: form.name,
-        instance_id: form.instance_id,
-        token: form.token,
-        phone_number: form.phone_number || null,
-        webhook_url: form.webhook_url || null,
-        updated_at: new Date().toISOString(),
-      }).eq("id", editing.id);
-      if (error) { setError(error.message); setSaving(false); return; }
-    } else {
-      const { error } = await supabase.from("whatsapp_instances").insert({
-        org_id: orgId,
-        name: form.name,
-        instance_id: form.instance_id,
-        token: form.token,
-        phone_number: form.phone_number || null,
-        webhook_url: form.webhook_url || null,
-        status: "disconnected",
-        is_active: true,
-      });
-      if (error) { setError(error.message); setSaving(false); return; }
+    const response = await fetch("/api/instances", {
+      method: editing ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        editing
+          ? {
+              id: editing.id,
+              name: form.name,
+              instance_id: form.instance_id,
+              token: form.token,
+              phone_number: form.phone_number || null,
+              webhook_url: form.webhook_url || null,
+            }
+          : {
+              orgId,
+              name: form.name,
+              instance_id: form.instance_id,
+              token: form.token,
+              phone_number: form.phone_number || null,
+              webhook_url: form.webhook_url || null,
+            }
+      ),
+    });
+    const data = await response.json();
+    if (!response.ok || data.error) {
+      setError(data.error || "Unable to save instance");
+      setSaving(false);
+      return;
     }
     setSaving(false);
     setShowModal(false);
@@ -151,7 +121,16 @@ export default function InstancesPage() {
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this instance? This cannot be undone.")) return;
-    await supabase.from("whatsapp_instances").delete().eq("id", id);
+    const response = await fetch("/api/instances", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    const data = await response.json();
+    if (!response.ok || data.error) {
+      setError(data.error || "Unable to delete instance");
+      return;
+    }
     loadData();
   }
 
@@ -171,7 +150,6 @@ export default function InstancesPage() {
       const res = await fetch(`/api/instances/${inst.id}/status`);
       const data = await res.json();
       if (data.status) {
-        await supabase.from("whatsapp_instances").update({ status: data.status, updated_at: new Date().toISOString() }).eq("id", inst.id);
         await loadData();
         if (data.status === "qr_required") fetchQr(inst.id);
       }

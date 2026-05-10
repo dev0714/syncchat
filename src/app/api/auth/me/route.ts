@@ -9,15 +9,15 @@ export async function GET() {
   }
 
   const supabase = createAdminClient();
-  const { data: member } = await supabase
+  const { data: members } = await supabase
     .from("org_members")
     .select("org_id, role, is_active")
     .eq("user_id", user.userId)
     .eq("is_active", true)
-    .maybeSingle();
+    .order("created_at", { ascending: true });
 
   return NextResponse.json({
     user,
-    member: member ?? null,
+    member: members?.[0] ?? null,
   });
 }

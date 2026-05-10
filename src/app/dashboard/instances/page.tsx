@@ -55,11 +55,14 @@ export default function InstancesPage() {
         return;
       }
 
-      const { data: member, error: memberError } = await supabase
+      const { data: members, error: memberError } = await supabase
         .from("org_members")
         .select("org_id, role")
         .eq("user_id", user.userId)
-        .single();
+        .eq("is_active", true)
+        .order("created_at", { ascending: true });
+
+      const member = members?.[0] ?? null;
 
       if (memberError || !member) {
         setError(memberError?.message ?? "No organization membership found.");

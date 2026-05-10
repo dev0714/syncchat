@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth/server";
 import { hasSuperAdminAccess } from "@/lib/auth/permissions";
+import { ultraMsg } from "@/lib/ultramsg";
 
 type InstancePayload = {
   id?: string;
@@ -10,7 +11,31 @@ type InstancePayload = {
   instance_id?: string;
   token?: string;
   phone_number?: string | null;
+  webhook_url?: string | null;
+  ultramsg_settings?: {
+    sendDelay?: number | string;
+    sendDelayMax?: number | string;
+    webhook_url?: string;
+    webhook_message_received?: boolean;
+    webhook_message_create?: boolean;
+    webhook_message_ack?: boolean;
+    webhook_message_download_media?: boolean;
+  };
 };
+
+function normalizeSettings(body: InstancePayload) {
+  const settings = body.ultramsg_settings ?? {};
+  const webhookUrl = settings.webhook_url ?? body.webhook_url ?? "";
+  return {
+    sendDelay: Number(settings.sendDelay ?? 1),
+    sendDelayMax: Number(settings.sendDelayMax ?? 15),
+    webhook_url: webhookUrl,
+    webhook_message_received: Boolean(settings.webhook_message_received),
+    webhook_message_create: Boolean(settings.webhook_message_create),
+    webhook_message_ack: Boolean(settings.webhook_message_ack),
+    webhook_message_download_media: Boolean(settings.webhook_message_download_media),
+  };
+}
 
 async function requireSuperAdmin() {
   const currentUser = await getCurrentUser();
@@ -64,6 +89,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const settings = normalizeSettings(body);
+  try {
+    await ultraMsg.updateInstanceSettings(body.instance_id, {
+      token: body.token,
+      ...settings,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to apply UltraMsg instance settings." },
+      { status: 400 }
+    );
+  }
+
   const supabase = createAdminClient();
   const { error } = await supabase.from("whatsapp_instances").insert({
     org_id: body.orgId,
@@ -71,6 +109,8 @@ export async function POST(request: NextRequest) {
     instance_id: body.instance_id,
     token: body.token,
     phone_number: body.phone_number || null,
+    webhook_url: settings.webhook_url || null,
+    ultramsg_settings: settings,
     status: "disconnected",
     is_active: true,
   });
@@ -94,12 +134,27 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
+  const settings = normalizeSettings(body);
+  try {
+    await ultraMsg.updateInstanceSettings(body.instance_id, {
+      token: body.token,
+      ...settings,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to apply UltraMsg instance settings." },
+      { status: 400 }
+    );
+  }
+
   const supabase = createAdminClient();
   const { error } = await supabase.from("whatsapp_instances").update({
     name: body.name,
     instance_id: body.instance_id,
     token: body.token,
     phone_number: body.phone_number || null,
+    webhook_url: settings.webhook_url || null,
+    ultramsg_settings: settings,
     updated_at: new Date().toISOString(),
   }).eq("id", body.id);
 

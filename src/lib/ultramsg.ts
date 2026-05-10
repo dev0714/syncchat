@@ -35,6 +35,17 @@ export interface UltraMsgGenericMessagePayload {
   values: Record<string, string>;
 }
 
+export interface UltraMsgInstanceSettingsPayload {
+  token: string;
+  sendDelay: number | string;
+  sendDelayMax: number | string;
+  webhook_url?: string;
+  webhook_message_received?: boolean | string;
+  webhook_message_create?: boolean | string;
+  webhook_message_ack?: boolean | string;
+  webhook_message_download_media?: boolean | string;
+}
+
 export interface UltraMsgInstanceStatus {
   status: string;
   battery?: string;
@@ -158,11 +169,24 @@ class UltraMsgClient {
     return this.request(instanceId, token, "GET", `contacts?token=${token}`);
   }
 
+  async updateInstanceSettings(instanceId: string, payload: UltraMsgInstanceSettingsPayload): Promise<unknown> {
+    return this.request(instanceId, payload.token, "POST", "instance/settings", {
+      sendDelay: payload.sendDelay,
+      sendDelayMax: payload.sendDelayMax,
+      webhook_url: payload.webhook_url ?? "",
+      webhook_message_received: payload.webhook_message_received ?? false,
+      webhook_message_create: payload.webhook_message_create ?? false,
+      webhook_message_ack: payload.webhook_message_ack ?? false,
+      webhook_message_download_media: payload.webhook_message_download_media ?? false,
+    });
+  }
+
   async setWebhook(instanceId: string, token: string, webhookUrl: string): Promise<unknown> {
-    return this.request(instanceId, token, "POST", "instance/settings", {
-      webhookUrl,
-      sendDelay: "1",
+    return this.updateInstanceSettings(instanceId, {
       token,
+      sendDelay: 1,
+      sendDelayMax: 15,
+      webhook_url: webhookUrl,
     });
   }
 

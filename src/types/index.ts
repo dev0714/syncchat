@@ -11,6 +11,16 @@ export interface Organization {
   settings?: Record<string, unknown>;
 }
 
+export interface UltraMsgInstanceSettings {
+  sendDelay: number;
+  sendDelayMax: number;
+  webhook_url: string;
+  webhook_message_received: boolean;
+  webhook_message_create: boolean;
+  webhook_message_ack: boolean;
+  webhook_message_download_media: boolean;
+}
+
 export interface Profile {
   id: string;
   email: string;
@@ -44,6 +54,7 @@ export interface WhatsAppInstance {
   phone_number?: string;
   status: "connected" | "disconnected" | "qr_required" | "loading";
   webhook_url?: string;
+  ultramsg_settings?: UltraMsgInstanceSettings | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

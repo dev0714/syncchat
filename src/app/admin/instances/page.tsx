@@ -7,10 +7,19 @@ import {
   RefreshCw, QrCode,
 } from "lucide-react";
 import { cn, STATUS_COLORS } from "@/lib/utils";
-import type { Organization, WhatsAppInstance } from "@/types";
+import type { Organization, UltraMsgInstanceSettings, WhatsAppInstance } from "@/types";
 import PacmanLoader from "@/components/ui/PacmanLoader";
 
 const defaultForm = { name: "", instance_id: "", token: "", phone_number: "" };
+const defaultUltraMsgSettings: UltraMsgInstanceSettings = {
+  sendDelay: 1,
+  sendDelayMax: 15,
+  webhook_url: "",
+  webhook_message_received: false,
+  webhook_message_create: false,
+  webhook_message_ack: false,
+  webhook_message_download_media: false,
+};
 
 type OrgWithInstances = Organization & { instances: WhatsAppInstance[] };
 
@@ -34,6 +43,7 @@ export default function AdminInstancesPage() {
   // Modal state
   const [modal, setModal] = useState<{ orgId: string; orgName: string; editing: WhatsAppInstance | null } | null>(null);
   const [form, setForm] = useState({ ...defaultForm });
+  const [ultramsgSettings, setUltraMsgSettings] = useState<UltraMsgInstanceSettings>({ ...defaultUltraMsgSettings });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -94,6 +104,7 @@ export default function AdminInstancesPage() {
 
   function openAdd(org: OrgWithInstances) {
     setForm({ ...defaultForm });
+    setUltraMsgSettings({ ...defaultUltraMsgSettings });
     setError("");
     setSaved(false);
     setModal({ orgId: org.id, orgName: org.name, editing: null });
@@ -105,6 +116,11 @@ export default function AdminInstancesPage() {
       instance_id: inst.instance_id,
       token: inst.token,
       phone_number: inst.phone_number ?? "",
+    });
+    setUltraMsgSettings({
+      ...defaultUltraMsgSettings,
+      ...(inst.ultramsg_settings ?? {}),
+      webhook_url: inst.webhook_url ?? inst.ultramsg_settings?.webhook_url ?? "",
     });
     setError("");
     setSaved(false);
@@ -130,6 +146,8 @@ export default function AdminInstancesPage() {
               instance_id: form.instance_id,
               token: form.token,
               phone_number: form.phone_number || null,
+              webhook_url: ultramsgSettings.webhook_url || null,
+              ultramsg_settings: ultramsgSettings,
             }
           : {
               orgId: modal!.orgId,
@@ -137,6 +155,8 @@ export default function AdminInstancesPage() {
               instance_id: form.instance_id,
               token: form.token,
               phone_number: form.phone_number || null,
+              webhook_url: ultramsgSettings.webhook_url || null,
+              ultramsg_settings: ultramsgSettings,
             }
       ),
     });
@@ -472,6 +492,74 @@ export default function AdminInstancesPage() {
                   value={form.phone_number}
                   onChange={(e) => setForm({ ...form, phone_number: e.target.value })}
                 />
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">UltraMsg Instance Settings</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    These are sent to <span className="font-mono">/instance/settings</span> and stored with the instance.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">Webhook URL</label>
+                    <input
+                      className="input font-mono"
+                      placeholder="https://your-domain.com/webhook/..."
+                      value={ultramsgSettings.webhook_url}
+                      onChange={(e) => setUltraMsgSettings({ ...ultramsgSettings, webhook_url: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Send delay</label>
+                    <input
+                      className="input"
+                      type="number"
+                      min={1}
+                      value={ultramsgSettings.sendDelay}
+                      onChange={(e) => setUltraMsgSettings({ ...ultramsgSettings, sendDelay: Number(e.target.value) || 1 })}
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Max queue delay</label>
+                    <input
+                      className="input"
+                      type="number"
+                      min={1}
+                      value={ultramsgSettings.sendDelayMax}
+                      onChange={(e) => setUltraMsgSettings({ ...ultramsgSettings, sendDelayMax: Number(e.target.value) || 15 })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {[
+                    ["webhook_message_received", "Webhook on message received"],
+                    ["webhook_message_create", "Webhook on message create"],
+                    ["webhook_message_ack", "Webhook on delivery/read ack"],
+                    ["webhook_message_download_media", "Webhook download media"],
+                  ].map(([key, label]) => (
+                    <label
+                      key={key}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2"
+                    >
+                      <span className="text-sm text-slate-700">{label}</span>
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-slate-300 text-whatsapp-teal focus:ring-whatsapp-teal"
+                        checked={Boolean(ultramsgSettings[key as keyof UltraMsgInstanceSettings])}
+                        onChange={(e) =>
+                          setUltraMsgSettings({
+                            ...ultramsgSettings,
+                            [key]: e.target.checked,
+                          } as UltraMsgInstanceSettings)
+                        }
+                      />
+                    </label>
+                  ))}
+                </div>
               </div>
 
               {error && (

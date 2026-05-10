@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS syncchat.whatsapp_instances (
   phone_number TEXT,
   status       TEXT NOT NULL DEFAULT 'disconnected' CHECK (status IN ('connected', 'disconnected', 'qr_required', 'loading')),
   webhook_url  TEXT,
+  ultramsg_settings JSONB NOT NULL DEFAULT '{}'::jsonb,
   is_active    BOOLEAN NOT NULL DEFAULT true,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()

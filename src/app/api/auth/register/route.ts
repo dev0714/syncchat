@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import { createSession } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";

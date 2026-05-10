@@ -364,7 +364,7 @@ export default function AdminInstancesPage() {
                                   {/* QR code */}
                                   <div className="bg-slate-50 rounded-xl p-4 space-y-3">
                                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                      {needsQR ? "QR Code" : "Connection Details"}
+                                      {needsQR ? "QR Code" : "QR Done"}
                                     </p>
                                     {needsQR && d.qrImage ? (
                                       <div className="space-y-2">
@@ -382,10 +382,10 @@ export default function AdminInstancesPage() {
                                       </div>
                                     ) : (
                                       <div className="flex flex-col items-center justify-center h-24 text-slate-300 gap-2">
-                                        {isConnected ? <Wifi className="w-8 h-8 text-green-500" /> : <QrCode className="w-8 h-8" />}
+                                        {isConnected ? <Check className="w-8 h-8 text-green-500" /> : <QrCode className="w-8 h-8" />}
                                         <p className="text-xs text-slate-400 text-center break-all">
                                           {isConnected
-                                            ? "Connected. Use Fetch Live Data if the status needs a refresh."
+                                            ? "QR done. The instance is authenticated and ready."
                                             : d.qrError && needsQR
                                               ? d.qrError
                                               : "No QR available"}

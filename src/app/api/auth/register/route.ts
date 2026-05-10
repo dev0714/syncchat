@@ -109,7 +109,7 @@ async function registerWithRpc(args: {
   orgName: string;
 }): Promise<RegistrationResult> {
   const { name, email, passwordHash, orgName } = args;
-  const supabase = createClient().schema("public");
+  const supabase = createClient();
   const { data, error } = await supabase.rpc("register_account_and_organization", {
     p_name: name.trim(),
     p_email: email,
@@ -120,7 +120,7 @@ async function registerWithRpc(args: {
   if (error) {
     throw new Error(
       error.message.includes("register_account_and_organization")
-        ? "Signup database function is missing. Apply the register_account_and_organization migration in Supabase."
+        ? "Signup database function is missing. Apply the syncchat.register_account_and_organization migration in Supabase."
         : error.message
     );
   }

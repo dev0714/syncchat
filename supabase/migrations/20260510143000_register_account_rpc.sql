@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION public.register_account_and_organization(
+CREATE OR REPLACE FUNCTION syncchat.register_account_and_organization(
   p_name text,
   p_email text,
   p_password_hash text,
@@ -80,4 +80,4 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.register_account_and_organization(text, text, text, text) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION syncchat.register_account_and_organization(text, text, text, text) TO anon, authenticated, service_role;

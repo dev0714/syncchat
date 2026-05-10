@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { Building2, Users, Smartphone, MessageCircle, Shield, ToggleRight, ToggleLeft } from "lucide-react";
 import { formatDate, ROLE_LABELS, ROLE_COLORS, cn } from "@/lib/utils";
 import type { Organization } from "@/types";
 
 export default async function SuperAdminPage() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const [
     { data: orgs, count: orgCount },

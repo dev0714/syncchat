@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import {
   Users, Plus, Trash2, Pencil, Search, X, Phone, Mail, Tag, Upload, FileText, CheckCircle2, AlertCircle,
 } from "lucide-react";
@@ -29,12 +28,10 @@ function parseCsv(text: string): CsvRow[] {
 }
 
 export default function ContactsPage() {
-  const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
-  const [orgId, setOrgId] = useState("");
   const [search, setSearch] = useState("");
 
   // Single contact modal
@@ -55,15 +52,21 @@ export default function ContactsPage() {
 
   async function loadData() {
     setLoading(true);
-    const authRes = await fetch("/api/auth/me");
-    if (!authRes.ok) { setLoading(false); return; }
-    const { user } = await authRes.json();
-    const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", user!.id).single();
-    if (!member) return;
-    setOrgId(member.org_id);
-    const { data } = await supabase.from("contacts").select("*").eq("org_id", member.org_id).order("created_at", { ascending: false });
-    setContacts(data ?? []);
-    setLoading(false);
+    setError("");
+    try {
+      const res = await fetch("/api/contacts");
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? "Failed to load contacts");
+      }
+      const body = await res.json();
+      setContacts(body.contacts ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load contacts");
+      setContacts([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const filtered = contacts.filter((c) =>
@@ -83,25 +86,36 @@ export default function ContactsPage() {
     setSaving(true);
     setError("");
     const tags = form.tags ? form.tags.split(",").map((t) => t.trim()).filter(Boolean) : [];
-    if (editing) {
-      const { error } = await supabase.from("contacts").update({
-        name: form.name || null, phone: form.phone, email: form.email || null, tags, updated_at: new Date().toISOString(),
-      }).eq("id", editing.id);
-      if (error) { setError(error.message); setSaving(false); return; }
-    } else {
-      const { error } = await supabase.from("contacts").insert({
-        org_id: orgId, name: form.name || null, phone: form.phone, email: form.email || null, tags,
+    try {
+      const res = await fetch(editing ? `/api/contacts/${editing.id}` : "/api/contacts", {
+        method: editing ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name || null,
+          phone: form.phone,
+          email: form.email || null,
+          tags,
+        }),
       });
-      if (error) { setError(error.message); setSaving(false); return; }
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error ?? "Failed to save contact");
+      setShowModal(false);
+      await loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save contact");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    setShowModal(false);
-    loadData();
   }
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this contact?")) return;
-    await supabase.from("contacts").delete().eq("id", id);
+    const res = await fetch(`/api/contacts/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      setError(body?.error ?? "Failed to delete contact");
+      return;
+    }
     setContacts((prev) => prev.filter((c) => c.id !== id));
   }
 
@@ -131,23 +145,31 @@ export default function ContactsPage() {
     const valid = csvRows.filter((r) => r.valid);
     if (!valid.length) return;
     setImporting(true);
-    let success = 0, failed = 0;
-
-    for (const row of valid) {
-      const tags = row.tags ? row.tags.split(";").map((t) => t.trim()).filter(Boolean) : [];
-      const { error } = await supabase.from("contacts").insert({
-        org_id: orgId,
-        name: row.name || null,
-        phone: row.phone,
-        email: row.email || null,
-        tags,
+    try {
+      const res = await fetch("/api/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contacts: valid.map((row) => ({
+            name: row.name || null,
+            phone: row.phone,
+            email: row.email || null,
+            tags: row.tags ? row.tags.split(";").map((t) => t.trim()).filter(Boolean) : [],
+          })),
+        }),
       });
-      error ? failed++ : success++;
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error ?? "Failed to import contacts");
+      setImportResult({
+        success: body.success ?? 0,
+        failed: body.failed ?? 0,
+      });
+      await loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to import contacts");
+    } finally {
+      setImporting(false);
     }
-
-    setImporting(false);
-    setImportResult({ success, failed });
-    loadData();
   }
 
   function openImportModal() {

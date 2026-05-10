@@ -1,7 +1,6 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import {
   Shield, Smartphone, Building2, Plus, Pencil, Trash2,
   X, Check, Wifi, WifiOff, ChevronDown, ChevronRight,
@@ -24,7 +23,6 @@ interface InstanceDetails {
 }
 
 export default function AdminInstancesPage() {
-  const supabase = createClient();
   const [orgs, setOrgs] = useState<OrgWithInstances[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -42,25 +40,23 @@ export default function AdminInstancesPage() {
 
   async function loadData() {
     setLoading(true);
-    const { data: orgData } = await supabase
-      .from("organizations")
-      .select("*")
-      .order("created_at", { ascending: false });
+    setError("");
+    try {
+      const res = await fetch("/api/admin/instances", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to load organizations");
+        setOrgs([]);
+        return;
+      }
 
-    if (!orgData) { setLoading(false); return; }
-
-    const { data: instanceData } = await supabase
-      .from("whatsapp_instances")
-      .select("*")
-      .order("created_at");
-
-    const withInstances: OrgWithInstances[] = (orgData as Organization[]).map((org) => ({
-      ...org,
-      instances: ((instanceData ?? []) as WhatsAppInstance[]).filter((i) => i.org_id === org.id),
-    }));
-
-    setOrgs(withInstances);
-    setLoading(false);
+      setOrgs((data.orgs ?? []) as OrgWithInstances[]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load organizations");
+      setOrgs([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function fetchInstanceDetails(instId: string) {
@@ -121,26 +117,33 @@ export default function AdminInstancesPage() {
     setSaving(true);
     setError("");
 
-    if (modal?.editing) {
-      const { error } = await supabase.from("whatsapp_instances").update({
-        name: form.name,
-        instance_id: form.instance_id,
-        token: form.token,
-        phone_number: form.phone_number || null,
-        updated_at: new Date().toISOString(),
-      }).eq("id", modal.editing.id);
-      if (error) { setError(error.message); setSaving(false); return; }
-    } else {
-      const { error } = await supabase.from("whatsapp_instances").insert({
-        org_id: modal!.orgId,
-        name: form.name,
-        instance_id: form.instance_id,
-        token: form.token,
-        phone_number: form.phone_number || null,
-        status: "disconnected",
-        is_active: true,
-      });
-      if (error) { setError(error.message); setSaving(false); return; }
+    const response = await fetch("/api/admin/instances", {
+      method: modal?.editing ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        modal?.editing
+          ? {
+              id: modal.editing.id,
+              name: form.name,
+              instance_id: form.instance_id,
+              token: form.token,
+              phone_number: form.phone_number || null,
+            }
+          : {
+              orgId: modal!.orgId,
+              name: form.name,
+              instance_id: form.instance_id,
+              token: form.token,
+              phone_number: form.phone_number || null,
+            }
+      ),
+    });
+
+    const data = await response.json();
+    if (!response.ok || data.error) {
+      setError(data.error || "Unable to save instance");
+      setSaving(false);
+      return;
     }
 
     setSaving(false);
@@ -155,7 +158,16 @@ export default function AdminInstancesPage() {
 
   async function handleDelete(inst: WhatsAppInstance) {
     if (!confirm(`Delete instance "${inst.name}"? This cannot be undone.`)) return;
-    await supabase.from("whatsapp_instances").delete().eq("id", inst.id);
+    const response = await fetch("/api/admin/instances", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: inst.id }),
+    });
+    const data = await response.json();
+    if (!response.ok || data.error) {
+      setError(data.error || "Unable to delete instance");
+      return;
+    }
     loadData();
   }
 
@@ -192,6 +204,12 @@ export default function AdminInstancesPage() {
           </p>
         </div>
       </div>
+
+      {!loading && error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-16">

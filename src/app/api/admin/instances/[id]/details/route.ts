@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { hasSuperAdminAccess } from "@/lib/auth/permissions";
 
 const BASE = "https://api.ultramsg.com";
 
@@ -9,13 +10,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const currentUser = await getCurrentUser();
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: member } = await supabase
-    .from("org_members")
-    .select("role")
-    .eq("user_id", currentUser.userId)
-    .eq("role", "super_admin")
-    .single();
-  if (!member) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const isSuperAdmin = await hasSuperAdminAccess(currentUser.userId, currentUser.role);
+  if (!isSuperAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { data: inst } = await supabase
     .from("whatsapp_instances")

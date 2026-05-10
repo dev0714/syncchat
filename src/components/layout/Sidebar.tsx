@@ -132,7 +132,7 @@ export default function Sidebar({ member }: SidebarProps) {
         ))}
 
         {/* Super admin only */}
-        {member.role === "super_admin" && (
+        {(member.role === "super_admin" || member.user?.role === "super_admin") && (
           <Link
             href="/admin"
             className={cn("sidebar-item relative z-10 mt-2", isActive("/admin") ? "sidebar-item-active" : "sidebar-item-inactive")}

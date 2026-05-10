@@ -75,7 +75,7 @@ export default function SettingsPage() {
 
     const member = memberData as OrgMember;
     setOrgId(member.org_id);
-    setMyRole(member.role);
+    setMyRole(user.role === "super_admin" ? "super_admin" : member.role);
     setOrgName(member.organization?.name ?? "");
 
     const { data: org_settings } = await supabase.from("org_settings").select("*").eq("org_id", member.org_id).single();

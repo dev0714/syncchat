@@ -68,7 +68,7 @@ export default function InstancesPage() {
       }
 
       setOrgId(member.org_id);
-      setIsSuperAdmin(member.role === "super_admin");
+      setIsSuperAdmin(user.role === "super_admin" || member.role === "super_admin");
 
       const { data, error } = await supabase
         .from("whatsapp_instances")

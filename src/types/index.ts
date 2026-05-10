@@ -31,6 +31,7 @@ export interface OrgMember {
   user?: {
     name?: string;
     email?: string;
+    role?: UserRole | null;
   };
 }
 

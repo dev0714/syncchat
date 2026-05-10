@@ -16,14 +16,31 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .maybeSingle();
 
   const isSuperAdmin = await hasSuperAdminAccess(currentUser.userId, currentUser.role);
-  if (!isSuperAdmin || !member) redirect("/dashboard");
+  if (!isSuperAdmin) redirect("/dashboard");
+
+  const sidebarMember =
+    member ?? {
+      id: currentUser.userId,
+      org_id: currentUser.orgId ?? "",
+      user_id: currentUser.userId,
+      role: "super_admin",
+      is_active: true,
+      created_at: new Date().toISOString(),
+      organization: null,
+      profile: null,
+      user: {
+        name: currentUser.name ?? undefined,
+        email: currentUser.email,
+        role: "super_admin",
+      },
+    };
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
       <Sidebar
         member={{
-          ...member,
-          role: isSuperAdmin ? "super_admin" : member.role,
+          ...sidebarMember,
+          role: isSuperAdmin ? "super_admin" : sidebarMember.role,
           user: {
             name: currentUser.name ?? undefined,
             email: currentUser.email,

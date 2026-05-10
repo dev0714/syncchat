@@ -58,7 +58,7 @@ export default function InstancesPage() {
       const { data: member, error: memberError } = await supabase
         .from("org_members")
         .select("org_id, role")
-        .eq("user_id", user.id)
+        .eq("user_id", user.userId)
         .single();
 
       if (memberError || !member) {

@@ -16,8 +16,10 @@ type OrgWithInstances = Organization & { instances: WhatsAppInstance[] };
 
 interface InstanceDetails {
   accountStatus: string | null;
+  normalizedStatus: string | null;
   substatus: string | null;
   qrImage: string | null;
+  phoneInfo?: Record<string, unknown> | null;
   statusError?: string | null;
   qrError?: string | null;
 }
@@ -259,9 +261,22 @@ export default function AdminInstancesPage() {
                         {org.instances.map((inst) => {
                           const d = details[inst.id];
                           const isFetching = fetching.has(inst.id);
-                          const isConnected = inst.status === "connected";
-                          const liveStatus = d?.accountStatus ?? null;
-                          const needsQR = inst.status === "qr_required" || liveStatus === "qr";
+                          const liveStatus = d?.normalizedStatus ?? d?.accountStatus ?? inst.status;
+                          const isConnected = liveStatus === "connected";
+                          const needsQR = liveStatus === "qr_required";
+                          const statusLabel = isConnected ? "connected" : (liveStatus ?? inst.status);
+                          const statusTone = isConnected
+                            ? "bg-green-500"
+                            : liveStatus === "qr_required"
+                              ? "bg-yellow-500"
+                              : "bg-slate-300";
+                          const phoneSummary = isConnected && d?.phoneInfo && typeof d.phoneInfo === "object"
+                            ? Object.entries(d.phoneInfo)
+                                .filter(([, value]) => ["string", "number", "boolean"].includes(typeof value))
+                                .slice(0, 3)
+                                .map(([key, value]) => `${key}: ${String(value)}`)
+                                .join(" • ")
+                            : "";
 
                           return (
                             <div key={inst.id} className="px-5 py-4 space-y-4">
@@ -279,7 +294,14 @@ export default function AdminInstancesPage() {
                                   <p className="text-sm font-semibold text-slate-800">{inst.name}</p>
                                   <p className="text-xs text-slate-400 font-mono">{inst.instance_id}</p>
                                 </div>
-                                <span className={cn("badge", STATUS_COLORS[inst.status])}>{inst.status}</span>
+                                <span className={cn(
+                                  "badge",
+                                  isConnected ? "bg-green-100 text-green-700" :
+                                  liveStatus === "qr_required" ? "bg-amber-100 text-amber-700" :
+                                  STATUS_COLORS[inst.status] ?? "bg-slate-100 text-slate-600"
+                                )}>
+                                  {statusLabel}
+                                </span>
                                 <button
                                   onClick={() => fetchInstanceDetails(inst.id)}
                                   disabled={isFetching}
@@ -313,18 +335,23 @@ export default function AdminInstancesPage() {
                                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Instance Status</p>
 
                                     <div className="flex items-center gap-2">
-                                      <div className={cn(
-                                        "w-2 h-2 rounded-full",
-                                        liveStatus === "authenticated" ? "bg-green-500" :
-                                        liveStatus === "qr" ? "bg-yellow-500" : "bg-slate-300"
-                                      )} />
+                                      <div className={cn("w-2 h-2 rounded-full", statusTone)} />
                                       <span className="text-sm font-medium text-slate-800 capitalize">
-                                        {liveStatus ?? "Unknown"}
+                                        {statusLabel}
                                       </span>
                                     </div>
 
                                     {d.substatus && (
                                       <p className="text-xs text-slate-500 capitalize">{d.substatus}</p>
+                                    )}
+
+                                    {isConnected && d.phoneInfo && (
+                                      <div className="rounded-lg border border-green-100 bg-green-50 px-3 py-2 text-xs text-green-800 space-y-1">
+                                        <p className="font-semibold">Connected session detected</p>
+                                        <p className="break-all text-green-700">
+                                          {phoneSummary || "UltraMsg returned connected session details."}
+                                        </p>
+                                      </div>
                                     )}
 
                                     {!d.accountStatus && (
@@ -336,8 +363,10 @@ export default function AdminInstancesPage() {
 
                                   {/* QR code */}
                                   <div className="bg-slate-50 rounded-xl p-4 space-y-3">
-                                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">QR Code</p>
-                                    {d.qrImage ? (
+                                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                      {needsQR ? "QR Code" : "Connection Details"}
+                                    </p>
+                                    {needsQR && d.qrImage ? (
                                       <div className="space-y-2">
                                         <p className="text-xs text-yellow-600 font-semibold flex items-center gap-1">
                                           <QrCode className="w-3.5 h-3.5" /> Scan with WhatsApp to connect
@@ -353,9 +382,13 @@ export default function AdminInstancesPage() {
                                       </div>
                                     ) : (
                                       <div className="flex flex-col items-center justify-center h-24 text-slate-300 gap-2">
-                                        <QrCode className="w-8 h-8" />
+                                        {isConnected ? <Wifi className="w-8 h-8 text-green-500" /> : <QrCode className="w-8 h-8" />}
                                         <p className="text-xs text-slate-400 text-center break-all">
-                                          {d.qrError ?? (isConnected ? "Already connected" : "No QR available")}
+                                          {isConnected
+                                            ? "Connected. Use Fetch Live Data if the status needs a refresh."
+                                            : d.qrError && needsQR
+                                              ? d.qrError
+                                              : "No QR available"}
                                         </p>
                                       </div>
                                     )}

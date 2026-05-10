@@ -39,17 +39,56 @@ export default function InstancesPage() {
 
   async function loadData() {
     setLoading(true);
-    const authRes = await fetch("/api/auth/me");
-    if (!authRes.ok) { setLoading(false); return; }
-    const { user } = await authRes.json();
-    if (!user) return;
-    const { data: member } = await supabase.from("org_members").select("org_id, role").eq("user_id", user.id).single();
-    if (!member) return;
-    setOrgId(member.org_id);
-    setIsSuperAdmin(member.role === "super_admin");
-    const { data } = await supabase.from("whatsapp_instances").select("*").eq("org_id", member.org_id).order("created_at");
-    setInstances(data ?? []);
-    setLoading(false);
+    setError("");
+    try {
+      const authRes = await fetch("/api/auth/me");
+      if (!authRes.ok) {
+        setError("Unable to load your session.");
+        setInstances([]);
+        return;
+      }
+
+      const { user } = await authRes.json();
+      if (!user) {
+        setError("No signed-in user found.");
+        setInstances([]);
+        return;
+      }
+
+      const { data: member, error: memberError } = await supabase
+        .from("org_members")
+        .select("org_id, role")
+        .eq("user_id", user.id)
+        .single();
+
+      if (memberError || !member) {
+        setError(memberError?.message ?? "No organization membership found.");
+        setInstances([]);
+        return;
+      }
+
+      setOrgId(member.org_id);
+      setIsSuperAdmin(member.role === "super_admin");
+
+      const { data, error } = await supabase
+        .from("whatsapp_instances")
+        .select("*")
+        .eq("org_id", member.org_id)
+        .order("created_at");
+
+      if (error) {
+        setError(error.message);
+        setInstances([]);
+        return;
+      }
+
+      setInstances(data ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load instances.");
+      setInstances([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function openAdd() {
@@ -170,6 +209,12 @@ export default function InstancesPage() {
           </p>
         </div>
       </div>
+
+      {!loading && error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       {/* Grid */}
         {loading ? (

@@ -216,6 +216,7 @@ export default function FlowsPage() {
   const triggerInfo = (type: string) => TRIGGER_TYPES.find((t) => t.value === type);
 
   const promptComplete = form.prompt.role.trim().length > 0;
+  const setupComplete = form.name.trim().length > 0 && form.n8n_workflow_id.trim().length > 0;
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
@@ -426,8 +427,9 @@ export default function FlowsPage() {
                     <p className="text-xs text-slate-400 mt-1">The URL SyncChat will POST to when this flow triggers</p>
                   </div>
                   <div>
-                    <label className="label">Workflow ID (optional)</label>
+                    <label className="label">Workflow ID *</label>
                     <input className="input" placeholder="Workflow ID" value={form.n8n_workflow_id} onChange={(e) => setForm({ ...form, n8n_workflow_id: e.target.value })} />
+                    <p className="text-xs text-slate-400 mt-1">This should match the workflow in n8n so SyncChat can link the flow to the right automation.</p>
                   </div>
                 </div>
               )}
@@ -583,8 +585,14 @@ export default function FlowsPage() {
                 <>
                   <button onClick={() => setShowModal(false)} className="btn-secondary flex-1">Cancel</button>
                   <button
-                    onClick={() => { if (!form.name) { setError("Name is required."); return; } setError(""); setModalStep("prompt"); }}
-                    className="btn-primary flex-1 flex items-center justify-center gap-2"
+                    onClick={() => {
+                      if (!form.name.trim()) { setError("Name is required."); return; }
+                      if (!form.n8n_workflow_id.trim()) { setError("N8n workflow ID is required."); return; }
+                      setError("");
+                      setModalStep("prompt");
+                    }}
+                    disabled={!setupComplete}
+                    className="btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next: AI Prompt <ChevronRight className="w-4 h-4" />
                   </button>
@@ -592,7 +600,7 @@ export default function FlowsPage() {
               ) : (
                 <>
                   <button onClick={() => setModalStep("basics")} className="btn-secondary flex-1">Back</button>
-                  <button onClick={handleSave} disabled={saving} className="btn-primary flex-1 flex items-center justify-center gap-2">
+                  <button onClick={handleSave} disabled={saving || !setupComplete || !promptComplete} className="btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                     {saving && <PacmanLoader size={14} className="mr-1.5" label="Saving flow" />}
                     {saving ? "Saving..." : editing ? "Save Changes" : "Create Flow"}
                   </button>

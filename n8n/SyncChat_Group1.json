@@ -209,7 +209,7 @@
         -176
       ],
       "id": "7cfbbf11-127d-431a-958e-b0949d826863",
-      "name": "Save Inbound Message",
+      "name": "Save Inbound Message"
     },
     {
       "parameters": {
@@ -265,7 +265,7 @@
         48
       ],
       "id": "acad8851-f4b0-4891-b054-120fcd9a6491",
-      "name": "Save Outbound Message",
+      "name": "Save Outbound Message"
     },
     {
       "parameters": {

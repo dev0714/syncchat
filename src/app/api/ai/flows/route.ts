@@ -8,6 +8,24 @@ type FlowActionBody = {
   isActive?: boolean;
 };
 
+async function resolveFlowTarget(supabase: ReturnType<typeof createAdminClient>, flow: Record<string, unknown>) {
+  const legacyWebhook = typeof flow.webhook_url === "string" ? flow.webhook_url.trim() : "";
+  if (legacyWebhook) return legacyWebhook;
+
+  const orgId = typeof flow.org_id === "string" ? flow.org_id : "";
+  if (!orgId) return "";
+
+  const { data: settings } = await supabase
+    .from("org_settings")
+    .select("n8n_base_url")
+    .eq("org_id", orgId)
+    .maybeSingle();
+
+  const trimmed = settings?.n8n_base_url?.trim().replace(/\/$/, "") ?? "";
+  if (!trimmed) return "";
+  return /\/webhook(-test)?\//i.test(trimmed) ? trimmed : `${trimmed}/webhook/syncchat-whatsapp`;
+}
+
 function unauthorizedIfNeeded(req: NextRequest) {
   const expectedSecret = process.env.CRON_SECRET;
   const providedSecret = req.headers.get("x-cron-secret");
@@ -69,19 +87,31 @@ export async function POST(req: NextRequest) {
   }
 
   if (action === "trigger") {
-    if (!flow.webhook_url) {
-      return NextResponse.json({ error: "This flow has no webhook URL configured." }, { status: 400 });
+    const triggeredAt = new Date().toISOString();
+    const target = await resolveFlowTarget(supabase, flow as Record<string, unknown>);
+    if (!target) {
+      return NextResponse.json({ error: "No n8n endpoint configured for this flow." }, { status: 400 });
     }
 
-    const triggeredAt = new Date().toISOString();
-    const triggerResponse = await fetch(flow.webhook_url, {
+    const triggerResponse = await fetch(target, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         triggered_by: "ai",
         flow_id: flow.id,
         org_id: flow.org_id,
+        instance_id: flow.instance_id,
         timestamp: triggeredAt,
+        flow: {
+          name: flow.name,
+          description: flow.description,
+          trigger_type: flow.trigger_type,
+          trigger_keyword: flow.trigger_keyword,
+          prompt_role: flow.prompt_role,
+          prompt_guardrails: flow.prompt_guardrails,
+          prompt_tone: flow.prompt_tone,
+          prompt_context: flow.prompt_context,
+        },
       }),
     });
 

@@ -157,12 +157,15 @@ export interface ScheduledBulkMessage {
 export interface N8nFlow {
   id: string;
   org_id: string;
+  instance_id?: string;
   name: string;
   description?: string;
-  n8n_workflow_id: string;
-  webhook_url?: string;
   trigger_type: "inbound_message" | "keyword" | "new_contact" | "manual" | "schedule";
-  trigger_config?: Record<string, unknown>;
+  trigger_keyword?: string;
+  prompt_role?: string;
+  prompt_guardrails?: string;
+  prompt_tone?: string;
+  prompt_context?: string;
   is_active: boolean;
   last_triggered_at?: string;
   created_at: string;

@@ -2,8 +2,8 @@
 import { useEffect, useState } from "react";
 import {
   Zap, Plus, Trash2, Pencil, X, Play, ToggleLeft, ToggleRight,
-  Globe, Clock, MessageSquare, UserPlus, Hash, Bot, Shield, Palette,
-  BookOpen, Wrench, ChevronRight, Smartphone,
+  Clock, MessageSquare, UserPlus, Hash, Bot, Shield, Palette,
+  BookOpen, ChevronRight, Smartphone,
 } from "lucide-react";
 import type { N8nFlow } from "@/types";
 import { formatDateTime } from "@/lib/utils";
@@ -18,38 +18,27 @@ const TRIGGER_TYPES = [
   { value: "schedule",        label: "Scheduled",       icon: Clock,         description: "Runs on a defined schedule" },
 ] as const;
 
-const PLACEHOLDER_TOOLS = [
-  { id: "web_search",    label: "Web Search",         description: "Search the web for live information" },
-  { id: "crm_lookup",    label: "CRM Lookup",         description: "Look up contact records" },
-  { id: "send_email",    label: "Send Email",         description: "Send an email notification" },
-  { id: "create_ticket", label: "Create Ticket",      description: "Create a support or sales ticket" },
-  { id: "calendar",      label: "Book Appointment",   description: "Schedule a calendar event" },
-  { id: "webhook",       label: "Custom Webhook",     description: "Call an external API endpoint" },
-];
-
 const PROMPT_TABS = [
   { id: "role",       label: "Role",        icon: Bot },
   { id: "guardrails", label: "Guardrails",  icon: Shield },
   { id: "tone",       label: "Tone & Style",icon: Palette },
   { id: "context",    label: "Context",     icon: BookOpen },
-  { id: "tools",      label: "Tools",       icon: Wrench },
 ] as const;
 
 type PromptTab = typeof PROMPT_TABS[number]["id"];
 
-interface WhatsAppInstance { id: string; name: string; instance_id: string; }
+interface WhatsAppInstance { id: string; name: string; instance_id: string; phone_number?: string | null; }
 
-const defaultPrompt = { role: "", guardrails: "", tone: "", context: "" };
 const defaultForm = {
   name: "",
   description: "",
-  n8n_workflow_id: "",
-  webhook_url: "",
   trigger_type: "inbound_message" as N8nFlow["trigger_type"],
-  keyword: "",
+  trigger_keyword: "",
   instance_id: "",
-  prompt: { ...defaultPrompt },
-  tools: [] as string[],
+  prompt_role: "",
+  prompt_guardrails: "",
+  prompt_tone: "",
+  prompt_context: "",
 };
 
 async function fetchJsonWithTimeout(input: RequestInfo | URL, init?: RequestInit, timeoutMs = 12000) {
@@ -72,7 +61,7 @@ export default function FlowsPage() {
   const [instances, setInstances] = useState<WhatsAppInstance[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<N8nFlow | null>(null);
-  const [form, setForm] = useState({ ...defaultForm, prompt: { ...defaultPrompt } });
+  const [form, setForm] = useState({ ...defaultForm });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [triggering, setTriggering] = useState<string | null>(null);
@@ -103,7 +92,7 @@ export default function FlowsPage() {
 
   function openAdd() {
     setEditing(null);
-    setForm({ ...defaultForm, prompt: { ...defaultPrompt } });
+    setForm({ ...defaultForm });
     setError("");
     setActiveTab("role");
     setModalStep("basics");
@@ -112,23 +101,18 @@ export default function FlowsPage() {
 
   function openEdit(f: N8nFlow) {
     setEditing(f);
-    const config = f.trigger_config as Record<string, unknown> | null;
-    const savedPrompt = (config?.prompt as Record<string, string>) ?? {};
+    const legacyConfig = (f as N8nFlow & { trigger_config?: Record<string, unknown> }).trigger_config ?? {};
+    const legacyPrompt = (legacyConfig.prompt as Record<string, string>) ?? {};
     setForm({
       name: f.name,
       description: f.description ?? "",
-      n8n_workflow_id: f.n8n_workflow_id,
-      webhook_url: f.webhook_url ?? "",
       trigger_type: f.trigger_type,
-      keyword: (config?.keyword as string) ?? "",
-      instance_id: (config?.instance_id as string) ?? "",
-      prompt: {
-        role:       savedPrompt.role       ?? "",
-        guardrails: savedPrompt.guardrails ?? "",
-        tone:       savedPrompt.tone       ?? "",
-        context:    savedPrompt.context    ?? "",
-      },
-      tools: (config?.tools as string[]) ?? [],
+      trigger_keyword: f.trigger_keyword ?? (legacyConfig.keyword as string) ?? "",
+      instance_id: f.instance_id ?? (legacyConfig.instance_id as string) ?? "",
+      prompt_role: f.prompt_role ?? legacyPrompt.role ?? "",
+      prompt_guardrails: f.prompt_guardrails ?? legacyPrompt.guardrails ?? "",
+      prompt_tone: f.prompt_tone ?? legacyPrompt.tone ?? "",
+      prompt_context: f.prompt_context ?? legacyPrompt.context ?? "",
     });
     setError("");
     setActiveTab("role");
@@ -138,6 +122,8 @@ export default function FlowsPage() {
 
   async function handleSave() {
     if (!form.name) { setError("Name is required."); return; }
+    if (!form.instance_id) { setError("WhatsApp instance is required."); return; }
+    if (!form.prompt_role.trim()) { setError("Agent role is required."); return; }
     setSaving(true);
     try {
       const { response: res, body } = await fetchJsonWithTimeout("/api/flows", {
@@ -148,13 +134,13 @@ export default function FlowsPage() {
           orgId,
           name: form.name,
           description: form.description || null,
-          n8n_workflow_id: form.n8n_workflow_id,
-          webhook_url: form.webhook_url || null,
           trigger_type: form.trigger_type,
-          keyword: form.keyword || undefined,
-          instance_id: form.instance_id || undefined,
-          prompt: form.prompt,
-          tools: form.tools,
+          trigger_keyword: form.trigger_keyword || undefined,
+          instance_id: form.instance_id,
+          prompt_role: form.prompt_role,
+          prompt_guardrails: form.prompt_guardrails,
+          prompt_tone: form.prompt_tone,
+          prompt_context: form.prompt_context,
         }),
       });
       if (!res.ok) throw new Error(body?.error ?? "Failed to save flow");
@@ -215,8 +201,8 @@ export default function FlowsPage() {
 
   const triggerInfo = (type: string) => TRIGGER_TYPES.find((t) => t.value === type);
 
-  const promptComplete = form.prompt.role.trim().length > 0;
-  const setupComplete = form.name.trim().length > 0 && form.n8n_workflow_id.trim().length > 0;
+  const promptComplete = form.prompt_role.trim().length > 0;
+  const setupComplete = form.name.trim().length > 0 && form.instance_id.trim().length > 0;
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
@@ -255,10 +241,10 @@ export default function FlowsPage() {
           {flows.map((f) => {
             const info = triggerInfo(f.trigger_type);
             const TriggerIcon = info?.icon ?? Zap;
-            const config = f.trigger_config as Record<string, unknown> | null;
-            const prompt = config?.prompt as Record<string, string> | null;
-            const tools = (config?.tools as string[]) ?? [];
-            const linkedInstance = instances.find((i) => i.id === config?.instance_id);
+            const legacyConfig = (f as N8nFlow & { trigger_config?: Record<string, unknown> }).trigger_config ?? {};
+            const linkedInstance = instances.find((i) => i.id === f.instance_id || i.id === (legacyConfig.instance_id as string));
+            const triggerKeyword = f.trigger_keyword ?? (legacyConfig.keyword as string) ?? "";
+            const promptRole = f.prompt_role ?? ((legacyConfig.prompt as Record<string, string> | undefined)?.role ?? "");
             return (
               <div key={f.id} className={`card p-5 space-y-4 ${!f.is_active ? "opacity-60" : ""}`}>
                 <div className="flex items-start justify-between">
@@ -281,30 +267,20 @@ export default function FlowsPage() {
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full font-medium">{info?.label ?? f.trigger_type}</span>
-                    {!!config?.keyword && (
-                      <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-full font-mono">keyword: {String(config.keyword)}</span>
+                    {triggerKeyword && (
+                      <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-full font-mono">keyword: {triggerKeyword}</span>
                     )}
                     {linkedInstance && (
                       <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full flex items-center gap-1">
-                        <Smartphone className="w-3 h-3" />{linkedInstance.name}
+                        <Smartphone className="w-3 h-3" />{linkedInstance.name} ({linkedInstance.instance_id})
                       </span>
-                    )}
-                    {tools.length > 0 && (
-                      <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full">{tools.length} tool{tools.length > 1 ? "s" : ""}</span>
                     )}
                   </div>
 
-                  {prompt?.role && (
+                  {promptRole && (
                     <div className="bg-slate-50 rounded-lg px-3 py-2">
                       <p className="text-xs text-slate-400 font-medium mb-0.5">AI Role</p>
-                      <p className="text-xs text-slate-600 line-clamp-2">{prompt.role}</p>
-                    </div>
-                  )}
-
-                  {f.webhook_url && (
-                    <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
-                      <Globe className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                      <p className="text-xs text-slate-500 truncate font-mono">{f.webhook_url}</p>
+                      <p className="text-xs text-slate-600 line-clamp-2">{promptRole}</p>
                     </div>
                   )}
                   {f.last_triggered_at && (
@@ -387,9 +363,9 @@ export default function FlowsPage() {
                       value={form.instance_id}
                       onChange={(e) => setForm({ ...form, instance_id: e.target.value })}
                     >
-                      <option value="">— Select an instance (optional) —</option>
+                      <option value="">— Select an instance —</option>
                       {instances.map((i) => (
-                        <option key={i.id} value={i.id}>{i.name} ({i.instance_id})</option>
+                        <option key={i.id} value={i.id}>{i.name} ({i.phone_number ?? i.instance_id})</option>
                       ))}
                     </select>
                     <p className="text-xs text-slate-400 mt-1">The WhatsApp number this flow will run on</p>
@@ -417,20 +393,9 @@ export default function FlowsPage() {
                   {form.trigger_type === "keyword" && (
                     <div>
                       <label className="label">Keyword to Match</label>
-                      <input className="input" placeholder="e.g. HELLO, ORDER, SUPPORT" value={form.keyword} onChange={(e) => setForm({ ...form, keyword: e.target.value })} />
+                      <input className="input" placeholder="e.g. HELLO, ORDER, SUPPORT" value={form.trigger_keyword} onChange={(e) => setForm({ ...form, trigger_keyword: e.target.value })} />
                     </div>
                   )}
-
-                  <div>
-                    <label className="label">Webhook URL</label>
-                    <input className="input" placeholder="https://your-domain.com/webhook/xxx" value={form.webhook_url} onChange={(e) => setForm({ ...form, webhook_url: e.target.value })} />
-                    <p className="text-xs text-slate-400 mt-1">The URL SyncChat will POST to when this flow triggers</p>
-                  </div>
-                  <div>
-                    <label className="label">Workflow ID *</label>
-                    <input className="input" placeholder="Workflow ID" value={form.n8n_workflow_id} onChange={(e) => setForm({ ...form, n8n_workflow_id: e.target.value })} />
-                    <p className="text-xs text-slate-400 mt-1">This should match the workflow in n8n so SyncChat can link the flow to the right automation.</p>
-                  </div>
                 </div>
               )}
 
@@ -459,11 +424,8 @@ export default function FlowsPage() {
                       >
                         <Icon className="w-3.5 h-3.5" />
                         {label}
-                        {id !== "tools" && form.prompt[id as keyof typeof form.prompt]?.trim() && (
+                        {((form as Record<string, string>)[`prompt_${id}`] ?? "").trim() && (
                           <span className="w-1.5 h-1.5 bg-green-400 rounded-full" />
-                        )}
-                        {id === "tools" && form.tools.length > 0 && (
-                          <span className="bg-orange-100 text-orange-700 px-1 rounded-full text-xs">{form.tools.length}</span>
                         )}
                       </button>
                     ))}
@@ -478,8 +440,8 @@ export default function FlowsPage() {
                         <textarea
                           className="input min-h-[140px] resize-none"
                           placeholder={`e.g. You are a helpful customer support agent for Acme Corp. Your primary job is to answer product questions, assist with orders, and escalate complex issues to human agents. You represent the brand professionally at all times.`}
-                          value={form.prompt.role}
-                          onChange={(e) => setForm({ ...form, prompt: { ...form.prompt, role: e.target.value } })}
+                          value={form.prompt_role}
+                          onChange={(e) => setForm({ ...form, prompt_role: e.target.value })}
                         />
                       </div>
                     </div>
@@ -493,8 +455,8 @@ export default function FlowsPage() {
                       <textarea
                         className="input min-h-[140px] resize-none"
                         placeholder={`e.g. Never share pricing without manager approval. Do not discuss competitors. Never promise delivery dates. If a customer is abusive, politely end the conversation. Do not make up information — if you don't know, say so and offer to escalate.`}
-                        value={form.prompt.guardrails}
-                        onChange={(e) => setForm({ ...form, prompt: { ...form.prompt, guardrails: e.target.value } })}
+                        value={form.prompt_guardrails}
+                        onChange={(e) => setForm({ ...form, prompt_guardrails: e.target.value })}
                       />
                     </div>
                   )}
@@ -507,8 +469,8 @@ export default function FlowsPage() {
                       <textarea
                         className="input min-h-[140px] resize-none"
                         placeholder={`e.g. Friendly and professional. Use simple, clear language. Avoid jargon. Keep responses concise — under 3 sentences where possible. Use the customer's name when known. Mirror the energy of the conversation.`}
-                        value={form.prompt.tone}
-                        onChange={(e) => setForm({ ...form, prompt: { ...form.prompt, tone: e.target.value } })}
+                        value={form.prompt_tone}
+                        onChange={(e) => setForm({ ...form, prompt_tone: e.target.value })}
                       />
                     </div>
                   )}
@@ -521,56 +483,9 @@ export default function FlowsPage() {
                       <textarea
                         className="input min-h-[140px] resize-none"
                         placeholder={`e.g. Acme Corp is a South African e-commerce retailer selling electronics and appliances. We operate Mon–Fri 8am–6pm SAST. Our return policy allows 30 days with receipt. Deliveries take 3–5 business days nationally. WhatsApp support is available 24/7 via this AI agent.`}
-                        value={form.prompt.context}
-                        onChange={(e) => setForm({ ...form, prompt: { ...form.prompt, context: e.target.value } })}
+                        value={form.prompt_context}
+                        onChange={(e) => setForm({ ...form, prompt_context: e.target.value })}
                       />
-                    </div>
-                  )}
-
-                  {/* Tools */}
-                  {activeTab === "tools" && (
-                    <div className="space-y-3">
-                      <div>
-                        <label className="label">Agent Tools</label>
-                        <p className="text-xs text-slate-400 mb-3">Select the tools your AI agent can use. More tools will be added over time.</p>
-                      </div>
-                      <div className="space-y-2">
-                        {PLACEHOLDER_TOOLS.map((tool) => (
-                          <label
-                            key={tool.id}
-                            className={cn(
-                              "flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors",
-                              form.tools.includes(tool.id)
-                                ? "border-purple-300 bg-purple-50"
-                                : "border-slate-200 hover:border-slate-300"
-                            )}
-                          >
-                            <input
-                              type="checkbox"
-                              className="mt-0.5 accent-purple-600"
-                              checked={form.tools.includes(tool.id)}
-                              onChange={(e) => {
-                                setForm({
-                                  ...form,
-                                  tools: e.target.checked
-                                    ? [...form.tools, tool.id]
-                                    : form.tools.filter((t) => t !== tool.id),
-                                });
-                              }}
-                            />
-                            <div>
-                              <p className={cn("text-sm font-medium", form.tools.includes(tool.id) ? "text-purple-700" : "text-slate-700")}>
-                                {tool.label}
-                              </p>
-                              <p className="text-xs text-slate-400 mt-0.5">{tool.description}</p>
-                            </div>
-                            {form.tools.includes(tool.id) && (
-                              <span className="ml-auto text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium self-start">Enabled</span>
-                            )}
-                          </label>
-                        ))}
-                      </div>
-                      <p className="text-xs text-slate-400 pt-1">More tools coming soon. Selected tools are passed to the AI agent at runtime.</p>
                     </div>
                   )}
                 </div>
@@ -587,7 +502,7 @@ export default function FlowsPage() {
                   <button
                     onClick={() => {
                       if (!form.name.trim()) { setError("Name is required."); return; }
-                      if (!form.n8n_workflow_id.trim()) { setError("N8n workflow ID is required."); return; }
+                      if (!form.instance_id.trim()) { setError("WhatsApp instance is required."); return; }
                       setError("");
                       setModalStep("prompt");
                     }}

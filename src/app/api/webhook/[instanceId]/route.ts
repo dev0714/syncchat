@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(req: NextRequest, { params }: { params: { instanceId: string } }) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const payload = await req.json();
 
   // Find instance
@@ -88,22 +88,46 @@ export async function POST(req: NextRequest, { params }: { params: { instanceId:
   // Forward to N8n flows
   const { data: flows } = await supabase
     .from("n8n_flows")
-    .select("webhook_url, trigger_config")
+    .select("id, instance_id, trigger_type, trigger_keyword, prompt_role, prompt_guardrails, prompt_tone, prompt_context, webhook_url")
     .eq("org_id", inst.org_id)
     .eq("is_active", true)
+    .eq("instance_id", inst.id)
     .in("trigger_type", ["inbound_message", "keyword"]);
 
+  const { data: settings } = await supabase
+    .from("org_settings")
+    .select("n8n_base_url")
+    .eq("org_id", inst.org_id)
+    .maybeSingle();
+
   for (const flow of flows ?? []) {
-    if (!flow.webhook_url) continue;
-    const config = flow.trigger_config as Record<string, unknown> | null;
-    if (config?.keyword) {
-      const kw = String(config.keyword).toLowerCase();
+    const legacyWebhook = flow.webhook_url || "";
+    const baseUrl = settings?.n8n_base_url?.trim().replace(/\/$/, "") ?? "";
+    const target = legacyWebhook || (!baseUrl ? "" : /\/webhook(-test)?\//i.test(baseUrl) ? baseUrl : `${baseUrl}/webhook/syncchat-whatsapp`);
+    if (!target) continue;
+    if (flow.trigger_type === "keyword" && flow.trigger_keyword) {
+      const kw = String(flow.trigger_keyword).toLowerCase();
       if (!content.toLowerCase().includes(kw)) continue;
     }
-    fetch(flow.webhook_url, {
+    fetch(target, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone, content, instance_id: inst.id, org_id: inst.org_id, payload }),
+      body: JSON.stringify({
+        phone,
+        content,
+        instance_id: inst.id,
+        org_id: inst.org_id,
+        flow_id: flow.id,
+        flow: {
+          trigger_type: flow.trigger_type,
+          trigger_keyword: flow.trigger_keyword,
+          prompt_role: flow.prompt_role,
+          prompt_guardrails: flow.prompt_guardrails,
+          prompt_tone: flow.prompt_tone,
+          prompt_context: flow.prompt_context,
+        },
+        payload,
+      }),
     }).catch(() => {});
   }
 

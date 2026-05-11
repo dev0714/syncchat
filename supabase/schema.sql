@@ -198,12 +198,18 @@ CREATE INDEX IF NOT EXISTS idx_scheduled_bulk_org_status_next_run
 CREATE TABLE IF NOT EXISTS syncchat.n8n_flows (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id              UUID NOT NULL REFERENCES syncchat.organizations(id) ON DELETE CASCADE,
+  instance_id         UUID REFERENCES syncchat.whatsapp_instances(id) ON DELETE SET NULL,
   name                TEXT NOT NULL,
   description         TEXT,
-  n8n_workflow_id     TEXT NOT NULL DEFAULT '',
-  webhook_url         TEXT,
   trigger_type        TEXT NOT NULL DEFAULT 'inbound_message'
                       CHECK (trigger_type IN ('inbound_message', 'keyword', 'new_contact', 'manual', 'schedule')),
+  trigger_keyword     TEXT,
+  prompt_role         TEXT NOT NULL DEFAULT '',
+  prompt_guardrails   TEXT NOT NULL DEFAULT '',
+  prompt_tone         TEXT NOT NULL DEFAULT '',
+  prompt_context      TEXT NOT NULL DEFAULT '',
+  n8n_workflow_id     TEXT NOT NULL DEFAULT '',
+  webhook_url         TEXT,
   trigger_config      JSONB,
   is_active           BOOLEAN NOT NULL DEFAULT true,
   last_triggered_at   TIMESTAMPTZ,
@@ -245,6 +251,8 @@ CREATE INDEX IF NOT EXISTS idx_contacts_org_id        ON syncchat.contacts(org_i
 CREATE INDEX IF NOT EXISTS idx_contacts_phone         ON syncchat.contacts(phone);
 CREATE INDEX IF NOT EXISTS idx_instances_org_id       ON syncchat.whatsapp_instances(org_id);
 CREATE INDEX IF NOT EXISTS idx_flows_org_id           ON syncchat.n8n_flows(org_id);
+CREATE INDEX IF NOT EXISTS idx_flows_instance_id      ON syncchat.n8n_flows(instance_id);
+CREATE INDEX IF NOT EXISTS idx_flows_trigger_keyword  ON syncchat.n8n_flows(trigger_keyword);
 
 -- =====================================================
 -- ROW LEVEL SECURITY (RLS)

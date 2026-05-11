@@ -52,6 +52,19 @@ const defaultForm = {
   tools: [] as string[],
 };
 
+async function fetchJsonWithTimeout(input: RequestInfo | URL, init?: RequestInit, timeoutMs = 12000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(input, { ...init, signal: controller.signal });
+    const body = await response.json().catch(() => null);
+    return { response, body };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export default function FlowsPage() {
   const [flows, setFlows] = useState<N8nFlow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,12 +85,10 @@ export default function FlowsPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/flows");
+      const { response: res, body } = await fetchJsonWithTimeout("/api/flows");
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
         throw new Error(body?.error ?? "Failed to load flows");
       }
-      const body = await res.json();
       setOrgId(body.orgId ?? "");
       setFlows((body.flows ?? []) as N8nFlow[]);
       setInstances((body.instances ?? []) as WhatsAppInstance[]);
@@ -129,7 +140,7 @@ export default function FlowsPage() {
     if (!form.name) { setError("Name is required."); return; }
     setSaving(true);
     try {
-      const res = await fetch("/api/flows", {
+      const { response: res, body } = await fetchJsonWithTimeout("/api/flows", {
         method: editing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -146,7 +157,6 @@ export default function FlowsPage() {
           tools: form.tools,
         }),
       });
-      const body = await res.json().catch(() => null);
       if (!res.ok) throw new Error(body?.error ?? "Failed to save flow");
       setSaving(false);
       setShowModal(false);
@@ -161,13 +171,12 @@ export default function FlowsPage() {
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this flow?")) return;
-    const res = await fetch("/api/flows", {
+    const { response: res, body } = await fetchJsonWithTimeout("/api/flows", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
       setError(body?.error ?? "Failed to delete flow");
       return;
     }
@@ -176,13 +185,12 @@ export default function FlowsPage() {
 
   async function toggleActive(f: N8nFlow) {
     const nextActive = !f.is_active;
-    const res = await fetch("/api/flows", {
+    const { response: res, body } = await fetchJsonWithTimeout("/api/flows", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: f.id, action: "toggle", is_active: nextActive }),
     });
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
       setError(body?.error ?? "Failed to update flow");
       return;
     }
@@ -192,12 +200,11 @@ export default function FlowsPage() {
   async function triggerManual(f: N8nFlow) {
     setTriggering(f.id);
     try {
-      const res = await fetch("/api/flows", {
+      const { response: res, body } = await fetchJsonWithTimeout("/api/flows", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: f.id, action: "trigger" }),
       });
-      const body = await res.json().catch(() => null);
       if (!res.ok) throw new Error(body?.error ?? "Failed to trigger flow");
       loadData();
     } catch (err) {

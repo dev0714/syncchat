@@ -3,8 +3,8 @@
   "nodes": [
     {
       "parameters": {
-        "promptType": "define",
-        "text": "={{ $json.body.data.body }}",
+      "promptType": "define",
+        "text": "={{ $('Whatsapp').item.json.body.data.body }}",
         "options": {
           "systemMessage": "=# SyncChat Support Assistant\n\n## Identity\nYou are SyncChat Assistant, the automated WhatsApp assistant for SyncChat, a WhatsApp business platform.\nAlways present yourself as an automated assistant, not a human.\n\n## What SyncChat covers\nHelp users with:\n- WhatsApp Instances\n- Contacts\n- Conversations\n- Message Templates\n- Scheduled Bulk messages\n- Flows\n- Settings\n- Billing\n- Super Admin\n\n## Live tools available\nUse these tools when you need current SyncChat data:\n- Templates Lookup: list message templates and their status\n- Scheduled Bulk Lookup: list bulk schedules and their status\n- Flows Lookup: list automation flows and their status\n- Flows Action: toggle a flow on/off or trigger its webhook\n- Instances Lookup: list WhatsApp instances and their connection state\n\n## Core behavior\n- Be concise, friendly, and practical.\n- Use the user's language when possible; default to English.\n- Stay focused on SyncChat features and dashboard workflows.\n- Never mention Erase Debt SA, debt services, QRY references, or unrelated business info.\n- Do not invent backend actions you cannot perform.\n- If something must be done in the dashboard, explain where to do it.\n- When helping with support issues, ask for the page name, exact error, instance name, and what they were trying to do.\n\n## Routing guidance\n- WhatsApp Instances: connecting numbers, scanning QR, connection errors\n- Contacts: import, search, edit, tags\n- Conversations: view history, reply, follow up\n- Templates: create reusable message templates, variables like {{name}}, {{phone}}, {{email}}\n- Scheduled Bulk: one-time and recurring bulk sends in Africa/Johannesburg time\n- Flows: automation, triggers, webhooks, workflow status\n- Settings: organization setup, business preferences, notifications\n- Billing: plans, payments, invoices\n- Super Admin: administrative controls\n\n## When to use tools\n- If the user asks what exists right now, use the matching lookup tool.\n- If the user asks for a schedule, template, instance, or flow status, use the matching lookup tool first.\n- If the user asks to enable, disable, or manually trigger a flow, use Flows Action.\n- If the user asks to manage something that needs a dashboard change, answer with the current status and point them to the correct page.\n\n## Greeting\nWhen a conversation starts, send:\n\"👋 Welcome to SyncChat\n\nI'm SyncChat Assistant, the automated helper for your WhatsApp business platform.\n\nI can help with WhatsApp instances, contacts, conversations, templates, scheduled bulk messages, flows, settings, billing, and troubleshooting.\n\nWhat do you need help with today?\"\n\n## Troubleshooting pattern\nWhen a user reports an issue:\n1. Acknowledge the problem.\n2. Ask for the page or feature they were using.\n3. Ask for the exact error message or screenshot.\n4. If relevant, ask whether the WhatsApp instance is connected.\n5. Give the shortest possible next step.\n\n## Safety and tone\n- Keep replies polite and human-friendly.\n- Prefer one clear next step over a long explanation.\n- If the request is outside SyncChat, say you can only help with SyncChat platform operations and guide them to the right support channel."
         }
@@ -44,8 +44,8 @@
     },
     {
       "parameters": {
-        "sessionIdType": "customKey",
-        "sessionKey": "={{ $json.body.data.from }}",
+      "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Whatsapp').item.json.body.data.from }}",
         "contextWindowLength": 20
       },
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
@@ -153,93 +153,119 @@
     },
     {
       "parameters": {
-        "tableId": "whatsapp_messages",
-        "fieldsUi": {
-          "fieldValues": [
+        "method": "POST",
+        "url": "https://syncchat.vercel.app/api/n8n/messages",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
             {
-              "fieldId": "conversation_id",
-              "fieldValue": "={{ $('Whatsapp').item.json.body.data.from }}"
+              "name": "direction",
+              "value": "inbound"
             },
             {
-              "fieldId": "sender_type",
-              "fieldValue": "user"
+              "name": "source",
+              "value": "direct"
             },
             {
-              "fieldId": "sender_phone",
-              "fieldValue": "={{ $('Whatsapp').item.json.body.data.from }}"
+              "name": "instancePhone",
+              "value": "={{ $('Whatsapp').item.json.body.data.to }}"
             },
             {
-              "fieldId": "sender_name",
-              "fieldValue": "={{ $('Whatsapp').item.json.body.data.pushname }}"
+              "name": "phone",
+              "value": "={{ $('Whatsapp').item.json.body.data.from }}"
             },
             {
-              "fieldId": "message_text",
-              "fieldValue": "={{ $('Whatsapp').item.json.body.data.body }}"
+              "name": "name",
+              "value": "={{ $('Whatsapp').item.json.body.data.pushname }}"
             },
             {
-              "fieldId": "message_id",
-              "fieldValue": "={{ $('Whatsapp').item.json.body.data.id }}"
+              "name": "content",
+              "value": "={{ $('Whatsapp').item.json.body.data.body }}"
             },
             {
-              "fieldId": "message_type",
-              "fieldValue": "=text"
+              "name": "messageType",
+              "value": "={{ $('Whatsapp').item.json.body.data.type }}"
+            },
+            {
+              "name": "status",
+              "value": "delivered"
+            },
+            {
+              "name": "ultramsgId",
+              "value": "={{ $('Whatsapp').item.json.body.data.id }}"
+            },
+            {
+              "name": "payload",
+              "value": "={{ JSON.stringify($('Whatsapp').item.json) }}"
             }
           ]
-        }
+        },
+        "options": {}
       },
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
       "position": [
         1056,
         -176
       ],
       "id": "7cfbbf11-127d-431a-958e-b0949d826863",
-      "name": "Insert user chat",
-      "credentials": {
-        "supabaseApi": {
-          "id": "0OanPjVk08gK5Hxc",
-          "name": "Supabase account 4"
-        }
-      }
+      "name": "Save Inbound Message",
     },
     {
       "parameters": {
-        "tableId": "whatsapp_messages",
-        "fieldsUi": {
-          "fieldValues": [
+        "method": "POST",
+        "url": "https://syncchat.vercel.app/api/n8n/messages",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
             {
-              "fieldId": "conversation_id",
-              "fieldValue": "={{ $('Whatsapp').item.json.body.data.from }}"
+              "name": "direction",
+              "value": "outbound"
             },
             {
-              "fieldId": "sender_type",
-              "fieldValue": "ai"
+              "name": "source",
+              "value": "system"
             },
             {
-              "fieldId": "message_text",
-              "fieldValue": "={{ $('AI Agent').item.json.output }}"
+              "name": "instancePhone",
+              "value": "={{ $('Whatsapp').item.json.body.data.to }}"
             },
             {
-              "fieldId": "message_type",
-              "fieldValue": "=text"
+              "name": "phone",
+              "value": "={{ $('Whatsapp').item.json.body.data.from }}"
+            },
+            {
+              "name": "content",
+              "value": "={{ $('AI Agent').item.json.output }}"
+            },
+            {
+              "name": "messageType",
+              "value": "text"
+            },
+            {
+              "name": "status",
+              "value": "={{ $json.sent === 'true' || $json.sent === true ? 'sent' : 'failed' }}"
+            },
+            {
+              "name": "ultramsgId",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "conversationId",
+              "value": "={{ $('Save Inbound Message').item.json.conversation_id }}"
             }
           ]
-        }
+        },
+        "options": {}
       },
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
       "position": [
         1056,
         48
       ],
       "id": "acad8851-f4b0-4891-b054-120fcd9a6491",
-      "name": "Insert AI chat",
-      "credentials": {
-        "supabaseApi": {
-          "id": "0OanPjVk08gK5Hxc",
-          "name": "Supabase account 4"
-        }
-      }
+      "name": "Save Outbound Message",
     },
     {
       "parameters": {
@@ -482,17 +508,17 @@
         ]
       ]
     },
-    "Whatsapp": {
-      "main": [
-        [
-          {
-            "node": "Get a row",
+  "Whatsapp": {
+    "main": [
+      [
+        {
+            "node": "Save Inbound Message",
             "type": "main",
             "index": 0
-          }
-        ]
+        }
       ]
-    },
+    ]
+  },
     "whatsapp send": {
       "main": [
         [
@@ -504,32 +530,21 @@
         ]
       ]
     },
-    "Ultra MSG": {
-      "main": [
-        [
-          {
-            "node": "Insert user chat",
+  "Ultra MSG": {
+    "main": [
+      [
+        {
+            "node": "Save Outbound Message",
             "type": "main",
             "index": 0
-          }
-        ]
+        }
       ]
-    },
-    "Insert user chat": {
-      "main": [
-        [
-          {
-            "node": "Insert AI chat",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get a row": {
-      "main": [
-        [
-          {
+    ]
+  },
+  "Save Inbound Message": {
+    "main": [
+      [
+        {
             "node": "AI Agent",
             "type": "main",
             "index": 0

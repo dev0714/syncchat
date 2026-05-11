@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import {
   Zap, Plus, Trash2, Pencil, X, Play, ToggleLeft, ToggleRight,
   Globe, Clock, MessageSquare, UserPlus, Hash, Bot, Shield, Palette,
@@ -54,7 +53,6 @@ const defaultForm = {
 };
 
 export default function FlowsPage() {
-  const supabase = createClient();
   const [flows, setFlows] = useState<N8nFlow[]>([]);
   const [loading, setLoading] = useState(true);
   const [orgId, setOrgId] = useState("");
@@ -72,19 +70,24 @@ export default function FlowsPage() {
 
   async function loadData() {
     setLoading(true);
-    const authRes = await fetch("/api/auth/me");
-    if (!authRes.ok) { setLoading(false); return; }
-    const { user } = await authRes.json();
-    const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", user!.id).single();
-    if (!member) return;
-    setOrgId(member.org_id);
-    const [{ data: flowData }, { data: instData }] = await Promise.all([
-      supabase.from("n8n_flows").select("*").eq("org_id", member.org_id).order("created_at", { ascending: false }),
-      supabase.from("whatsapp_instances").select("id, name, instance_id").eq("org_id", member.org_id),
-    ]);
-    setFlows((flowData as N8nFlow[]) ?? []);
-    setInstances((instData as WhatsAppInstance[]) ?? []);
-    setLoading(false);
+    setError("");
+    try {
+      const res = await fetch("/api/flows");
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? "Failed to load flows");
+      }
+      const body = await res.json();
+      setOrgId(body.orgId ?? "");
+      setFlows((body.flows ?? []) as N8nFlow[]);
+      setInstances((body.instances ?? []) as WhatsAppInstance[]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load flows.");
+      setFlows([]);
+      setInstances([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function openAdd() {
@@ -125,65 +128,81 @@ export default function FlowsPage() {
   async function handleSave() {
     if (!form.name) { setError("Name is required."); return; }
     setSaving(true);
-    const trigger_config: Record<string, unknown> = {};
-    if (form.keyword)     trigger_config.keyword     = form.keyword;
-    if (form.instance_id) trigger_config.instance_id = form.instance_id;
-    // Always save prompt block so n8n can always read it
-    trigger_config.prompt = form.prompt;
-    trigger_config.tools  = form.tools;
-
-    if (editing) {
-      const { error: err } = await supabase.from("n8n_flows").update({
-        name: form.name,
-        description: form.description || null,
-        n8n_workflow_id: form.n8n_workflow_id,
-        webhook_url: form.webhook_url || null,
-        trigger_type: form.trigger_type,
-        trigger_config,
-        updated_at: new Date().toISOString(),
-      }).eq("id", editing.id);
-      if (err) { setError(err.message); setSaving(false); return; }
-    } else {
-      const { error: err } = await supabase.from("n8n_flows").insert({
-        org_id: orgId,
-        name: form.name,
-        description: form.description || null,
-        n8n_workflow_id: form.n8n_workflow_id,
-        webhook_url: form.webhook_url || null,
-        trigger_type: form.trigger_type,
-        trigger_config,
-        is_active: true,
+    try {
+      const res = await fetch("/api/flows", {
+        method: editing ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editing?.id,
+          orgId,
+          name: form.name,
+          description: form.description || null,
+          n8n_workflow_id: form.n8n_workflow_id,
+          webhook_url: form.webhook_url || null,
+          trigger_type: form.trigger_type,
+          keyword: form.keyword || undefined,
+          instance_id: form.instance_id || undefined,
+          prompt: form.prompt,
+          tools: form.tools,
+        }),
       });
-      if (err) { setError(err.message); setSaving(false); return; }
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error ?? "Failed to save flow");
+      setSaving(false);
+      setShowModal(false);
+      await loadData();
+      return;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save flow");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    setShowModal(false);
-    loadData();
   }
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this flow?")) return;
-    await supabase.from("n8n_flows").delete().eq("id", id);
+    const res = await fetch("/api/flows", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      setError(body?.error ?? "Failed to delete flow");
+      return;
+    }
     setFlows((prev) => prev.filter((f) => f.id !== id));
   }
 
   async function toggleActive(f: N8nFlow) {
-    await supabase.from("n8n_flows").update({ is_active: !f.is_active }).eq("id", f.id);
-    setFlows((prev) => prev.map((fl) => fl.id === f.id ? { ...fl, is_active: !fl.is_active } : fl));
+    const nextActive = !f.is_active;
+    const res = await fetch("/api/flows", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: f.id, action: "toggle", is_active: nextActive }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      setError(body?.error ?? "Failed to update flow");
+      return;
+    }
+    setFlows((prev) => prev.map((fl) => fl.id === f.id ? { ...fl, is_active: nextActive } : fl));
   }
 
   async function triggerManual(f: N8nFlow) {
-    if (!f.webhook_url) { alert("No webhook URL configured for this flow."); return; }
     setTriggering(f.id);
     try {
-      await fetch(f.webhook_url, {
-        method: "POST",
+      const res = await fetch("/api/flows", {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ triggered_by: "manual", org_id: orgId, flow_id: f.id, timestamp: new Date().toISOString() }),
+        body: JSON.stringify({ id: f.id, action: "trigger" }),
       });
-      await supabase.from("n8n_flows").update({ last_triggered_at: new Date().toISOString() }).eq("id", f.id);
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error ?? "Failed to trigger flow");
       loadData();
-    } catch {}
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to trigger flow");
+    }
     setTriggering(null);
   }
 

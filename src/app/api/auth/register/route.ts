@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import { createSession } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/client";
+import type { RegistrationData } from "@/types";
 
 type RegistrationResult = {
   userId: string;
@@ -16,8 +17,9 @@ async function registerWithAdminClient(args: {
   email: string;
   passwordHash: string;
   orgName: string;
+  registrationData: RegistrationData;
 }): Promise<RegistrationResult> {
-  const { name, email, passwordHash, orgName } = args;
+  const { name, email, passwordHash, orgName, registrationData } = args;
   const supabase = createAdminClient();
 
   const { data: existingUser, error: lookupError } = await supabase
@@ -26,42 +28,26 @@ async function registerWithAdminClient(args: {
     .eq("email", email)
     .maybeSingle();
 
-  if (lookupError) {
-    throw new Error(`Unable to verify account state. ${lookupError.message}`);
-  }
-
-  if (existingUser) {
-    throw new Error("An account with this email already exists");
-  }
+  if (lookupError) throw new Error(`Unable to verify account state. ${lookupError.message}`);
+  if (existingUser) throw new Error("An account with this email already exists");
 
   const slugBase =
-    orgName
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "organization";
+    orgName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "organization";
   const slug = `${slugBase}-${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;
+
+  const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: organization, error: orgError } = await supabase
     .from("organizations")
-    .insert({ name: orgName.trim(), slug, plan: "free" })
+    .insert({ name: orgName.trim(), slug, plan: "free", trial_ends_at: trialEndsAt })
     .select("id")
     .single();
 
-  if (orgError || !organization?.id) {
-    throw new Error(orgError?.message ?? "Failed to create organization");
-  }
+  if (orgError || !organization?.id) throw new Error(orgError?.message ?? "Failed to create organization");
 
   const { data: user, error: userError } = await supabase
     .from("users")
-    .insert({
-      email,
-      name: name.trim(),
-      password_hash: passwordHash,
-      org_id: organization.id,
-      role: "admin",
-      is_active: true,
-    })
+    .insert({ email, name: name.trim(), password_hash: passwordHash, org_id: organization.id, role: "admin", is_active: true })
     .select("id")
     .single();
 
@@ -71,10 +57,7 @@ async function registerWithAdminClient(args: {
   }
 
   const { error: memberError } = await supabase.from("org_members").insert({
-    org_id: organization.id,
-    user_id: user.id,
-    role: "org_admin",
-    is_active: true,
+    org_id: organization.id, user_id: user.id, role: "org_admin", is_active: true,
   });
 
   if (memberError) {
@@ -88,15 +71,14 @@ async function registerWithAdminClient(args: {
     auto_reply_enabled: false,
     auto_reply_message: "",
     business_hours_enabled: false,
+    registration_data: registrationData,
   });
 
   if (settingsError) {
     await supabase.from("org_members").delete().eq("user_id", user.id);
     await supabase.from("users").delete().eq("id", user.id);
     await supabase.from("organizations").delete().eq("id", organization.id);
-    throw new Error(
-      settingsError.message ?? "Failed to create organization settings"
-    );
+    throw new Error(settingsError.message ?? "Failed to create organization settings");
   }
 
   return { userId: user.id, orgId: organization.id, email };
@@ -107,8 +89,9 @@ async function registerWithRpc(args: {
   email: string;
   passwordHash: string;
   orgName: string;
+  registrationData: RegistrationData;
 }): Promise<RegistrationResult> {
-  const { name, email, passwordHash, orgName } = args;
+  const { name, email, passwordHash, orgName, registrationData } = args;
   const supabase = createClient();
   const { data, error } = await supabase.rpc("register_account_and_organization", {
     p_name: name.trim(),
@@ -127,56 +110,61 @@ async function registerWithRpc(args: {
 
   const created = Array.isArray(data) ? data[0] : data;
   const userId = created?.user_id;
-  const orgId = created?.org_id;
-  if (!userId || !orgId) {
-    throw new Error("Failed to create account");
-  }
+  const orgId  = created?.org_id;
+  if (!userId || !orgId) throw new Error("Failed to create account");
+
+  // Persist registration data (best-effort — org was already created by rpc)
+  await createAdminClient()
+    .from("org_settings")
+    .update({ registration_data: registrationData })
+    .eq("org_id", orgId);
 
   return { userId, orgId, email };
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password, orgName } = await request.json();
+    const body = await request.json() as {
+      name?: string;
+      email?: string;
+      password?: string;
+      orgName?: string;
+      accountType?: string;
+      registrationData?: unknown;
+      agreedToTerms?: unknown;
+    };
+
+    const { name, email, password, orgName, accountType, registrationData, agreedToTerms } = body;
 
     if (!name || !email || !password || !orgName) {
-      return NextResponse.json(
-        { error: "All fields are required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "All fields are required" }, { status: 400 });
     }
-
     if (password.length < 8) {
-      return NextResponse.json(
-        { error: "Password must be at least 8 characters" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+    }
+    if (!accountType || (accountType !== "company" && accountType !== "personal")) {
+      return NextResponse.json({ error: "Invalid account type" }, { status: 400 });
+    }
+    if (!agreedToTerms) {
+      return NextResponse.json({ error: "You must accept the Terms & Conditions" }, { status: 400 });
+    }
+    if (!registrationData || typeof registrationData !== "object") {
+      return NextResponse.json({ error: "Registration details are required" }, { status: 400 });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash    = await bcrypt.hash(password, 12);
+    const regData = registrationData as RegistrationData;
     let account: RegistrationResult | null = null;
-    let adminError: unknown = null;
 
     try {
-      account = await registerWithAdminClient({
-        name,
-        email: normalizedEmail,
-        passwordHash,
-        orgName,
-      });
+      account = await registerWithAdminClient({ name, email: normalizedEmail, passwordHash, orgName, registrationData: regData });
     } catch (err) {
-      adminError = err;
       console.warn("[register] admin path failed, falling back to rpc:", err);
     }
 
     if (!account) {
-      account = await registerWithRpc({
-        name,
-        email: normalizedEmail,
-        passwordHash,
-        orgName,
-      });
+      account = await registerWithRpc({ name, email: normalizedEmail, passwordHash, orgName, registrationData: regData });
     }
 
     const sessionToken = createSession(account.userId, normalizedEmail);
@@ -191,12 +179,8 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Unable to create account";
+    const message = err instanceof Error ? err.message : "Unable to create account";
     console.error("[auth/register]", err);
-    return NextResponse.json(
-      { error: message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

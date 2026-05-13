@@ -6,6 +6,35 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/client";
 import type { RegistrationData } from "@/types";
 
+function flattenRegistration(data: RegistrationData) {
+  const addr = data.address;
+  const base = {
+    account_type:        data.account_type,
+    phone:               data.phone,
+    address_unit:        addr.unit ?? null,
+    address_street:      addr.street,
+    address_suburb:      addr.suburb,
+    address_city:        addr.city,
+    address_postal_code: addr.postal_code,
+    address_province:    addr.province,
+  };
+  if (data.account_type === "company") {
+    return {
+      ...base,
+      industry:     data.industry,
+      company_size: data.company_size,
+      website:      data.website ?? null,
+      vat_number:   data.vat ?? null,
+    };
+  }
+  return {
+    ...base,
+    id_number:  data.id_number,
+    hear_about: data.hear_about,
+    use_case:   data.use_case,
+  };
+}
+
 type RegistrationResult = {
   userId: string;
   orgId: string;
@@ -71,7 +100,7 @@ async function registerWithAdminClient(args: {
     auto_reply_enabled: false,
     auto_reply_message: "",
     business_hours_enabled: false,
-    registration_data: registrationData,
+    ...flattenRegistration(registrationData),
   });
 
   if (settingsError) {
@@ -116,7 +145,7 @@ async function registerWithRpc(args: {
   // Persist registration data (best-effort — org was already created by rpc)
   await createAdminClient()
     .from("org_settings")
-    .update({ registration_data: registrationData })
+    .update(flattenRegistration(registrationData))
     .eq("org_id", orgId);
 
   return { userId, orgId, email };

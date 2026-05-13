@@ -215,7 +215,22 @@ export interface OrgSettings {
   away_message?: string;
   n8n_base_url?: string;
   n8n_api_key?: string;
-  registration_data?: RegistrationData;
+  // Registration profile fields (populated on sign-up)
+  account_type?: "company" | "personal";
+  phone?: string;
+  industry?: string;
+  company_size?: string;
+  website?: string;
+  vat_number?: string;
+  id_number?: string;
+  hear_about?: string;
+  use_case?: string;
+  address_unit?: string;
+  address_street?: string;
+  address_suburb?: string;
+  address_city?: string;
+  address_postal_code?: string;
+  address_province?: string;
   created_at: string;
   updated_at: string;
 }

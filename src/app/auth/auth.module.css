@@ -335,6 +335,11 @@
   border-color: #94a3b8;
 }
 
+.typeCard:focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: 2px;
+}
+
 .typeCardSelected {
   border-color: #0f766e;
   background: #f0fdfa;
@@ -398,6 +403,13 @@
 .select:focus {
   border-color: #0f766e;
   box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.14);
+}
+
+.select:disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+  opacity: 1;
 }
 
 /* ── Confirm summary ────────────────────────────────────────*/
@@ -499,4 +511,18 @@
   color: #0f766e;
   text-decoration: underline;
   font-weight: 600;
+}
+
+/* ── Mobile: collapse 2-col grid to single column ──────────*/
+@media (max-width: 480px) {
+  .shellWide {
+    max-width: 100%;
+  }
+  .fieldGrid {
+    grid-template-columns: 1fr;
+  }
+  .fieldSpan2,
+  .addressSection {
+    grid-column: span 1;
+  }
 }

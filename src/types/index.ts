@@ -173,22 +173,22 @@ export interface N8nFlow {
 }
 
 export interface SAAddress {
-  unit: string;
+  unit?: string;
   street: string;
   suburb: string;
   city: string;
   postal_code: string;
-  province: string;
+  province: "Eastern Cape" | "Free State" | "Gauteng" | "KwaZulu-Natal" | "Limpopo" | "Mpumalanga" | "Northern Cape" | "North West" | "Western Cape";
 }
 
 export interface CompanyRegistrationData {
   account_type: "company";
   company_name: string;
-  industry: string;
-  company_size: string;
+  industry: "Technology" | "E-commerce" | "Healthcare" | "Finance" | "Real Estate" | "Retail" | "Marketing" | "Other";
+  company_size: "1–10" | "11–50" | "51–200" | "201–1000" | "1000+";
   phone: string;
-  website: string;
-  vat: string;
+  website?: string;
+  vat?: string;
   address: SAAddress;
 }
 
@@ -196,8 +196,8 @@ export interface PersonalRegistrationData {
   account_type: "personal";
   phone: string;
   id_number: string;
-  hear_about: string;
-  use_case: string;
+  hear_about: "Google" | "Social media" | "Friend / referral" | "Other";
+  use_case: "Personal projects" | "Freelancing" | "Side business" | "Other";
   address: SAAddress;
 }
 

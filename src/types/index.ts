@@ -172,6 +172,37 @@ export interface N8nFlow {
   updated_at: string;
 }
 
+export interface SAAddress {
+  unit: string;
+  street: string;
+  suburb: string;
+  city: string;
+  postal_code: string;
+  province: string;
+}
+
+export interface CompanyRegistrationData {
+  account_type: "company";
+  company_name: string;
+  industry: string;
+  company_size: string;
+  phone: string;
+  website: string;
+  vat: string;
+  address: SAAddress;
+}
+
+export interface PersonalRegistrationData {
+  account_type: "personal";
+  phone: string;
+  id_number: string;
+  hear_about: string;
+  use_case: string;
+  address: SAAddress;
+}
+
+export type RegistrationData = CompanyRegistrationData | PersonalRegistrationData;
+
 export interface OrgSettings {
   id: string;
   org_id: string;
@@ -184,6 +215,7 @@ export interface OrgSettings {
   away_message?: string;
   n8n_base_url?: string;
   n8n_api_key?: string;
+  registration_data?: RegistrationData;
   created_at: string;
   updated_at: string;
 }

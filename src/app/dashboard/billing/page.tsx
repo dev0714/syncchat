@@ -45,7 +45,7 @@ export default async function BillingPage() {
 
   const activeSubscription: ActiveSubscription = activeSub
     ? {
-        subscription_code: activeSub.subscription_code,
+        subscription_code: activeSub.subscription_code!,
         plan_code: activeSub.plan_code ?? "",
         tier_conversations: activeSub.tier_conversations,
         billing_period: activeSub.billing_period,

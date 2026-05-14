@@ -16,7 +16,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/conversations", icon: MessageCircle, label: "Conversations" },
   { href: "/dashboard/templates", icon: FileText, label: "Message Lab" },
   { href: "/dashboard/scheduled-bulk", icon: CalendarClock, label: "Scheduled Bulk" },
-  { href: "/dashboard/flows", icon: Zap, label: "Flows" },
+  { href: "/dashboard/flows", icon: Zap, label: "AI Flows" },
   { href: "/dashboard/settings", icon: Settings, label: "Settings" },
   { href: "/dashboard/billing", icon: CreditCard, label: "Billing" },
 ];

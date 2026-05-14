@@ -1,16 +1,50 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useEffect, useState, useRef, useMemo } from "react";
 import {
   MessageCircle, Search, Send, Phone, X,
-  CheckCheck, Check, Clock,
+  CheckCheck, Check, Clock, ChevronDown, ChevronUp,
 } from "lucide-react";
 import type { Conversation, Message } from "@/types";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import PacmanLoader from "@/components/ui/PacmanLoader";
 
+interface ContactGroup {
+  contactId: string;
+  contactName: string;
+  contactPhone: string;
+  conversations: Conversation[];
+  latestConversation: Conversation;
+}
+
+function groupByContact(conversations: Conversation[]): ContactGroup[] {
+  const map = new Map<string, Conversation[]>();
+  for (const conv of conversations) {
+    const key = conv.contact_id ?? conv.contact?.phone ?? conv.id;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(conv);
+  }
+  const groups: ContactGroup[] = [];
+  for (const [contactId, convs] of map) {
+    const sorted = [...convs].sort((a, b) =>
+      new Date(b.last_message_at ?? b.updated_at ?? 0).getTime() -
+      new Date(a.last_message_at ?? a.updated_at ?? 0).getTime()
+    );
+    const latest = sorted[0];
+    groups.push({
+      contactId,
+      contactName: latest.contact?.name ?? latest.contact?.phone ?? "Unknown",
+      contactPhone: latest.contact?.phone ?? "",
+      conversations: sorted,
+      latestConversation: latest,
+    });
+  }
+  return groups.sort((a, b) =>
+    new Date(b.latestConversation.last_message_at ?? b.latestConversation.updated_at ?? 0).getTime() -
+    new Date(a.latestConversation.last_message_at ?? a.latestConversation.updated_at ?? 0).getTime()
+  );
+}
+
 export default function ConversationsPage() {
-  const supabase = createClient();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selected, setSelected] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -21,6 +55,7 @@ export default function ConversationsPage() {
   const [search, setSearch] = useState("");
   const [orgId, setOrgId] = useState("");
   const [readFilter, setReadFilter] = useState<"all" | "unread" | "read">("all");
+  const [expandedContacts, setExpandedContacts] = useState<Set<string>>(new Set());
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,6 +68,7 @@ export default function ConversationsPage() {
     const t = setTimeout(() => loadConversations(search, conversations.length > 0), 300);
     return () => clearTimeout(t);
   }, [search]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -68,7 +104,6 @@ export default function ConversationsPage() {
     const msgsData = msgsRes.ok ? await msgsRes.json() : { messages: [] };
     setMessages((msgsData.messages as Message[]) ?? []);
     setLoadingMsgs(false);
-    // Mark as read
     await fetch(`/api/conversations/${conv.id}/messages`, { method: "PATCH" });
     setConversations((prev) => prev.map((c) => c.id === conv.id ? { ...c, unread_count: 0 } : c));
   }
@@ -79,7 +114,6 @@ export default function ConversationsPage() {
     const text = msgText.trim();
     setMsgText("");
 
-    // Optimistic update
     const optimistic: Message = {
       id: `tmp-${Date.now()}`,
       conversation_id: selected.id,
@@ -107,7 +141,6 @@ export default function ConversationsPage() {
       }),
     });
 
-    // Replace optimistic with real data
     const msgsRes = await fetch(`/api/conversations/${selected.id}/messages`);
     const msgsData = msgsRes.ok ? await msgsRes.json() : { messages: [] };
     setMessages((msgsData.messages as Message[]) ?? []);
@@ -137,9 +170,20 @@ export default function ConversationsPage() {
     );
   }
 
-  const filtered = conversations.filter((c) =>
-    readFilter === "all" || (readFilter === "unread" ? c.unread_count > 0 : c.unread_count === 0)
-  );
+  function toggleExpand(contactId: string) {
+    setExpandedContacts((prev) => {
+      const next = new Set(prev);
+      next.has(contactId) ? next.delete(contactId) : next.add(contactId);
+      return next;
+    });
+  }
+
+  const groups = useMemo(() => {
+    const filtered = conversations.filter((c) =>
+      readFilter === "all" || (readFilter === "unread" ? c.unread_count > 0 : c.unread_count === 0)
+    );
+    return groupByContact(filtered);
+  }, [conversations, readFilter]);
 
   const statusIcon = (status: string) => {
     if (status === "sent") return <Check className="w-3 h-3" />;
@@ -149,7 +193,7 @@ export default function ConversationsPage() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Sidebar list */}
+      {/* Sidebar */}
       <div className="w-80 border-r border-slate-200 bg-white flex flex-col">
         <div className="p-4 border-b border-slate-100 space-y-3">
           <h1 className="font-bold text-slate-900">Conversations</h1>
@@ -171,40 +215,103 @@ export default function ConversationsPage() {
         <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
           {loading ? (
             <div className="flex items-center justify-center py-12"><PacmanLoader size={32} label="Loading conversations" /></div>
-          ) : filtered.length === 0 ? (
+          ) : groups.length === 0 ? (
             <div className="p-8 text-center text-slate-400 text-sm"><MessageCircle className="w-8 h-8 mx-auto mb-2 text-slate-200" />No conversations</div>
           ) : (
-            filtered.map((conv) => (
-              <button key={conv.id} onClick={() => selectConversation(conv)}
-                className={cn("w-full text-left px-4 py-3.5 hover:bg-slate-50 transition-colors",
-                  selected?.id === conv.id && "bg-whatsapp-teal/5 border-r-2 border-whatsapp-teal")}>
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 bg-whatsapp-teal/10 rounded-full flex items-center justify-center text-whatsapp-teal font-semibold text-sm flex-shrink-0">
-                    {(conv.contact?.name ?? conv.contact?.phone ?? "?")[0].toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold text-slate-800 truncate">
-                        {highlight(conv.contact?.name ?? conv.contact?.phone ?? "Unknown")}
-                      </p>
-                      {conv.last_message_at && (
-                        <span className="text-xs text-slate-400 flex-shrink-0 ml-2">{formatRelativeTime(conv.last_message_at)}</span>
-                      )}
+            groups.map((group) => {
+              const isExpanded = expandedContacts.has(group.contactId);
+              const hasMultiple = group.conversations.length > 1;
+              const totalUnread = group.conversations.reduce((sum, c) => sum + c.unread_count, 0);
+              const latest = group.latestConversation;
+
+              return (
+                <div key={group.contactId}>
+                  {/* Contact row */}
+                  <div className={cn(
+                    "w-full text-left px-4 py-3.5 hover:bg-slate-50 transition-colors",
+                    selected && group.conversations.some((c) => c.id === selected.id) && !hasMultiple && "bg-whatsapp-teal/5 border-r-2 border-whatsapp-teal"
+                  )}>
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 bg-whatsapp-teal/10 rounded-full flex items-center justify-center text-whatsapp-teal font-semibold text-sm flex-shrink-0">
+                        {group.contactName[0].toUpperCase()}
+                      </div>
+                      <button className="flex-1 min-w-0 text-left" onClick={() => hasMultiple ? toggleExpand(group.contactId) : selectConversation(latest)}>
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold text-slate-800 truncate">
+                            {highlight(group.contactName)}
+                          </p>
+                          <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                            {latest.last_message_at && (
+                              <span className="text-xs text-slate-400">{formatRelativeTime(latest.last_message_at)}</span>
+                            )}
+                            {hasMultiple && (
+                              isExpanded
+                                ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+                                : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mt-0.5">
+                          <p className={cn("text-xs truncate", totalUnread > 0 ? "text-slate-700 font-medium" : "text-slate-400")}>
+                            {hasMultiple
+                              ? `${group.conversations.length} conversations`
+                              : highlight(latest.last_message) || (totalUnread > 0 ? "New message" : "No messages")}
+                          </p>
+                          {totalUnread > 0 && (
+                            <span className="ml-2 w-5 h-5 bg-whatsapp-green rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                              {totalUnread}
+                            </span>
+                          )}
+                        </div>
+                      </button>
                     </div>
-                    <div className="flex items-center justify-between mt-0.5">
-                      <p className={cn("text-xs truncate", conv.unread_count > 0 ? "text-slate-700 font-medium" : "text-slate-400")}>
-                        {highlight(conv.last_message) || (conv.unread_count > 0 ? "New message" : "No messages")}
-                      </p>
-                      {conv.unread_count > 0 && (
-                        <span className="ml-2 w-5 h-5 bg-whatsapp-green rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                          {conv.unread_count}
-                        </span>
-                      )}
-                    </div>
                   </div>
+
+                  {/* Expanded conversation list */}
+                  {hasMultiple && isExpanded && (
+                    <div className="bg-slate-50 border-t border-slate-100">
+                      {group.conversations.map((conv, i) => (
+                        <button
+                          key={conv.id}
+                          onClick={() => selectConversation(conv)}
+                          className={cn(
+                            "w-full text-left px-4 py-2.5 hover:bg-slate-100 transition-colors flex items-start gap-3 border-b border-slate-100 last:border-0",
+                            selected?.id === conv.id && "bg-whatsapp-teal/10 border-r-2 border-whatsapp-teal"
+                          )}
+                        >
+                          <div className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-2 flex-shrink-0 ml-2" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-medium text-slate-600 truncate">
+                                Conversation {i + 1}
+                                <span className={cn("ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium",
+                                  conv.status === "open" ? "bg-green-100 text-green-700" :
+                                  conv.status === "closed" ? "bg-slate-100 text-slate-500" :
+                                  "bg-amber-100 text-amber-700"
+                                )}>
+                                  {conv.status}
+                                </span>
+                              </p>
+                              {conv.last_message_at && (
+                                <span className="text-[10px] text-slate-400 flex-shrink-0 ml-1">{formatRelativeTime(conv.last_message_at)}</span>
+                              )}
+                            </div>
+                            <p className={cn("text-xs truncate mt-0.5", conv.unread_count > 0 ? "text-slate-700 font-medium" : "text-slate-400")}>
+                              {conv.last_message || "No messages"}
+                            </p>
+                          </div>
+                          {conv.unread_count > 0 && (
+                            <span className="w-4 h-4 bg-whatsapp-green rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                              {conv.unread_count}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </button>
-            ))
+              );
+            })
           )}
         </div>
       </div>
@@ -221,7 +328,6 @@ export default function ConversationsPage() {
           </div>
         ) : (
           <>
-            {/* Header */}
             <div className="bg-white border-b border-slate-200 px-5 py-3.5 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 bg-whatsapp-teal/10 rounded-full flex items-center justify-center text-whatsapp-teal font-semibold text-sm">
@@ -237,13 +343,21 @@ export default function ConversationsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium", selected.unread_count > 0 ? "bg-whatsapp-green/10 text-whatsapp-green" : "bg-slate-100 text-slate-500")}>
-                  {selected.unread_count > 0 ? `${selected.unread_count} unread` : "Read"}
+                <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium capitalize",
+                  selected.status === "open" ? "bg-green-100 text-green-700" :
+                  selected.status === "closed" ? "bg-slate-100 text-slate-500" :
+                  "bg-amber-100 text-amber-700"
+                )}>
+                  {selected.status}
                 </span>
+                {selected.unread_count > 0 && (
+                  <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-whatsapp-green/10 text-whatsapp-green">
+                    {selected.unread_count} unread
+                  </span>
+                )}
               </div>
             </div>
 
-            {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {loadingMsgs ? (
                 <div className="flex items-center justify-center py-12"><PacmanLoader size={32} label="Loading messages" /></div>
@@ -267,7 +381,6 @@ export default function ConversationsPage() {
               <div ref={bottomRef} />
             </div>
 
-            {/* Input */}
             <div className="bg-white border-t border-slate-200 p-4">
               <div className="flex items-center gap-3">
                 <input
@@ -290,4 +403,3 @@ export default function ConversationsPage() {
     </div>
   );
 }
-

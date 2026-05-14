@@ -14,7 +14,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/instances", icon: Smartphone, label: "WhatsApp Instances" },
   { href: "/dashboard/contacts", icon: Users, label: "Contacts" },
   { href: "/dashboard/conversations", icon: MessageCircle, label: "Conversations" },
-  { href: "/dashboard/templates", icon: FileText, label: "Templates" },
+  { href: "/dashboard/templates", icon: FileText, label: "Message Lab" },
   { href: "/dashboard/scheduled-bulk", icon: CalendarClock, label: "Scheduled Bulk" },
   { href: "/dashboard/flows", icon: Zap, label: "Flows" },
   { href: "/dashboard/settings", icon: Settings, label: "Settings" },

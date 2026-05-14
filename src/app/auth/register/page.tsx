@@ -68,6 +68,39 @@ export default function RegisterPage() {
     setStep((s) => Math.max(1, s - 1) as Step);
   }
 
+  // DEV ONLY — remove before production
+  function fillTestCompany() {
+    const ts = Date.now();
+    setAccount({ fullName: "Andre Test", email: `co-test-${ts}@leadsync.co.za`, password: "TestPass123" });
+    setAccountType("company");
+    setCompany({
+      company_name: "Acme Corp",
+      industry: "Technology",
+      company_size: "11–50",
+      phone: "+27110000000",
+      website: "https://acme.com",
+      vat: "4110203456",
+      address: { unit: "Unit 2", street: "123 Main Street", suburb: "Sandton", city: "Johannesburg", postal_code: "2196", province: "Gauteng" },
+    });
+    setAgreedToTerms(true);
+    setStep(4);
+  }
+
+  function fillTestPersonal() {
+    const ts = Date.now();
+    setAccount({ fullName: "Jane Doe", email: `pe-test-${ts}@leadsync.co.za`, password: "TestPass123" });
+    setAccountType("personal");
+    setPersonal({
+      phone: "+27820000000",
+      id_number: "9001015009087",
+      hear_about: "Google",
+      use_case: "Freelancing",
+      address: { street: "45 Oak Avenue", suburb: "Rondebosch", city: "Cape Town", postal_code: "7700", province: "Western Cape" },
+    });
+    setAgreedToTerms(true);
+    setStep(4);
+  }
+
   function handleStep1(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -155,6 +188,19 @@ export default function RegisterPage() {
         </div>
 
         <div className={styles.card}>
+          {/* DEV ONLY test helpers */}
+          {process.env.NODE_ENV === "development" && (
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+              <button type="button" onClick={fillTestCompany}
+                style={{ flex: 1, padding: "6px 10px", fontSize: 11, fontWeight: 700, background: "#dbeafe", color: "#1d4ed8", border: "1px solid #93c5fd", borderRadius: 8, cursor: "pointer" }}>
+                Fill Company
+              </button>
+              <button type="button" onClick={fillTestPersonal}
+                style={{ flex: 1, padding: "6px 10px", fontSize: 11, fontWeight: 700, background: "#dcfce7", color: "#15803d", border: "1px solid #86efac", borderRadius: 8, cursor: "pointer" }}>
+                Fill Personal
+              </button>
+            </div>
+          )}
           {/* Step indicator */}
           <div className={styles.registerSteps}>
             {([1, 2, 3, 4] as Step[]).map((s, i) => (

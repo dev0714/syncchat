@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { Building2, Users, Smartphone, MessageCircle, Shield, ToggleRight, ToggleLeft } from "lucide-react";
-import { formatDate, ROLE_LABELS, ROLE_COLORS, cn } from "@/lib/utils";
+import { Building2, Users, Smartphone, MessageCircle, Shield, ToggleRight, ToggleLeft, CreditCard, Clock } from "lucide-react";
+import { formatDate, cn } from "@/lib/utils";
 import type { Organization } from "@/types";
 
 export default async function SuperAdminPage() {
@@ -13,7 +13,7 @@ export default async function SuperAdminPage() {
     { count: instanceCount },
     { count: msgCount },
   ] = await Promise.all([
-    supabase.from("organizations").select("*, org_members(count), whatsapp_instances(count)", { count: "exact" }).order("created_at", { ascending: false }),
+    supabase.from("organizations").select("*, trial_ends_at, org_members(count), whatsapp_instances(count)", { count: "exact" }).order("created_at", { ascending: false }),
     supabase.from("profiles").select("*", { count: "exact", head: true }),
     supabase.from("whatsapp_instances").select("*", { count: "exact", head: true }),
     supabase.from("messages").select("*", { count: "exact", head: true }),
@@ -54,6 +54,9 @@ export default async function SuperAdminPage() {
         <Link href="/admin/instances" className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors">
           <Smartphone className="w-4 h-4" /> Assign Instances
         </Link>
+        <Link href="/admin/plans" className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors">
+          <CreditCard className="w-4 h-4" /> Subscription Plans
+        </Link>
       </div>
 
       {/* Stats */}
@@ -85,6 +88,7 @@ export default async function SuperAdminPage() {
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Members</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Instances</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Status</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Trial</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Created</th>
                 <th className="px-5 py-3"></th>
               </tr>
@@ -92,9 +96,14 @@ export default async function SuperAdminPage() {
             <tbody className="divide-y divide-slate-50">
               {(orgs ?? []).map((org) => {
                 const o = org as Organization & {
+                  trial_ends_at: string | null;
                   org_members: { count: number }[];
                   whatsapp_instances: { count: number }[];
                 };
+                const now = new Date();
+                const trialEnd = o.trial_ends_at ? new Date(o.trial_ends_at) : null;
+                const trialDaysLeft = trialEnd ? Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
+                const trialExpired = o.plan === "free" && trialEnd !== null && trialEnd < now;
                 const memberCount = Array.isArray(o.org_members) ? (o.org_members[0] as Record<string, number>)?.count ?? 0 : 0;
                 const instCount = Array.isArray(o.whatsapp_instances) ? (o.whatsapp_instances[0] as Record<string, number>)?.count ?? 0 : 0;
                 return (
@@ -120,9 +129,28 @@ export default async function SuperAdminPage() {
                         ? <div className="flex items-center gap-1.5 text-green-600 text-xs"><ToggleRight className="w-4 h-4" /> Active</div>
                         : <div className="flex items-center gap-1.5 text-slate-400 text-xs"><ToggleLeft className="w-4 h-4" /> Inactive</div>}
                     </td>
+                    <td className="px-5 py-3.5">
+                      {o.plan !== "free" ? (
+                        <span className="text-xs text-slate-400">Paid</span>
+                      ) : trialEnd === null ? (
+                        <span className="text-xs font-medium px-2 py-0.5 bg-green-100 text-green-700 rounded-full">Disabled</span>
+                      ) : trialExpired ? (
+                        <span className="text-xs font-medium px-2 py-0.5 bg-red-100 text-red-600 rounded-full">Expired</span>
+                      ) : (
+                        <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full flex items-center gap-1 w-fit",
+                          (trialDaysLeft ?? 99) <= 3 ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
+                        )}>
+                          <Clock className="w-3 h-3" />
+                          {trialDaysLeft}d left
+                        </span>
+                      )}
+                    </td>
                     <td className="px-5 py-3.5 text-sm text-slate-400">{formatDate(o.created_at)}</td>
                     <td className="px-5 py-3.5">
-                      <AdminOrgActions orgId={o.id} isActive={o.is_active} />
+                      <div className="flex items-center gap-2">
+                        <AdminOrgActions orgId={o.id} isActive={o.is_active} />
+                        {o.plan === "free" && <TrialActions orgId={o.id} trialDisabled={trialEnd === null} />}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -142,6 +170,27 @@ function AdminOrgActions({ orgId, isActive }: { orgId: string; isActive: boolean
         className={cn("text-xs px-3 py-1.5 rounded-lg font-medium transition-colors",
           isActive ? "bg-red-50 text-red-600 hover:bg-red-100" : "bg-green-50 text-green-600 hover:bg-green-100")}>
         {isActive ? "Deactivate" : "Activate"}
+      </button>
+    </form>
+  );
+}
+
+function TrialActions({ orgId, trialDisabled }: { orgId: string; trialDisabled: boolean }) {
+  if (trialDisabled) {
+    return (
+      <form action={`/api/admin/orgs/${orgId}/trial`} method="POST">
+        <input type="hidden" name="action" value="extend" />
+        <button type="submit" className="text-xs px-3 py-1.5 rounded-lg font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+          Enable trial
+        </button>
+      </form>
+    );
+  }
+  return (
+    <form action={`/api/admin/orgs/${orgId}/trial`} method="POST">
+      <input type="hidden" name="action" value="disable" />
+      <button type="submit" className="text-xs px-3 py-1.5 rounded-lg font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
+        Disable trial
       </button>
     </form>
   );

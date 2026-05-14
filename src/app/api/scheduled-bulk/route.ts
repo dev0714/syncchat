@@ -3,13 +3,29 @@ import { getCurrentUser } from "@/lib/auth/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseJohannesburgDateTime } from "@/lib/scheduled-bulk";
 
+async function resolveOrgId(userId: string, userOrgId: string | null) {
+  if (userOrgId) return userOrgId;
+  const supabase = createAdminClient();
+  const { data: member } = await supabase
+    .from("org_members")
+    .select("org_id")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return member?.org_id ?? null;
+}
+
 export async function GET() {
   const supabase = createAdminClient();
   const currentUser = await getCurrentUser();
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", currentUser.userId).single();
-  if (!member) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+  const orgId = await resolveOrgId(currentUser.userId, currentUser.orgId);
+  if (!orgId) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+
+  const member = { org_id: orgId };
 
   const { data, error } = await supabase
     .from("scheduled_bulk_messages")
@@ -30,8 +46,10 @@ export async function POST(req: NextRequest) {
   const currentUser = await getCurrentUser();
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", currentUser.userId).single();
-  if (!member) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+  const orgId = await resolveOrgId(currentUser.userId, currentUser.orgId);
+  if (!orgId) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+
+  const member = { org_id: orgId };
 
   const body = await req.json();
   const {
@@ -97,8 +115,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Selected recipients were not found." }, { status: 404 });
   }
 
-  const { data: orgMember } = await supabase.from("org_members").select("user_id").eq("user_id", currentUser.userId).single();
-
   const { error } = await supabase.from("scheduled_bulk_messages").insert({
     org_id: member.org_id,
     template_id: template.id,
@@ -123,7 +139,6 @@ export async function POST(req: NextRequest) {
       tags: contact.tags ?? [],
     })),
     variable_defaults: variableDefaults ?? {},
-    created_by: orgMember?.user_id ?? currentUser.userId,
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -136,8 +151,10 @@ export async function PATCH(req: NextRequest) {
   const currentUser = await getCurrentUser();
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", currentUser.userId).single();
-  if (!member) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+  const orgId = await resolveOrgId(currentUser.userId, currentUser.orgId);
+  if (!orgId) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+
+  const member = { org_id: orgId };
 
   const { id, action } = await req.json() as { id?: string; action?: "pause" | "resume" };
   if (!id || !action) return NextResponse.json({ error: "Missing schedule id or action." }, { status: 400 });
@@ -165,8 +182,10 @@ export async function DELETE(req: NextRequest) {
   const currentUser = await getCurrentUser();
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", currentUser.userId).single();
-  if (!member) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+  const orgId = await resolveOrgId(currentUser.userId, currentUser.orgId);
+  if (!orgId) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+
+  const member = { org_id: orgId };
 
   const { id } = await req.json() as { id?: string };
   if (!id) return NextResponse.json({ error: "Missing schedule id." }, { status: 400 });

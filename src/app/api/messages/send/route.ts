@@ -51,11 +51,12 @@ export async function POST(req: NextRequest) {
 
     // Save message to DB
     if (conversationId) {
-      const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", currentUser.userId).single();
+      const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", currentUser.userId).maybeSingle();
+      const orgId = member?.org_id ?? currentUser.orgId;
       const content = isGeneric && type ? getMessageContent(type, values ?? {}) : (message ?? "");
       await supabase.from("messages").insert({
         conversation_id: conversationId,
-        org_id: member?.org_id,
+        org_id: orgId,
         direction: "outbound",
         source: "direct",
         type: type ?? "text",

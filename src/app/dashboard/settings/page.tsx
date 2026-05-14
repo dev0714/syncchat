@@ -1,20 +1,60 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import {
-  Settings, Users, Building2, Save, Plus, Trash2,
-  Mail, Shield, X, Check,
+  Settings, Users, Building2, Save, Plus,
+  Mail, Shield, X, Check, UserCircle,
 } from "lucide-react";
-import type { OrgMember, OrgSettings } from "@/types";
+import type { OrgMember, OrgSettings, CompanyRegistrationData, PersonalRegistrationData, SAAddress } from "@/types";
 import { shouldShowSettingsOnboarding } from "@/lib/onboarding";
 import { ROLE_LABELS, ROLE_COLORS, cn } from "@/lib/utils";
 import PacmanLoader from "@/components/ui/PacmanLoader";
+import CompanyFields from "@/app/auth/register/CompanyFields";
+import PersonalFields from "@/app/auth/register/PersonalFields";
 
-type Tab = "general" | "team" | "integrations" | "notifications";
+type Tab = "general" | "profile" | "team" | "integrations";
+
+const EMPTY_ADDRESS: SAAddress = {
+  unit: undefined, street: "", suburb: "", city: "", postal_code: "", province: "" as SAAddress["province"],
+};
+
+function settingsToCompany(s: Partial<OrgSettings>, orgName: string): Omit<CompanyRegistrationData, "account_type"> {
+  return {
+    company_name: orgName,
+    industry: (s.industry ?? "") as CompanyRegistrationData["industry"],
+    company_size: (s.company_size ?? "") as CompanyRegistrationData["company_size"],
+    phone: s.phone ?? "",
+    website: s.website ?? "",
+    vat: s.vat_number ?? "",
+    address: {
+      unit: s.address_unit ?? undefined,
+      street: s.address_street ?? "",
+      suburb: s.address_suburb ?? "",
+      city: s.address_city ?? "",
+      postal_code: s.address_postal_code ?? "",
+      province: (s.address_province ?? "") as SAAddress["province"],
+    },
+  };
+}
+
+function settingsToPersonal(s: Partial<OrgSettings>): Omit<PersonalRegistrationData, "account_type"> {
+  return {
+    phone: s.phone ?? "",
+    id_number: s.id_number ?? "",
+    hear_about: (s.hear_about ?? "") as PersonalRegistrationData["hear_about"],
+    use_case: (s.use_case ?? "") as PersonalRegistrationData["use_case"],
+    address: {
+      unit: s.address_unit ?? undefined,
+      street: s.address_street ?? "",
+      suburb: s.address_suburb ?? "",
+      city: s.address_city ?? "",
+      postal_code: s.address_postal_code ?? "",
+      province: (s.address_province ?? "") as SAAddress["province"],
+    },
+  };
+}
 
 export default function SettingsPage() {
-  const supabase = createClient();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("general");
   const [loading, setLoading] = useState(true);
@@ -23,7 +63,7 @@ export default function SettingsPage() {
   const [orgId, setOrgId] = useState("");
   const [myRole, setMyRole] = useState("");
   const [orgName, setOrgName] = useState("");
-  const [member, setMember] = useState<OrgMember | null>(null);
+  const [hasMember, setHasMember] = useState(false);
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [settings, setSettings] = useState<Partial<OrgSettings>>({
     auto_reply_enabled: false,
@@ -36,159 +76,163 @@ export default function SettingsPage() {
   const [inviteRole, setInviteRole] = useState<OrgMember["role"]>("agent");
   const [inviting, setInviting] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [profileAccountType, setProfileAccountType] = useState<"company" | "personal" | null>(null);
+  const [profileCompany, setProfileCompany] = useState<Omit<CompanyRegistrationData, "account_type">>(settingsToCompany({}, ""));
+  const [profilePersonal, setProfilePersonal] = useState<Omit<PersonalRegistrationData, "account_type">>(settingsToPersonal({}));
 
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
     setLoading(true);
-    const authRes = await fetch("/api/auth/me");
-    if (!authRes.ok) {
-      setLoading(false);
-      return;
-    }
-    const { user } = await authRes.json();
+    const res = await fetch("/api/settings");
+    if (!res.ok) { setLoading(false); return; }
+    const data = await res.json();
 
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    setHasMember(!!data.org);
+    setOrgId(data.orgId ?? "");
+    setMyRole(data.myRole ?? "");
+    setOrgName(data.org?.name ?? "");
+    setMembers((data.members as OrgMember[]) ?? []);
 
-    const { data: memberData } = await supabase
-      .from("org_members")
-      .select("*, organization:organizations(*)")
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    setMember((memberData as OrgMember | null) ?? null);
-
-    if (!memberData) {
-      setOrgId("");
-      setMyRole("");
-      setOrgName("");
-      setMembers([]);
-      setLoading(false);
-      return;
+    if (data.settings) {
+      setSettings(data.settings);
+      setProfileAccountType((data.settings.account_type as "company" | "personal" | null) ?? null);
+      setProfileCompany(settingsToCompany(data.settings, data.org?.name ?? ""));
+      setProfilePersonal(settingsToPersonal(data.settings));
     }
 
-    const member = memberData as OrgMember;
-    setOrgId(member.org_id);
-    setMyRole(user.role === "super_admin" ? "super_admin" : member.role);
-    setOrgName(member.organization?.name ?? "");
-
-    const { data: org_settings } = await supabase.from("org_settings").select("*").eq("org_id", member.org_id).single();
-    if (org_settings) setSettings(org_settings);
-
-    const { data: team } = await supabase.from("org_members")
-      .select("*, profile:profiles(*)")
-      .eq("org_id", member.org_id)
-      .order("created_at");
-    setMembers((team as OrgMember[]) ?? []);
     setLoading(false);
   }
 
   async function createOrganization() {
     const trimmedName = orgName.trim();
-    if (!trimmedName) {
-      return;
-    }
-
+    if (!trimmedName) return;
     setError("");
     setOnboardingSaving(true);
-
     const response = await fetch("/api/onboarding/organization", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: trimmedName }),
     });
-
     const data = await response.json();
-
     if (!response.ok || data.error) {
       setError(data.error || "Failed to create organization");
       setOnboardingSaving(false);
       return;
     }
-
     router.replace("/dashboard");
     router.refresh();
   }
 
-  async function saveGeneral() {
-    setSaving(true);
-    await supabase.from("organizations").update({ name: orgName }).eq("id", orgId);
-    const { data: existing } = await supabase.from("org_settings").select("id").eq("org_id", orgId).single();
-    if (existing) {
-      await supabase.from("org_settings").update({
-        auto_reply_enabled: settings.auto_reply_enabled,
-        auto_reply_message: settings.auto_reply_message,
-        updated_at: new Date().toISOString(),
-      }).eq("org_id", orgId);
-    } else {
-      await supabase.from("org_settings").insert({ org_id: orgId, ...settings });
-    }
-    setSaving(false);
+  function flashSaved() {
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
+  }
+
+  async function saveGeneral() {
+    setSaving(true);
+    const res = await fetch("/api/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "general", orgName, auto_reply_enabled: settings.auto_reply_enabled, auto_reply_message: settings.auto_reply_message }),
+    });
+    setSaving(false);
+    if (res.ok) flashSaved();
   }
 
   async function saveIntegrations() {
     setSaving(true);
-    const { data: existing } = await supabase.from("org_settings").select("id").eq("org_id", orgId).single();
-    if (existing) {
-      await supabase.from("org_settings").update({
-        n8n_base_url: settings.n8n_base_url,
-        n8n_api_key: settings.n8n_api_key,
-        updated_at: new Date().toISOString(),
-      }).eq("org_id", orgId);
-    } else {
-      await supabase.from("org_settings").insert({ org_id: orgId, ...settings });
-    }
+    const res = await fetch("/api/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "integrations", n8n_base_url: settings.n8n_base_url, n8n_api_key: settings.n8n_api_key }),
+    });
     setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    if (res.ok) flashSaved();
+  }
+
+  async function saveProfile() {
+    setSaving(true);
+    const accountType = profileAccountType;
+    const addr = accountType === "company" ? profileCompany.address : profilePersonal.address;
+    const body: Record<string, unknown> = {
+      type: "profile",
+      account_type: accountType,
+      phone: accountType === "company" ? profileCompany.phone : profilePersonal.phone,
+      address_unit: addr.unit ?? null,
+      address_street: addr.street,
+      address_suburb: addr.suburb,
+      address_city: addr.city,
+      address_postal_code: addr.postal_code,
+      address_province: addr.province,
+    };
+    if (accountType === "company") {
+      body.company_name = profileCompany.company_name;
+      body.industry = profileCompany.industry;
+      body.company_size = profileCompany.company_size;
+      body.website = profileCompany.website ?? null;
+      body.vat_number = profileCompany.vat ?? null;
+    } else {
+      body.id_number = profilePersonal.id_number;
+      body.hear_about = profilePersonal.hear_about;
+      body.use_case = profilePersonal.use_case;
+    }
+    const res = await fetch("/api/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setSaving(false);
+    if (res.ok) {
+      if (accountType === "company") setOrgName(profileCompany.company_name);
+      flashSaved();
+    }
   }
 
   async function updateMemberRole(memberId: string, role: OrgMember["role"]) {
-    await supabase.from("org_members").update({ role }).eq("id", memberId);
+    await fetch("/api/settings/team", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberId, role }),
+    });
     setMembers((prev) => prev.map((m) => m.id === memberId ? { ...m, role } : m));
   }
 
   async function removeMember(memberId: string) {
     if (!confirm("Remove this team member?")) return;
-    await supabase.from("org_members").delete().eq("id", memberId);
+    await fetch("/api/settings/team", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberId }),
+    });
     setMembers((prev) => prev.filter((m) => m.id !== memberId));
   }
 
   async function inviteMember() {
     if (!inviteEmail) return;
     setInviting(true);
-    // Look up user by email in profiles
-    const { data: profile } = await supabase.from("profiles").select("id").eq("email", inviteEmail).single();
-    if (!profile) {
-      alert("No user found with that email. Ask them to create an account first.");
-      setInviting(false);
-      return;
-    }
-    const { error } = await supabase.from("org_members").insert({
-      org_id: orgId,
-      user_id: profile.id,
-      role: inviteRole,
-      is_active: true,
+    const res = await fetch("/api/settings/team", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
     });
-    if (error) { alert(error.message); }
-    else { setInviteEmail(""); loadData(); }
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error);
+    } else {
+      setInviteEmail("");
+      loadData();
+    }
     setInviting(false);
   }
 
-  const isOnboarding = shouldShowSettingsOnboarding(!!member);
+  const isOnboarding = shouldShowSettingsOnboarding(hasMember) && myRole !== "super_admin";
   const isAdmin = myRole === "super_admin" || myRole === "org_admin";
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
     { key: "general", label: "General", icon: Building2 },
+    { key: "profile", label: "Profile", icon: UserCircle },
     { key: "team", label: "Team", icon: Users },
-    { key: "integrations", label: "Integrations", icon: Settings },
+    ...(myRole === "super_admin" ? [{ key: "integrations" as Tab, label: "Integrations", icon: Settings }] : []),
   ];
 
   if (loading) {
@@ -222,9 +266,7 @@ export default function SettingsPage() {
               value={orgName}
               onChange={(e) => setOrgName(e.target.value)}
             />
-            <p className="text-xs text-slate-400 mt-1">
-              Your workspace slug will be generated automatically.
-            </p>
+            <p className="text-xs text-slate-400 mt-1">Your workspace slug will be generated automatically.</p>
           </div>
           {error && <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">{error}</div>}
           <button
@@ -286,12 +328,7 @@ export default function SettingsPage() {
                   settings.auto_reply_enabled ? "bg-whatsapp-teal" : "bg-slate-200"
                 )}
               >
-                <div
-                  className={cn(
-                    "w-4 h-4 bg-white rounded-full absolute top-1 transition-transform",
-                    settings.auto_reply_enabled ? "translate-x-6" : "translate-x-1"
-                  )}
-                />
+                <div className={cn("w-4 h-4 bg-white rounded-full absolute top-1 transition-transform", settings.auto_reply_enabled ? "translate-x-6" : "translate-x-1")} />
               </div>
               <span className="text-sm text-slate-700">Enable auto reply for incoming messages</span>
             </label>
@@ -310,13 +347,61 @@ export default function SettingsPage() {
           </div>
 
           {isAdmin && (
-            <button
-              onClick={saveGeneral}
-              disabled={saving}
-              className="btn-primary flex items-center gap-2 ml-auto"
-            >
+            <button onClick={saveGeneral} disabled={saving} className="btn-primary flex items-center gap-2 ml-auto">
               {saving ? <PacmanLoader size={14} className="mr-1.5" label="Saving settings" /> : saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
               {saved ? "Saved!" : saving ? "Saving..." : "Save Changes"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {tab === "profile" && (
+        <div className="card p-6 space-y-5">
+          <div>
+            <h2 className="font-semibold text-slate-900">Profile Details</h2>
+            <p className="text-sm text-slate-500 mt-1">Update your registration information</p>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-slate-700 mb-3">Account type</p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setProfileAccountType("company")}
+                className={cn(
+                  "flex-1 flex flex-col items-center gap-1.5 p-4 rounded-xl border-2 transition-colors cursor-pointer",
+                  profileAccountType === "company" ? "border-whatsapp-teal bg-whatsapp-teal/5 text-whatsapp-teal" : "border-slate-200 text-slate-500 hover:border-slate-300"
+                )}
+              >
+                <span className="text-2xl">🏢</span>
+                <span className="text-sm font-semibold">Company</span>
+                <span className="text-xs">For businesses &amp; teams</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setProfileAccountType("personal")}
+                className={cn(
+                  "flex-1 flex flex-col items-center gap-1.5 p-4 rounded-xl border-2 transition-colors cursor-pointer",
+                  profileAccountType === "personal" ? "border-whatsapp-teal bg-whatsapp-teal/5 text-whatsapp-teal" : "border-slate-200 text-slate-500 hover:border-slate-300"
+                )}
+              >
+                <span className="text-2xl">👤</span>
+                <span className="text-sm font-semibold">Individual</span>
+                <span className="text-xs">For personal use</span>
+              </button>
+            </div>
+          </div>
+
+          {profileAccountType === "company" && (
+            <CompanyFields value={profileCompany} onChange={setProfileCompany} />
+          )}
+          {profileAccountType === "personal" && (
+            <PersonalFields value={profilePersonal} onChange={setProfilePersonal} />
+          )}
+          {profileAccountType && isAdmin && (
+            <button onClick={saveProfile} disabled={saving} className="btn-primary flex items-center gap-2 ml-auto">
+              {saving ? <PacmanLoader size={14} className="mr-1.5" label="Saving profile" /> : saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+              {saved ? "Saved!" : saving ? "Saving..." : "Save Profile"}
             </button>
           )}
         </div>
@@ -429,9 +514,7 @@ export default function SettingsPage() {
           </div>
           <div className="border-t border-slate-100 pt-5">
             <h2 className="font-semibold text-slate-900">Webhook URLs</h2>
-            <p className="text-sm text-slate-500 mt-1 mb-3">
-              Use these webhook URLs in your SyncChat instance settings to receive incoming messages.
-            </p>
+            <p className="text-sm text-slate-500 mt-1 mb-3">Use these webhook URLs in your SyncChat instance settings to receive incoming messages.</p>
             <div className="bg-slate-50 rounded-xl p-4 space-y-2">
               <div>
                 <p className="text-xs font-medium text-slate-600 mb-1">Instance Webhook Base URL</p>

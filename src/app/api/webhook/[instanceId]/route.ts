@@ -42,7 +42,9 @@ export async function POST(req: NextRequest, { params }: { params: { instanceId:
 
   if (!contact) return NextResponse.json({ ok: true });
 
-  // Upsert conversation
+  // Upsert conversation — only reuse if last message was within 24 hours
+  const windowCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
   let { data: conversation } = await supabase
     .from("conversations")
     .select("id")
@@ -50,7 +52,10 @@ export async function POST(req: NextRequest, { params }: { params: { instanceId:
     .eq("instance_id", inst.id)
     .eq("contact_id", contact.id)
     .eq("status", "open")
-    .single();
+    .gte("last_message_at", windowCutoff)
+    .order("last_message_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   if (!conversation) {
     const { data: newConv } = await supabase.from("conversations").insert({
@@ -64,10 +69,10 @@ export async function POST(req: NextRequest, { params }: { params: { instanceId:
     }).select("id").single();
     conversation = newConv;
   } else {
+    await supabase.rpc("increment_unread", { conv_id: conversation.id });
     await supabase.from("conversations").update({
       last_message: content,
       last_message_at: new Date().toISOString(),
-      unread_count: supabase.rpc("increment_unread", { conv_id: conversation.id }),
       updated_at: new Date().toISOString(),
     }).eq("id", conversation.id);
   }

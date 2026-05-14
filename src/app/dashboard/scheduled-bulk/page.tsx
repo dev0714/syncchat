@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { extractTemplateVariables, toJohannesburgLocalInput } from "@/lib/scheduled-bulk";
 import { format } from "date-fns";
 import {
@@ -15,8 +14,6 @@ import PacmanLoader from "@/components/ui/PacmanLoader";
 const AUTO_VARS = ["name", "phone", "email"];
 
 export default function ScheduledBulkPage() {
-  const supabase = createClient();
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadingSchedules, setLoadingSchedules] = useState(true);
@@ -88,23 +85,30 @@ export default function ScheduledBulkPage() {
   async function loadData() {
     setLoading(true);
     setLoadingSchedules(true);
-    const authRes = await fetch("/api/auth/me");
-    if (!authRes.ok) { setLoading(false); return; }
-    const { user } = await authRes.json();
-    const { data: member } = await supabase.from("org_members").select("org_id").eq("user_id", user!.id).single();
-    if (!member) return;
 
-    setOrgId(member.org_id);
-    const [{ data: tmpl }, { data: inst }, { data: ctcts }, scheduleRes] = await Promise.all([
-      supabase.from("message_templates").select("*").eq("org_id", member.org_id).order("created_at", { ascending: false }),
-      supabase.from("whatsapp_instances").select("*").eq("org_id", member.org_id).eq("status", "connected"),
-      supabase.from("contacts").select("*").eq("org_id", member.org_id).order("name"),
+    const [tmplRes, instRes, ctctsRes, scheduleRes] = await Promise.all([
+      fetch("/api/templates"),
+      fetch("/api/instances"),
+      fetch("/api/contacts"),
       fetch("/api/scheduled-bulk"),
     ]);
 
-    setTemplates((tmpl as MessageTemplate[]) ?? []);
-    setInstances((inst as WhatsAppInstance[]) ?? []);
-    setContacts((ctcts as Contact[]) ?? []);
+    if (tmplRes.ok) {
+      const data = await tmplRes.json();
+      setTemplates((data.templates as MessageTemplate[]) ?? []);
+      if (data.orgId) setOrgId(data.orgId);
+    }
+
+    if (instRes.ok) {
+      const data = await instRes.json();
+      const connected = ((data.instances as WhatsAppInstance[]) ?? []).filter((i) => i.status === "connected");
+      setInstances(connected);
+    }
+
+    if (ctctsRes.ok) {
+      const data = await ctctsRes.json();
+      setContacts((data.contacts as Contact[]) ?? []);
+    }
 
     if (scheduleRes.ok) {
       const data = await scheduleRes.json();

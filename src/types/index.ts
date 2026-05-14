@@ -109,6 +109,7 @@ export interface MessageTemplate {
   org_id: string;
   name: string;
   category: "marketing" | "utility" | "authentication" | "custom";
+  msg_type: string;
   content: string;
   variables?: string[];
   is_active: boolean;

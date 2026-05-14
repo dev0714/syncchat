@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type Direction = "inbound" | "outbound";
-type Source = "direct" | "bulk" | "scheduled_bulk" | "system";
+type MessageStatus = "sending" | "sent" | "delivered" | "read" | "failed";
 
 type SaveMessageBody = {
   direction?: Direction;
-  source?: Source;
   instancePhone?: string;
   instanceId?: string;
   orgId?: string;
@@ -36,20 +35,22 @@ function normalizePhone(value?: string | null): string {
 function normalizeMessageType(value?: string | null): string {
   const raw = String(value ?? "text").trim().toLowerCase();
   if (!raw || raw === "chat") return "text";
-  if (["text", "image", "video", "audio", "document", "location", "vcard", "contact", "reaction"].includes(raw)) {
+  if (["text", "image", "video", "audio", "document", "location"].includes(raw)) {
     return raw;
   }
   return "text";
 }
 
-function normalizeSource(value?: string | null): Source {
-  const raw = String(value ?? "direct").trim().toLowerCase();
-  if (raw === "bulk" || raw === "scheduled_bulk" || raw === "system") return raw;
-  return "direct";
-}
-
 function normalizeDirection(value?: string | null): Direction {
   return String(value ?? "inbound").trim().toLowerCase() === "outbound" ? "outbound" : "inbound";
+}
+
+function normalizeMessageStatus(value?: string | null, direction: Direction = "inbound"): MessageStatus {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (["sending", "sent", "delivered", "read", "failed"].includes(raw)) {
+    return raw as MessageStatus;
+  }
+  return direction === "inbound" ? "delivered" : "sent";
 }
 
 async function readRequestBody(req: NextRequest): Promise<SaveMessageBody> {
@@ -100,7 +101,6 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
   const body = await readRequestBody(req);
   const direction = normalizeDirection(body.direction);
-  const source = normalizeSource(body.source);
   const { payload, ultra } = extractPayload(body);
 
   const instancePhone = normalizePhone(
@@ -265,14 +265,13 @@ export async function POST(req: NextRequest) {
       conversation_id: conversationId,
       org_id: orgId,
       direction,
-      source,
       type: messageType,
       content,
       media_url: mediaUrl ?? null,
-      status: body.status ?? (direction === "inbound" ? "delivered" : "sent"),
+      status: normalizeMessageStatus(body.status, direction),
       ultramsg_id: ultramsgId,
     })
-    .select("id, conversation_id, org_id, direction, source, type, content, status, ultramsg_id, created_at")
+    .select("id, conversation_id, org_id, direction, type, content, media_url, status, ultramsg_id, created_at")
     .single();
 
   if (messageError || !message) {

@@ -16,7 +16,7 @@ const PROMPT_TABS = [
     label: "Role",
     icon: Bot,
     heading: "Agent Role *",
-    hint: "Who is this AI? Define its purpose, persona, and primary function.",
+    hint: "Define who the AI is — its name, purpose, and primary job. This is the most important field. Think of it as the job description for your bot.",
     placeholder: `e.g. You are a helpful customer support agent for Acme Corp. Your primary job is to answer product questions, assist with orders, and escalate complex issues to human agents. You represent the brand professionally at all times.`,
   },
   {
@@ -24,7 +24,7 @@ const PROMPT_TABS = [
     label: "Guardrails",
     icon: Shield,
     heading: "Guardrails",
-    hint: "What should the agent never do or say? Set firm limits.",
+    hint: "Hard limits on what the AI must never do or say. Use this to keep the bot safe and on-brand — e.g. never discuss competitors, never share pricing without approval, always escalate billing disputes to a human.",
     placeholder: `e.g. Never share pricing without manager approval. Do not discuss competitors. Never promise delivery dates. If a customer is abusive, politely end the conversation. Do not make up information — if you don't know, say so and offer to escalate.`,
   },
   {
@@ -32,7 +32,7 @@ const PROMPT_TABS = [
     label: "Tone & Style",
     icon: Palette,
     heading: "Tone & Style",
-    hint: "How should the agent communicate? Define language, formality, and personality.",
+    hint: "Define how the AI speaks. Formal or casual? Short or detailed? Should it use the customer's name? This shapes the personality of every response.",
     placeholder: `e.g. Friendly and professional. Use simple, clear language. Avoid jargon. Keep responses concise — under 3 sentences where possible. Use the customer's name when known. Mirror the energy of the conversation.`,
   },
   {
@@ -40,7 +40,7 @@ const PROMPT_TABS = [
     label: "Business Context",
     icon: BookOpen,
     heading: "Business Context",
-    hint: "Background about your business, products, services, or key information the AI needs.",
+    hint: "Background facts the AI needs to answer questions accurately — your opening hours, return policy, product range, delivery times, locations, and anything else customers regularly ask about.",
     placeholder: `e.g. Acme Corp is a South African e-commerce retailer selling electronics and appliances. We operate Mon–Fri 8am–6pm SAST. Return policy: 30 days with receipt. Deliveries: 3–5 business days nationally. WhatsApp support available 24/7 via this AI agent.`,
   },
   {
@@ -48,7 +48,7 @@ const PROMPT_TABS = [
     label: "Tools",
     icon: Wrench,
     heading: "AI Tools",
-    hint: "Enable tools the agent can use to look things up or take actions during a conversation.",
+    hint: "Extra capabilities the AI can use beyond replying with text — like looking up a live website, escalating to a human agent, checking stock, or calling an external API. The AI decides when to invoke them based on the conversation.",
     placeholder: "",
   },
 ];
@@ -359,7 +359,7 @@ export default function FlowForm({ editing }: { editing?: N8nFlow | null }) {
             {PROMPT_TABS.filter(t => t.id !== "tools").map(tab => activeTab === tab.id && (
               <div key={tab.id} className="space-y-2">
                 <label className="label">{tab.heading}</label>
-                <p className="text-xs text-slate-400">{tab.hint}</p>
+                <p className="text-xs text-slate-500 leading-relaxed">{tab.hint}</p>
                 <textarea
                   className="input resize-y"
                   style={{ minHeight: 220 }}

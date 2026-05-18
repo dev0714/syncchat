@@ -2,21 +2,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Zap, Plus, Trash2, Pencil, Play, ToggleLeft, ToggleRight,
-  Clock, MessageSquare, UserPlus, Hash, Smartphone,
+  Zap, Plus, Trash2, Pencil, ToggleLeft, ToggleRight, Smartphone,
 } from "lucide-react";
 import type { N8nFlow } from "@/types";
 import { formatDateTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import PacmanLoader from "@/components/ui/PacmanLoader";
-
-const TRIGGER_TYPES = [
-  { value: "inbound_message", label: "Inbound Message", icon: MessageSquare },
-  { value: "keyword",         label: "Keyword Match",   icon: Hash          },
-  { value: "new_contact",     label: "New Contact",     icon: UserPlus      },
-  { value: "manual",          label: "Manual Trigger",  icon: Play          },
-  { value: "schedule",        label: "Scheduled",       icon: Clock         },
-] as const;
 
 interface WhatsAppInstance { id: string; name: string; instance_id: string; phone_number?: string | null; }
 
@@ -38,7 +29,6 @@ export default function FlowsPage() {
   const [loading, setLoading] = useState(true);
   const [instances, setInstances] = useState<WhatsAppInstance[]>([]);
   const [error, setError] = useState("");
-  const [triggering, setTriggering] = useState<string | null>(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -81,24 +71,6 @@ export default function FlowsPage() {
     setFlows(prev => prev.map(fl => fl.id === f.id ? { ...fl, is_active: nextActive } : fl));
   }
 
-  async function triggerManual(f: N8nFlow) {
-    setTriggering(f.id);
-    try {
-      const { response, body } = await fetchJsonWithTimeout("/api/flows", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: f.id, action: "trigger" }),
-      });
-      if (!response.ok) throw new Error(body?.error ?? "Failed to trigger flow");
-      loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to trigger flow");
-    }
-    setTriggering(null);
-  }
-
-  const triggerInfo = (type: string) => TRIGGER_TYPES.find(t => t.value === type);
-
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
@@ -140,11 +112,8 @@ export default function FlowsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {flows.map(f => {
-            const info = triggerInfo(f.trigger_type);
-            const TriggerIcon = info?.icon ?? Zap;
             const legacyConfig = (f as N8nFlow & { trigger_config?: Record<string, unknown> }).trigger_config ?? {};
             const linkedInstance = instances.find(i => i.id === f.instance_id || i.id === (legacyConfig.instance_id as string));
-            const triggerKeyword = f.trigger_keyword ?? (legacyConfig.keyword as string) ?? "";
             const promptRole = f.prompt_role ?? ((legacyConfig.prompt as Record<string, string> | undefined)?.role ?? "");
 
             return (
@@ -152,7 +121,7 @@ export default function FlowsPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
-                      <TriggerIcon className="w-5 h-5 text-purple-600" />
+                      <Zap className="w-5 h-5 text-purple-600" />
                     </div>
                     <div>
                       <p className="font-semibold text-slate-900 text-sm">{f.name}</p>
@@ -168,10 +137,6 @@ export default function FlowsPage() {
 
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full font-medium">{info?.label ?? f.trigger_type}</span>
-                    {triggerKeyword && (
-                      <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-full font-mono">keyword: {triggerKeyword}</span>
-                    )}
                     {linkedInstance && (
                       <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full flex items-center gap-1">
                         <Smartphone className="w-3 h-3" />{linkedInstance.name} ({linkedInstance.instance_id})
@@ -191,16 +156,6 @@ export default function FlowsPage() {
                 </div>
 
                 <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
-                  {f.trigger_type === "manual" && (
-                    <button
-                      onClick={() => triggerManual(f)}
-                      disabled={triggering === f.id || !f.is_active}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                    >
-                      {triggering === f.id ? <PacmanLoader size={12} label="Triggering" /> : <Play className="w-3.5 h-3.5" />}
-                      Trigger Now
-                    </button>
-                  )}
                   <button
                     onClick={() => router.push(`/dashboard/flows/${f.id}/edit`)}
                     className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"

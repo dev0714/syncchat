@@ -2,22 +2,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft, ArrowRight, Bot, Shield, Palette, BookOpen, Wrench,
-  MessageSquare, Hash, UserPlus, Play, Clock, Check,
+  ArrowLeft, ArrowRight, Bot, Shield, Palette, BookOpen, Wrench, Check,
   ToggleLeft, ToggleRight,
 } from "lucide-react";
 import type { N8nFlow, FlowTool } from "@/types";
 import { cn } from "@/lib/utils";
 import PacmanLoader from "@/components/ui/PacmanLoader";
-
-/* ── Trigger types ── */
-const TRIGGER_TYPES = [
-  { value: "inbound_message", label: "Inbound Message", icon: MessageSquare, description: "Triggers on every incoming WhatsApp message" },
-  { value: "keyword",         label: "Keyword Match",   icon: Hash,          description: "Triggers when message contains a keyword" },
-  { value: "new_contact",     label: "New Contact",     icon: UserPlus,      description: "Triggers when a new contact is created" },
-  { value: "manual",          label: "Manual Trigger",  icon: Play,          description: "Manually triggered from this dashboard" },
-  { value: "schedule",        label: "Scheduled",       icon: Clock,         description: "Runs on a defined schedule" },
-] as const;
 
 /* ── Prompt tabs ── */
 const PROMPT_TABS = [
@@ -171,8 +161,7 @@ export default function FlowForm({ editing }: { editing?: N8nFlow | null }) {
   const [form, setForm] = useState({
     name:              editing?.name ?? "",
     description:       editing?.description ?? "",
-    trigger_type:      (editing?.trigger_type ?? "inbound_message") as N8nFlow["trigger_type"],
-    trigger_keyword:   editing?.trigger_keyword ?? "",
+    trigger_type:      "inbound_message" as const,
     instance_id:       editing?.instance_id ?? "",
     prompt_role:       editing?.prompt_role ?? "",
     prompt_guardrails: editing?.prompt_guardrails ?? "",
@@ -220,9 +209,8 @@ export default function FlowForm({ editing }: { editing?: N8nFlow | null }) {
           id: editing?.id,
           orgId,
           ...form,
-          description:     form.description || null,
-          trigger_keyword: form.trigger_keyword || undefined,
-          prompt_tools:    tools,
+          description:  form.description || null,
+          prompt_tools: tools,
         }),
       });
       if (!response.ok) throw new Error(body?.error ?? "Failed to save flow");
@@ -325,34 +313,6 @@ export default function FlowForm({ editing }: { editing?: N8nFlow | null }) {
             </select>
             <p className="text-xs text-slate-400 mt-1">The WhatsApp number this flow will run on</p>
           </div>
-
-          <div>
-            <label className="label">Trigger Type</label>
-            <div className="grid grid-cols-1 gap-2 mt-1">
-              {TRIGGER_TYPES.map(({ value, label, icon: Icon, description }) => (
-                <label key={value} className={cn(
-                  "flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors",
-                  form.trigger_type === value ? "border-whatsapp-teal bg-whatsapp-teal/5" : "border-slate-200 hover:border-slate-300"
-                )}>
-                  <input type="radio" name="trigger" value={value} checked={form.trigger_type === value}
-                    onChange={() => setForm({ ...form, trigger_type: value as N8nFlow["trigger_type"] })} className="hidden" />
-                  <Icon className={cn("w-4 h-4 mt-0.5 flex-shrink-0", form.trigger_type === value ? "text-whatsapp-teal" : "text-slate-400")} />
-                  <div>
-                    <p className={cn("text-sm font-medium", form.trigger_type === value ? "text-whatsapp-teal" : "text-slate-700")}>{label}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">{description}</p>
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {form.trigger_type === "keyword" && (
-            <div>
-              <label className="label">Keyword to Match</label>
-              <input className="input" placeholder="e.g. HELLO, ORDER, SUPPORT"
-                value={form.trigger_keyword} onChange={e => setForm({ ...form, trigger_keyword: e.target.value })} />
-            </div>
-          )}
 
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">{error}</div>

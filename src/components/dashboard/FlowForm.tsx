@@ -74,6 +74,16 @@ interface ToolDef {
 
 const TOOL_CATALOGUE: ToolDef[] = [
   {
+    id: "website_check",
+    label: "Website / URL Check",
+    description: "Let the agent fetch and read content from a website or URL — useful for live prices, menus, availability pages, or any public web content.",
+    emoji: "🌐",
+    configFields: [
+      { key: "url",   label: "Website URL",   placeholder: "https://yourstore.co.za/menu" },
+      { key: "notes", label: "What to look for", placeholder: "e.g. current menu items and prices, opening hours" },
+    ],
+  },
+  {
     id: "order_lookup",
     label: "Order Lookup",
     description: "Let the agent look up order status and details by order ID or customer phone number.",

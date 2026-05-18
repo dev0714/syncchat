@@ -85,16 +85,41 @@ export default function InstancesPage() {
         <p className="text-slate-500 text-sm mt-1">Manage your SyncChat WhatsApp connections</p>
       </div>
 
-      <div className="bg-whatsapp-teal/5 border border-whatsapp-teal/20 rounded-xl p-4 flex gap-3">
-        <div className="w-8 h-8 bg-whatsapp-teal/10 rounded-lg flex items-center justify-center flex-shrink-0">
-          <Smartphone className="w-4 h-4 text-whatsapp-teal" />
+      {/* Explainer */}
+      <div className="bg-whatsapp-teal/5 border border-whatsapp-teal/20 rounded-xl p-5 space-y-4">
+        <div className="flex gap-3">
+          <div className="w-8 h-8 bg-whatsapp-teal/10 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+            <Smartphone className="w-4 h-4 text-whatsapp-teal" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-800">What is a WhatsApp Instance?</p>
+            <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+              A <strong className="text-slate-700">WhatsApp Instance</strong> is a linked WhatsApp Business number that
+              SyncChat uses to send and receive messages on your behalf. Think of it as the phone number your AI agent and
+              team members communicate through — it&apos;s the live connection between SyncChat and WhatsApp.
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="text-sm font-medium text-slate-800">Connect via SyncChat</p>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Your WhatsApp instance is managed by SyncChat. Contact your administrator if you need help connecting.
-          </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pl-11">
+          {[
+            { icon: '📱', title: 'Your number', desc: 'Uses your existing WhatsApp Business number — no porting required.' },
+            { icon: '🤖', title: 'Powers your AI agent', desc: 'All automated replies and AI flows run through this instance.' },
+            { icon: '👥', title: 'Shared with your team', desc: 'Every team member uses the same instance to chat with customers.' },
+          ].map(item => (
+            <div key={item.title} className="bg-white border border-whatsapp-teal/10 rounded-lg px-4 py-3 flex gap-3 items-start">
+              <span className="text-lg leading-none mt-0.5">{item.icon}</span>
+              <div>
+                <p className="text-xs font-semibold text-slate-700">{item.title}</p>
+                <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{item.desc}</p>
+              </div>
+            </div>
+          ))}
         </div>
+
+        <p className="text-xs text-slate-400 pl-11">
+          Your instance is managed by your super admin. Contact them if you need a new number connected or have trouble with the status below.
+        </p>
       </div>
 
       {!loading && error && (

@@ -202,6 +202,7 @@ export async function PATCH(request: NextRequest) {
             prompt_guardrails: flow.prompt_guardrails,
             prompt_tone: flow.prompt_tone,
             prompt_context: flow.prompt_context,
+            prompt_tools: flow.prompt_tools ?? [],
           },
         }),
       });

@@ -246,7 +246,7 @@ export default function LoginPage() {
                 fontWeight: 700, fontSize: 12, color: "#075E54",
               }}>AI</div>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>Acme Sneakers</div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>LeadSync</div>
                 <div style={{ fontSize: 11, opacity: .7 }}>AI agent · online</div>
               </div>
               <div style={{

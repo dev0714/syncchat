@@ -9,7 +9,7 @@ const WavyDivider = () => (
   <div style={{width:'100%', height:1, background:'rgba(11,31,28,.14)'}} aria-hidden="true"/>
 );
 
-const LOGOS = ['Acme Sneakers','FreshMart','SwiftCourier','ProAdvice','NovaTech','LeadSync'];
+const LOGOS = ['LeadSync','EraseDebt'];
 
 const CAPS = [
   {

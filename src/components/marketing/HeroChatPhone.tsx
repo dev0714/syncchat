@@ -149,7 +149,7 @@ export default function HeroChatPhone() {
             <span style={{position:'absolute',bottom:-1,right:-1,width:11,height:11,borderRadius:50,background:'#25D366',border:'2px solid #075E54'}}/>
           </div>
           <div style={{flex:1, minWidth:0}}>
-            <div style={{fontSize:14,fontWeight:600}}>Acme Sneakers</div>
+            <div style={{fontSize:14,fontWeight:600}}>LeadSync</div>
             <div style={{fontSize:11,opacity:.75}}>AI agent · online</div>
           </div>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.9)" strokeWidth="2.2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>

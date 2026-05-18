@@ -119,7 +119,7 @@ function Docs() {
               <div style={{background:'#0B1F1C', color:'#DCF8C6', borderRadius:14, padding:'20px 22px', fontFamily:"'JetBrains Mono'", fontSize:13, lineHeight:1.7, overflow:'auto'}}>
                 <div style={{color:'#7C9C9C'}}># SyncChat Support Assistant</div>
                 <div style={{color:'#7C9C9C'}}>## Identity</div>
-                <div>You are <span style={{color:'#F4B740'}}>SyncChat Assistant</span>, the WhatsApp agent for Acme Sneakers.</div>
+                <div>You are <span style={{color:'#F4B740'}}>SyncChat Assistant</span>, the WhatsApp agent for LeadSync.</div>
                 <br/>
                 <div style={{color:'#7C9C9C'}}>## Core behavior</div>
                 <div>- Be concise, friendly, and practical.</div>

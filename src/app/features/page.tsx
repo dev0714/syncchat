@@ -45,7 +45,7 @@ function VisualAgent() {
       </div>
       <div style={{position:'relative', display:'flex', flexDirection:'column', gap:8}}>
         {[
-          ['Role','You are a helpful support agent for Acme Sneakers. Resolve queries, take action when possible, escalate when needed.'],
+          ['Role','You are a helpful support agent for LeadSync. Resolve queries, take action when possible, escalate when needed.'],
           ['Guardrails','Never share pricing without approval. Stay polite even when customers are not.'],
           ['Tone',"Friendly, concise, on-brand. Use the customer's first name."],
           ['Memory','Last 20 messages per conversation.'],

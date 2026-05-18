@@ -181,7 +181,7 @@ export default function RegisterPage() {
 
         <div className={styles.brand}>
           <div className={styles.brandIcon}>
-            <MessageSquare className="w-8 h-8 text-whatsapp-green" />
+            <MessageSquare className="w-8 h-8 text-white" />
           </div>
           <h1 className={styles.brandTitle}>SyncChat</h1>
           <p className={styles.brandSubtitle}>Create your account</p>

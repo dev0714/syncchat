@@ -73,7 +73,7 @@ export default function ConfirmStep({ fullName, email, data, agreedToTerms, onTo
           <h4>3. Trial period</h4>
           <p>New accounts receive a 14-day free trial. At the end of the trial period a paid subscription is required to continue using the platform.</p>
           <h4>4. Subscriptions &amp; billing</h4>
-          <p>Subscriptions are billed in ZAR via Paystack. You may cancel at any time; access continues until the end of the current billing period. No refunds are issued for partial periods.</p>
+          <p>Subscriptions are billed in ZAR. You may cancel at any time; access continues until the end of the current billing period. No refunds are issued for partial periods.</p>
           <h4>5. Data &amp; privacy</h4>
           <p>We store message metadata and account information necessary to operate the service. We do not sell your data. Message content may be stored temporarily for delivery purposes and is subject to our Privacy Policy.</p>
           <h4>6. WhatsApp compliance</h4>

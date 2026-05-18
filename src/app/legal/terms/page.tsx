@@ -28,7 +28,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-slate-900 mb-2">4. Subscriptions &amp; billing</h2>
-            <p>Subscriptions are billed in South African Rand (ZAR) via Paystack on a monthly or annual basis. You may cancel your subscription at any time; access continues until the end of the current billing period. No refunds are issued for partial billing periods. Prices may change with 30 days notice.</p>
+            <p>Subscriptions are billed in South African Rand (ZAR) on a monthly or annual basis. You may cancel your subscription at any time; access continues until the end of the current billing period. No refunds are issued for partial billing periods. Prices may change with 30 days notice.</p>
           </section>
 
           <section>

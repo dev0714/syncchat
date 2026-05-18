@@ -87,11 +87,11 @@ const FAQS = [
   { q:"Do my customers know they're talking to an AI?",
     a:'You decide. Most clients introduce the agent as "the automated assistant" — friendly, transparent, and customers love that it replies instantly. The agent can also hand off to a human at any time.' },
   { q:'Will it work with my existing WhatsApp Business number?',
-    a:'Yes. We use the official WhatsApp Business API via UltraMSG — no number porting, no losing your contacts. Connect with a QR scan.' },
+    a:'Yes. We use the official WhatsApp Business API — no number porting, no losing your contacts. Connect with a QR scan.' },
   { q:'Can the AI make mistakes?',
     a:'Guardrails stop it from quoting prices, making promises, or going off-topic without approval. Anything sensitive escalates to your team. You see every conversation in the dashboard.' },
   { q:'What tools can it connect to?',
-    a:'Anything with an API — Supabase, Google Sheets, Notion, Calendly, custom endpoints, your CRM. Our workflow engine ships with 400+ pre-built integrations.' },
+    a:'Anything with an API — Google Sheets, Notion, Airtable, Calendly, custom endpoints, your CRM. Our workflow engine ships with 400+ pre-built integrations.' },
   { q:'How much does it cost?',
     a:'From R1,500/month for the platform. AI conversation pricing depends on volume — most clients spend $0.005–$0.02 per reply on the AI side.' },
 ];

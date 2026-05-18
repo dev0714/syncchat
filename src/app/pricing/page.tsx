@@ -237,7 +237,7 @@ const FAQS: [string, string][] = [
   ['Can I change my conversation tier?','Yes — upgrade or downgrade anytime. Changes take effect at the start of your next billing period.'],
   ['What happens if I exceed my limit?',"You'll get a notification and the AI agent pauses until you upgrade or the next period begins. Your human team can still use the platform normally."],
   ['Do I need the AI add-on?',"No. The Platform plan gives you full WhatsApp messaging, team management, bulk sending and templates. The AI Agent is optional — add it when you're ready to automate."],
-  ['What payment methods are accepted?','All major credit and debit cards via Paystack. EFT and invoicing available for annual plans on request.'],
+  ['What payment methods are accepted?','All major credit and debit cards. EFT and invoicing available for annual plans on request.'],
   ['Is there a free trial?','14 days free, no credit card. Both Platform and AI Agent are included in the trial.'],
 ];
 

@@ -73,7 +73,7 @@ function QuickStart() {
 const SECTIONS = [
   { title:'Getting started', items:['Create your account','Connect WhatsApp instance','Invite your team','Import contacts','Send your first message'] },
   { title:'AI agent', items:['Anatomy of an agent','Writing the role','Guardrails that actually work','Tone & language','Memory & context','Handoff to humans'] },
-  { title:'Tools & integrations', items:['Built-in tools','Connecting your CRM','Custom HTTP tools','Workflow automations','Webhooks','Supabase setup'] },
+  { title:'Tools & integrations', items:['Built-in tools','Connecting your CRM','Custom HTTP tools','Workflow automations','Webhooks','Database setup'] },
   { title:'Campaigns', items:['Message templates','Variables & personalisation','Sending bulk','Scheduled bulk','Recurring schedules','Delivery reports'] },
   { title:'Team & access', items:['Roles explained','Granting access','Assigning conversations','Activity logs','Removing members'] },
   { title:'Billing', items:['Plans overview','Switching tiers','Annual vs monthly','Invoices & VAT','Cancelling'] },

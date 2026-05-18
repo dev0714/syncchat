@@ -211,7 +211,7 @@ const ALL_FEATURES = [
   ['🔁','Real-time sync','Messages sync instantly across the team.'],
   ['🗓️','Scheduled bulk','One-time and recurring campaigns.'],
   ['⚡','Workflow integrations','400+ pre-built tools at the agent\'s fingertips.'],
-  ['🔐','Encrypted credentials','UltraMSG tokens stored super-admin-only.'],
+  ['🔐','Encrypted credentials','WhatsApp API tokens stored super-admin-only.'],
   ['📥','CSV import','Auto field mapping, dedupe, validation.'],
 ];
 

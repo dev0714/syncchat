@@ -104,7 +104,7 @@ function Story() {
 
 const VALUES = [
   { title:'Replies before forms.', desc:"If a customer can chat in 5 seconds, don't make them fill in 5 fields. Our whole product is built around this.", bg:'#DCF8C6', accent:'#075E54', emoji:'💬' },
-  { title:'Boring tech, novel UX.', desc:'We use a battle-tested workflow engine, a leading AI model, and Supabase — all stable, all well-understood. The magic is in how we wire them together.', bg:'#EDE4FF', accent:'#6A4FB6', emoji:'⚡' },
+  { title:'Boring tech, novel UX.', desc:'We use a battle-tested workflow engine, a leading AI model, and solid infrastructure — all stable, all well-understood. The magic is in how we wire them together.', bg:'#EDE4FF', accent:'#6A4FB6', emoji:'⚡' },
   { title:"Show, don't guess.", desc:'Every AI message is logged. Every agent decision is auditable. You see exactly what is happening, never wondering.', bg:'#FFF1CC', accent:'#92400E', emoji:'🔍' },
   { title:'Built in 🇿🇦, for 🇿🇦.', desc:'Local pricing in ZAR. Africa/Joburg timezone everywhere. POPIA-aware. Made for the messy reality of selling here.', bg:'#FCE2D7', accent:'#9A3412', emoji:'🌍' },
 ];
@@ -137,7 +137,7 @@ function Values() {
 
 const TEAM = [
   ['Andre du Plessis','Founder & CEO','AP','#0B3B36','Was running the retail shop that started all this. Now obsessed with making customer support disappear.'],
-  ['Thabo Mokoena','Co-founder, Engineering','TM','#25D366','Wires up the workflow, Supabase and AI plumbing that makes every reply feel instant.'],
+  ['Thabo Mokoena','Co-founder, Engineering','TM','#25D366','Wires up the workflow engine and AI plumbing that makes every reply feel instant.'],
   ['Priya Sharma','Head of Product','PS','#6A4FB6','Designs how the agent thinks. Obsessive about guardrails and graceful handoffs.'],
   ['Nadia van der Berg','Customer success','NV','#F4B740','Hand-holds new clients through their first AI deployment. Has set up 200+ agents.'],
 ];
@@ -177,10 +177,10 @@ function Stack() {
   const items = [
     ['Workflows','Automation engine','#FF6D5A'],
     ['AI Model','Best-in-class LLM','#10A37F'],
-    ['Supabase','Postgres + auth','#3ECF8E'],
-    ['UltraMSG','WhatsApp gateway','#25D366'],
-    ['Next.js','Web platform','#000'],
-    ['Paystack','ZAR payments','#0BA4DB'],
+    ['PostgreSQL','Database + auth','#336791'],
+    ['WhatsApp API','Official gateway','#25D366'],
+    ['React','Web platform','#61DAFB'],
+    ['Payments','ZAR billing','#0BA4DB'],
   ];
   return (
     <section style={{padding:'80px 0', background:'var(--ink)', color:'#fff', position:'relative', overflow:'hidden'}}>

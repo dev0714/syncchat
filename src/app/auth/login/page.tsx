@@ -113,7 +113,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className={styles.mutedFooter}>Powered by SyncChat &amp; Supabase</p>
+        <p className={styles.mutedFooter}>Powered by SyncChat</p>
       </div>
     </div>
   );

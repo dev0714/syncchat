@@ -155,6 +155,12 @@ export interface ScheduledBulkMessage {
   instance?: WhatsAppInstance;
 }
 
+export interface FlowTool {
+  id: string;
+  enabled: boolean;
+  config?: Record<string, string>;
+}
+
 export interface N8nFlow {
   id: string;
   org_id: string;
@@ -167,6 +173,7 @@ export interface N8nFlow {
   prompt_guardrails?: string;
   prompt_tone?: string;
   prompt_context?: string;
+  prompt_tools?: FlowTool[];
   is_active: boolean;
   last_triggered_at?: string;
   created_at: string;

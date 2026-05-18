@@ -14,6 +14,7 @@ type FlowPayload = {
   prompt_guardrails?: string;
   prompt_tone?: string;
   prompt_context?: string;
+  prompt_tools?: { id: string; enabled: boolean; config?: Record<string, string> }[];
   is_active?: boolean;
   action?: "toggle" | "trigger";
 };
@@ -125,6 +126,7 @@ export async function POST(request: NextRequest) {
     prompt_guardrails: body.prompt_guardrails || "",
     prompt_tone: body.prompt_tone || "",
     prompt_context: body.prompt_context || "",
+    prompt_tools: body.prompt_tools ?? [],
     is_active: true,
   });
 
@@ -254,6 +256,7 @@ export async function PATCH(request: NextRequest) {
       prompt_guardrails: body.prompt_guardrails || "",
       prompt_tone: body.prompt_tone || "",
       prompt_context: body.prompt_context || "",
+      prompt_tools: body.prompt_tools ?? [],
       updated_at: new Date().toISOString(),
     })
     .eq("id", body.id)

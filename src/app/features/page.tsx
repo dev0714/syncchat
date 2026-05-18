@@ -1,266 +1,313 @@
-import type { Metadata } from 'next';
+'use client';
 import Link from 'next/link';
 import Navbar from '@/components/marketing/Navbar';
 import Footer from '@/components/marketing/Footer';
 
-export const metadata: Metadata = {
-  title: 'Features — SyncChat',
-  description: 'Explore every SyncChat feature: AI flows, bulk messaging, team management, templates and more.',
-};
+const WavyDivider = () => (
+  <div style={{width:'100%', height:1, background:'rgba(11,31,28,.14)'}} aria-hidden="true"/>
+);
+
+function PageHero() {
+  return (
+    <div className="page-hero-band">
+      <div className="wrap">
+        <div className="breadcrumb">
+          <Link href="/" style={{color:'var(--teal-mid)'}}>home</Link>
+          {' / features'}
+        </div>
+        <h1 style={{fontSize:'clamp(2.4rem, 4.5vw, 4rem)', color:'var(--ink)', letterSpacing:'-0.03em', marginBottom:18, lineHeight:1.05}}>
+          The WhatsApp business platform,{' '}
+          <span style={{color:'var(--teal-mid)', fontStyle:'italic'}}>fully loaded.</span>
+        </h1>
+        <p style={{fontSize:18, color:'var(--ink-soft)', maxWidth:640}}>
+          From AI agents that actually understand to bulk campaigns that fly, contact management that scales, and team controls you can trust.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function VisualAgent() {
+  return (
+    <div style={{background:'#0B1F1C', borderRadius:18, padding:24, color:'#fff', position:'relative', overflow:'hidden', boxShadow:'0 30px 60px -20px rgba(11,31,28,.3)'}}>
+      <div style={{position:'absolute', top:-40, right:-40, width:180, height:180, background:'radial-gradient(circle, rgba(106,79,182,.25), transparent 70%)', filter:'blur(20px)'}}/>
+      <div style={{position:'relative', display:'flex', alignItems:'center', gap:10, marginBottom:18}}>
+        <div style={{width:34, height:34, borderRadius:9, background:'#6A4FB6', display:'flex', alignItems:'center', justifyContent:'center'}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/></svg>
+        </div>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:700, fontSize:14}}>Support Agent</div>
+          <div style={{fontSize:11, color:'rgba(255,255,255,.55)'}}>● Active · 1,240 conv. this month</div>
+        </div>
+        <div className="chip" style={{background:'rgba(37,211,102,.15)', color:'#25D366', border:'1px solid rgba(37,211,102,.3)', fontSize:10}}>
+          <span className="pulse"/>LIVE
+        </div>
+      </div>
+      <div style={{position:'relative', display:'flex', flexDirection:'column', gap:8}}>
+        {[
+          ['Role','You are a helpful support agent for Acme Sneakers. Resolve queries, take action when possible, escalate when needed.'],
+          ['Guardrails','Never share pricing without approval. Stay polite even when customers are not.'],
+          ['Tone',"Friendly, concise, on-brand. Use the customer's first name."],
+          ['Memory','Last 20 messages per conversation.'],
+        ].map(([k, v]) => (
+          <div key={k} style={{background:'rgba(255,255,255,.05)', borderRadius:10, padding:'9px 12px', border:'1px solid rgba(255,255,255,.08)'}}>
+            <div style={{fontSize:9, color:'rgba(255,255,255,.5)', fontWeight:700, textTransform:'uppercase', letterSpacing:'.08em', marginBottom:3, fontFamily:"'JetBrains Mono'"}}>{k}</div>
+            <div style={{fontSize:13, color:'rgba(255,255,255,.92)', lineHeight:1.45}}>{v}</div>
+          </div>
+        ))}
+        <div style={{display:'flex', gap:6, flexWrap:'wrap', marginTop:6}}>
+          {['Inventory · Lookup','CRM · Customer','Orders · Status','Web search'].map(t => (
+            <span key={t} style={{fontSize:10, padding:'4px 9px', borderRadius:50, background:'rgba(106,79,182,.2)', color:'#C4B5FD', border:'1px solid rgba(106,79,182,.4)', fontFamily:"'JetBrains Mono'"}}>⚡ {t}</span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VisualBulk() {
+  return (
+    <div style={{background:'#fff', border:'1px solid var(--line)', borderRadius:18, overflow:'hidden', boxShadow:'0 20px 40px -20px rgba(11,31,28,.12)'}}>
+      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 18px', background:'var(--bg)', borderBottom:'1px solid var(--line)'}}>
+        <div style={{display:'flex', alignItems:'center', gap:8}}>
+          <div style={{fontFamily:"'JetBrains Mono'", fontSize:11, color:'var(--muted)'}}>CAMPAIGN /</div>
+          <div style={{fontSize:13, fontWeight:700, color:'var(--ink)'}}>Black Friday — Weekend</div>
+        </div>
+        <span className="chip" style={{fontSize:10, padding:'3px 9px'}}><span className="pulse"/> Sending</span>
+      </div>
+      <div style={{padding:'20px 18px'}}>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:8}}>
+          <div style={{fontFamily:"'Bricolage Grotesque'", fontSize:30, fontWeight:700, color:'var(--ink)', letterSpacing:'-0.02em'}}>2,247</div>
+          <div style={{fontSize:12, color:'var(--teal-mid)', fontWeight:600}}>74% complete</div>
+        </div>
+        <div style={{fontSize:11, color:'var(--muted)', marginBottom:14}}>of 3,000 contacts</div>
+        <div style={{height:6, background:'var(--line)', borderRadius:3, overflow:'hidden', marginBottom:18}}>
+          <div style={{width:'74%', height:'100%', background:'linear-gradient(90deg, #25D366, #128C7E)', borderRadius:3}}/>
+        </div>
+        <div style={{display:'flex', flexDirection:'column', gap:6}}>
+          {[['Sarah K.','+27 82 ••• 4567','✓✓','sent'],['Thabo M.','+27 71 ••• 6543','✓✓','sent'],['Priya S.','+27 83 ••• 1234','✓','delivered'],['Nadia V.','+27 79 ••• 3210','⏳','queued']].map(([n,p,s,st], i) => (
+            <div key={i} style={{display:'flex', alignItems:'center', gap:10, padding:'7px 10px', background:'var(--bg)', borderRadius:8, fontSize:12}}>
+              <div style={{width:24, height:24, borderRadius:50, background:'var(--sage)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'var(--teal)'}}>{n.split(' ')[0][0]}{n.split(' ')[1]?.[0]}</div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:600, color:'var(--ink)'}}>{n}</div>
+                <div style={{fontSize:10, color:'var(--muted)'}}>{p}</div>
+              </div>
+              <div style={{fontSize:11, color: st === 'queued' ? 'var(--muted)' : 'var(--green-bright)', fontWeight:600}}>{s}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VisualContacts() {
+  const rows = [['Sarah Khumalo','+27 82 ••• 4567','VIP','#25D366'],['Thabo Mokoena','+27 71 ••• 6543','Lead','#6A4FB6'],['Priya Sharma','+27 83 ••• 1234','Customer','#F4B740'],['Nadia v.d. Berg','+27 79 ••• 3210','VIP','#25D366'],['Andre du Plessis','+27 84 ••• 5566','Lead','#6A4FB6']];
+  return (
+    <div style={{background:'#fff', border:'1px solid var(--line)', borderRadius:18, overflow:'hidden', boxShadow:'0 20px 40px -20px rgba(11,31,28,.12)'}}>
+      <div style={{padding:'14px 18px', background:'var(--bg)', borderBottom:'1px solid var(--line)', display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+        <div style={{display:'flex', alignItems:'center', gap:10}}>
+          <div style={{fontSize:13, fontWeight:700, color:'var(--ink)'}}>Contacts</div>
+          <div style={{fontFamily:"'JetBrains Mono'", fontSize:11, color:'var(--muted)'}}>· 2,847 total</div>
+        </div>
+        <div style={{display:'flex', gap:6}}>
+          <span style={{fontSize:11, fontWeight:600, color:'var(--teal)', padding:'4px 9px', background:'var(--sage)', borderRadius:6}}>+ Import CSV</span>
+          <span style={{fontSize:11, fontWeight:600, color:'#fff', padding:'4px 9px', background:'var(--ink)', borderRadius:6}}>+ Add</span>
+        </div>
+      </div>
+      <div>
+        <div style={{display:'grid', gridTemplateColumns:'2fr 2fr 1fr', gap:0, padding:'10px 18px', fontFamily:"'JetBrains Mono'", fontSize:10, fontWeight:600, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.06em', borderBottom:'1px solid var(--line-soft)'}}>
+          <span>Name</span><span>Phone</span><span>Tag</span>
+        </div>
+        {rows.map((r, i) => (
+          <div key={i} style={{display:'grid', gridTemplateColumns:'2fr 2fr 1fr', gap:0, padding:'12px 18px', fontSize:13, alignItems:'center', borderBottom: i < rows.length-1 ? '1px solid var(--line-soft)' : 'none'}}>
+            <span style={{fontWeight:600, color:'var(--ink)'}}>{r[0]}</span>
+            <span style={{color:'var(--muted)', fontFamily:"'JetBrains Mono'", fontSize:11}}>{r[1]}</span>
+            <span><span style={{background:r[3]+'22', color:r[3], fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:50}}>{r[2]}</span></span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function VisualDashboard() {
+  const bars = [40, 65, 45, 80, 72, 90, 58, 95, 70, 85, 60, 78];
+  return (
+    <div style={{background:'#fff', border:'1px solid var(--line)', borderRadius:18, padding:20, boxShadow:'0 20px 40px -20px rgba(11,31,28,.12)'}}>
+      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:14}}>
+        {[['Messages','1,247','+18%','#25D366'],['Contacts','384','+5%','#6A4FB6'],['Resp. time','18s','−30%','#F4B740'],['AI Conv.','3,021','+42%','#4FB1E0']].map(([l,v,c,col]) => (
+          <div key={l} style={{background:'var(--bg)', borderRadius:10, padding:'10px 12px'}}>
+            <div style={{fontSize:10, color:'var(--muted)', fontFamily:"'JetBrains Mono'", fontWeight:600, textTransform:'uppercase', letterSpacing:'.06em'}}>{l}</div>
+            <div style={{fontSize:22, fontWeight:700, fontFamily:"'Bricolage Grotesque'", color:'var(--ink)', letterSpacing:'-0.02em', marginTop:4, lineHeight:1}}>{v}</div>
+            <div style={{fontSize:10, color:col, fontWeight:600, marginTop:4}}>{c} today</div>
+          </div>
+        ))}
+      </div>
+      <div style={{marginBottom:12}}>
+        <div style={{fontSize:10, color:'var(--muted)', fontFamily:"'JetBrains Mono'", fontWeight:600, textTransform:'uppercase', letterSpacing:'.06em', marginBottom:8}}>Messages · last 12h</div>
+        <div style={{display:'flex', alignItems:'flex-end', gap:3, height:50}}>
+          {bars.map((h, i) => (
+            <div key={i} style={{flex:1, background:'linear-gradient(180deg, #25D366, #128C7E)', borderRadius:'2px 2px 0 0', height:`${h}%`, opacity:0.55 + (i / bars.length) * 0.4}}/>
+          ))}
+        </div>
+      </div>
+      <div style={{borderTop:'1px solid var(--line)', paddingTop:12, display:'flex', flexDirection:'column', gap:6}}>
+        {['Business Line 1','Support Line','Sales Team'].map(n => (
+          <div key={n} style={{display:'flex', alignItems:'center', gap:8, fontSize:12}}>
+            <div style={{width:6, height:6, borderRadius:50, background:'var(--green)', boxShadow:'0 0 0 2px var(--sage)'}}/>
+            <div style={{flex:1, fontWeight:600, color:'var(--ink)'}}>{n}</div>
+            <div style={{fontSize:10, color:'var(--muted)'}}>● Online</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const FEATS = [
+  {
+    tag:'AI Agent',
+    title:'A WhatsApp brain that actually understands.',
+    desc:'Define your AI agent in plain English — role, guardrails, tone, memory. It reads every message, decides what to do, and replies in your voice.',
+    bullets:['Plain-English prompt builder — no code, no flowcharts','Guardrails stop it from saying things it shouldn\'t','20-message rolling memory per contact','Hands off to your team when it should','Tool-using: lookups, holds, tickets, schedules'],
+    visual:<VisualAgent/>,
+    reverse:false,
+  },
+  {
+    tag:'Bulk',
+    title:'Reach 10,000 customers in five minutes.',
+    desc:'Pick a template, choose a segment, hit send. Variables fill themselves. Failures retry. Reports are live.',
+    bullets:['Personalisation with custom variables','Preview the first 3 messages before sending','Live progress bar, retry on failure, delivery reports','Schedule sends — one-time or recurring (Africa/Joburg time)'],
+    reverse:true,
+    visual:<VisualBulk/>,
+  },
+  {
+    tag:'Contacts',
+    title:'10 or 10,000 contacts — same effort.',
+    desc:'CSV import, smart tagging, full conversation history per contact. Searchable, segmentable, ready for campaigns.',
+    bullets:['CSV import with auto field-mapping','Tag any way you want — campaigns target tags directly','Full conversation history per contact, forever','Search and filter across 10,000+ records in milliseconds'],
+    visual:<VisualContacts/>,
+    reverse:false,
+  },
+  {
+    tag:'Dashboard',
+    title:'Everything happening, in one screen.',
+    desc:'Live stats. Instance status. Active conversations. AI agent performance. Knowing exactly what is happening, without asking.',
+    bullets:['Live message volume, response times, AI conversion','Per-instance health — number connections, error counts','Connected agents, active conversations, queues','Filter by date range, instance, agent, contact tag'],
+    visual:<VisualDashboard/>,
+    reverse:true,
+  },
+];
+
+const ALL_FEATURES = [
+  ['💬','WhatsApp messaging','Two-way messaging with read receipts, media, threading.'],
+  ['🤖','AI agent flows','Prompt builder with roles, guardrails, tone, tools.'],
+  ['📄','Message templates','Dynamic templates with custom variables.'],
+  ['📢','Bulk campaigns','Send to thousands with live progress + reports.'],
+  ['📊','Live dashboard','Real-time metrics, instances, conversations.'],
+  ['📱','Multi-instance','Multiple WhatsApp numbers, one dashboard.'],
+  ['🧑‍🤝‍🧑','Team roles','Granular RBAC — super, admin, agent, viewer.'],
+  ['🔁','Real-time sync','Messages sync instantly across the team.'],
+  ['🗓️','Scheduled bulk','One-time and recurring campaigns.'],
+  ['⚡','Workflow integrations','400+ pre-built tools at the agent\'s fingertips.'],
+  ['🔐','Encrypted credentials','UltraMSG tokens stored super-admin-only.'],
+  ['📥','CSV import','Auto field mapping, dedupe, validation.'],
+];
 
 export default function FeaturesPage() {
   return (
-    <div style={{ background: '#ffffff', color: '#1e293b' }}>
+    <div style={{background:'var(--bg)'}}>
       <Navbar />
+      <PageHero />
+      <WavyDivider />
 
-      {/* ── PAGE HERO ── */}
-      <div className="page-hero">
-        <div className="breadcrumb"><Link href="/">Home</Link> / Features</div>
-        <h1>Everything SyncChat Can Do</h1>
-        <p>A complete WhatsApp business platform — built for teams that want to move fast and automate smarter.</p>
-      </div>
-
-      {/* ── FEATURE 1: AI FLOWS ── */}
-      <section>
-        <div className="section-inner">
-          <div className="feature-detail-grid">
-            <div className="feature-detail-img">
-              <div style={{ background: 'linear-gradient(135deg, #1e1b4b, #4c1d95)', borderRadius: '16px', padding: '28px', color: 'white' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-                  <div style={{ width: '36px', height: '36px', background: '#7c3aed', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+      {FEATS.map((f, i) => (
+        <div key={f.tag}>
+          <section style={{padding:'72px 0', background: i % 2 ? 'var(--paper)' : 'var(--bg)'}}>
+            <div className="wrap">
+              <div style={{display:'grid', gridTemplateColumns: f.reverse ? '1fr 1.1fr' : '1.1fr 1fr', gap:64, alignItems:'center'}} className="feat-row">
+                <div style={{order: f.reverse ? 2 : 1}}>
+                  <div style={{fontFamily:"'JetBrains Mono'", fontSize:11, fontWeight:600, color:'var(--teal-mid)', letterSpacing:'.08em', marginBottom:14, display:'flex', alignItems:'center', gap:8}}>
+                    <span>FEATURE / 0{i+1}</span>
+                    <span style={{width:24, height:1, background:'var(--teal-mid)', opacity:.4}}/>
+                    <span>{f.tag}</span>
                   </div>
-                  <span style={{ fontWeight: 700, fontSize: '15px' }}>AI Agent — Customer Support</span>
+                  <h2 style={{fontSize:'clamp(1.8rem, 3.4vw, 2.8rem)', color:'var(--ink)', marginBottom:18, letterSpacing:'-0.025em', lineHeight:1.1}}>{f.title}</h2>
+                  <p style={{fontSize:17, color:'var(--ink-soft)', marginBottom:24, maxWidth:480}}>{f.desc}</p>
+                  <ul style={{listStyle:'none', display:'flex', flexDirection:'column', gap:11, marginBottom:28}}>
+                    {f.bullets.map((b, bi) => (
+                      <li key={bi} style={{display:'flex', gap:12, alignItems:'flex-start', fontSize:15, color:'var(--ink)', lineHeight:1.5}}>
+                        <div style={{width:22, height:22, borderRadius:7, background:'var(--sage)', flexShrink:0, marginTop:1, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--teal)'}}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <span>{b}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Link href="/auth/login" className="btn btn-primary">
+                    Try it free
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  </Link>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
-                  <div style={{ background: 'rgba(255,255,255,.1)', borderRadius: '10px', padding: '12px 14px', border: '1px solid rgba(255,255,255,.15)' }}>
-                    <div style={{ fontSize: '10px', color: 'rgba(255,255,255,.5)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '5px' }}>Role</div>
-                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,.9)' }}>You are a helpful support agent for Acme Corp. Answer questions, resolve issues, and escalate when needed.</div>
-                  </div>
-                  <div style={{ background: 'rgba(255,255,255,.1)', borderRadius: '10px', padding: '12px 14px', border: '1px solid rgba(255,255,255,.15)' }}>
-                    <div style={{ fontSize: '10px', color: 'rgba(255,255,255,.5)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '5px' }}>Guardrails</div>
-                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,.9)' }}>Never share pricing without approval. Do not discuss competitors.</div>
-                  </div>
-                  <div style={{ background: 'rgba(255,255,255,.1)', borderRadius: '10px', padding: '12px 14px', border: '1px solid rgba(255,255,255,.15)' }}>
-                    <div style={{ fontSize: '10px', color: 'rgba(255,255,255,.5)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '5px' }}>Tone</div>
-                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,.9)' }}>Friendly, concise, professional. Use customer&apos;s first name.</div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                    <span style={{ background: 'rgba(124,58,237,.4)', border: '1px solid rgba(124,58,237,.6)', color: 'white', fontSize: '11px', padding: '4px 10px', borderRadius: '50px' }}>Web Search</span>
-                    <span style={{ background: 'rgba(124,58,237,.4)', border: '1px solid rgba(124,58,237,.6)', color: 'white', fontSize: '11px', padding: '4px 10px', borderRadius: '50px' }}>CRM Lookup</span>
-                    <span style={{ background: 'rgba(124,58,237,.4)', border: '1px solid rgba(124,58,237,.6)', color: 'white', fontSize: '11px', padding: '4px 10px', borderRadius: '50px' }}>Create Ticket</span>
-                  </div>
+                <div style={{order: f.reverse ? 1 : 2}}>
+                  {f.visual}
                 </div>
               </div>
             </div>
-            <div className="feature-detail-content">
-              <h2>AI Flows &amp; Agent Builder</h2>
-              <p>Build intelligent AI agents that handle WhatsApp conversations on your behalf — around the clock, with no human required.</p>
-              <ul className="feature-bullets">
-                <li><div className="bullet-icon">✓</div><span>Define the agent&apos;s <strong>Role</strong>, <strong>Guardrails</strong>, <strong>Tone</strong> and <strong>Business Context</strong> in plain English</span></li>
-                <li><div className="bullet-icon">✓</div><span>Choose which <strong>tools</strong> the agent can use: web search, CRM lookup, ticket creation and more</span></li>
-                <li><div className="bullet-icon">✓</div><span>Trigger flows on incoming messages, specific <strong>keywords</strong>, new contacts, or a schedule</span></li>
-                <li><div className="bullet-icon">✓</div><span>Link each flow to a specific <strong>WhatsApp instance</strong> for multi-number management</span></li>
-                <li><div className="bullet-icon">✓</div><span>Prompt config is passed to your automation layer at runtime — no code required</span></li>
-              </ul>
-              <Link href="/auth/login" className="btn btn-cta" style={{ marginTop: '8px' }}>Build your first flow →</Link>
-            </div>
-          </div>
+            <style>{`@media (max-width: 900px){ .feat-row{ grid-template-columns: 1fr !important; gap: 32px !important; } .feat-row > div{ order: unset !important; } }`}</style>
+          </section>
+          {i < FEATS.length - 1 && <WavyDivider />}
         </div>
-      </section>
+      ))}
 
-      <div className="divider" />
+      <WavyDivider />
 
-      {/* ── FEATURE 2: BULK MESSAGING ── */}
-      <section style={{ background: 'var(--slate-50)' }}>
-        <div className="section-inner">
-          <div className="feature-detail-grid reverse">
-            <div className="feature-detail-content">
-              <h2>Bulk WhatsApp Campaigns</h2>
-              <p>Send personalised WhatsApp messages to your entire contact list in minutes. Each message is dynamically filled with the recipient&apos;s details.</p>
-              <ul className="feature-bullets">
-                <li><div className="bullet-icon">✓</div><span>Select any <strong>message template</strong> with <code style={{ background: '#f1f5f9', padding: '1px 5px', borderRadius: '4px', fontSize: '12px' }}>{'{{name}}'}</code>, <code style={{ background: '#f1f5f9', padding: '1px 5px', borderRadius: '4px', fontSize: '12px' }}>{'{{phone}}'}</code>, or custom variables</span></li>
-                <li><div className="bullet-icon">✓</div><span>Choose which contacts to include — or select all with one click</span></li>
-                <li><div className="bullet-icon">✓</div><span>Preview the personalised message for the first 3 recipients before sending</span></li>
-                <li><div className="bullet-icon">✓</div><span>Messages are sent in batches with a <strong>live progress bar</strong></span></li>
-                <li><div className="bullet-icon">✓</div><span>Full send report: delivered, failed, and any errors per contact</span></li>
-              </ul>
-              <Link href="/auth/login" className="btn btn-cta" style={{ marginTop: '8px' }}>Start a campaign →</Link>
-            </div>
-            <div className="feature-detail-img">
-              <div style={{ background: 'white', borderRadius: '16px', border: '1.5px solid #e2e8f0', overflow: 'hidden' }}>
-                <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>Bulk Send · Step 3 of 3</span>
-                  <span style={{ fontSize: '12px', background: '#dcfce7', color: '#166534', padding: '4px 10px', borderRadius: '50px', fontWeight: 600 }}>Preview</span>
-                </div>
-                <div style={{ padding: '16px' }}>
-                  <div style={{ marginBottom: '14px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '8px' }}>Recipients (3 of 247)</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc', borderRadius: '8px', padding: '8px 12px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>Sarah K.</span>
-                        <span style={{ fontSize: '11px', color: '#64748b' }}>+27 82 123 4567</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc', borderRadius: '8px', padding: '8px 12px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>Thabo M.</span>
-                        <span style={{ fontSize: '11px', color: '#64748b' }}>+27 71 987 6543</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ background: '#e5ddd5', borderRadius: '12px', padding: '14px', marginBottom: '14px' }}>
-                    <div style={{ background: '#dcf8c6', borderRadius: '10px', borderBottomRightRadius: '3px', padding: '10px 12px', fontSize: '13px', color: '#1e293b', boxShadow: '0 1px 2px rgba(0,0,0,.1)' }}>
-                      Hi Sarah! 🎉 Your exclusive offer is ready. Use code <strong>SAVE20</strong> for 20% off your next order. Valid until Sunday!
-                      <div style={{ fontSize: '10px', color: '#64748b', textAlign: 'right', marginTop: '4px' }}>09:15 ✓✓</div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '8px' }}>
-                    <div style={{ flex: 1, height: '6px', background: '#25d366', borderRadius: '3px' }} />
-                    <div style={{ flex: 1, height: '6px', background: '#25d366', borderRadius: '3px' }} />
-                    <div style={{ flex: 1, height: '6px', background: '#25d366', borderRadius: '3px' }} />
-                    <div style={{ flex: 0.4, height: '6px', background: '#e2e8f0', borderRadius: '3px' }} />
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', textAlign: 'center' }}>247 sent · 3 failed · 74% complete</div>
-                </div>
+      {/* All features grid */}
+      <section style={{background:'var(--ink)', color:'#fff', position:'relative', overflow:'hidden'}}>
+        <div style={{position:'absolute', inset:0, backgroundImage:`radial-gradient(circle at 30% 20%, rgba(37,211,102,.12), transparent 40%), radial-gradient(circle at 70% 80%, rgba(106,79,182,.10), transparent 40%)`}}/>
+        <div className="wrap" style={{position:'relative'}}>
+          <div style={{maxWidth:680, marginBottom:48}}>
+            <div className="eyebrow" style={{color:'#25D366'}}>The full list</div>
+            <h2 style={{fontSize:'clamp(2rem, 3.4vw, 3rem)', marginTop:12, color:'#fff'}}>Every feature, in one place.</h2>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:0}} className="all-feat-grid">
+            {ALL_FEATURES.map(([emoji, t, d], i) => (
+              <div key={t} style={{padding:'24px 24px 24px 0', borderTop:'1px solid rgba(255,255,255,.08)', borderRight: (i+1) % 3 ? '1px solid rgba(255,255,255,.08)' : 'none', paddingLeft: i % 3 ? 24 : 0}}>
+                <div style={{fontSize:24, marginBottom:10}}>{emoji}</div>
+                <h3 style={{fontSize:16, color:'#fff', marginBottom:6, letterSpacing:'-0.01em'}}>{t}</h3>
+                <p style={{fontSize:13, color:'rgba(255,255,255,.6)', lineHeight:1.5}}>{d}</p>
               </div>
-            </div>
+            ))}
           </div>
         </div>
+        <style>{`
+          @media (max-width: 900px){ .all-feat-grid{ grid-template-columns: 1fr 1fr !important; } }
+          @media (max-width: 540px){ .all-feat-grid{ grid-template-columns: 1fr !important; } .all-feat-grid > div{ border-right: none !important; padding-left: 0 !important; } }
+        `}</style>
       </section>
 
-      <div className="divider" />
+      <WavyDivider />
 
-      {/* ── FEATURE 3: CONTACTS ── */}
-      <section>
-        <div className="section-inner">
-          <div className="feature-detail-grid">
-            <div className="feature-detail-img">
-              <div style={{ background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden' }}>
-                <div style={{ padding: '14px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 700 }}>Contacts · 2,847</span>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <span style={{ background: '#dcfce7', color: '#166534', fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '50px' }}>+ Import CSV</span>
-                    <span style={{ background: '#075e54', color: 'white', fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '50px' }}>+ Add Contact</span>
-                  </div>
-                </div>
-                <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', padding: '8px 0', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.06em', borderBottom: '1px solid #f1f5f9' }}>
-                    <span>Name</span><span>Phone</span><span>Tags</span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', padding: '10px 0', fontSize: '13px', borderBottom: '1px solid #f8fafc', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 600, color: '#0f172a' }}>Sarah Khumalo</span>
-                    <span style={{ color: '#64748b' }}>+27 82 123 4567</span>
-                    <span><span style={{ background: '#dcfce7', color: '#166534', fontSize: '10px', padding: '2px 7px', borderRadius: '50px' }}>VIP</span></span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', padding: '10px 0', fontSize: '13px', borderBottom: '1px solid #f8fafc', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 600, color: '#0f172a' }}>Thabo Mokoena</span>
-                    <span style={{ color: '#64748b' }}>+27 71 987 6543</span>
-                    <span><span style={{ background: '#ede9fe', color: '#6d28d9', fontSize: '10px', padding: '2px 7px', borderRadius: '50px' }}>Lead</span></span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', padding: '10px 0', fontSize: '13px', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 600, color: '#0f172a' }}>Nadia van Berg</span>
-                    <span style={{ color: '#64748b' }}>+27 83 555 1234</span>
-                    <span><span style={{ background: '#fce7f3', color: '#be185d', fontSize: '10px', padding: '2px 7px', borderRadius: '50px' }}>Customer</span></span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="feature-detail-content">
-              <h2>Smart Contact Management</h2>
-              <p>Keep all your WhatsApp contacts organised, searchable, and ready for campaigns — whether you have 10 or 10,000.</p>
-              <ul className="feature-bullets">
-                <li><div className="bullet-icon">✓</div><span>Import thousands of contacts at once via <strong>CSV upload</strong> with automatic field mapping</span></li>
-                <li><div className="bullet-icon">✓</div><span>Tag contacts for segmentation — use tags to target specific groups in bulk campaigns</span></li>
-                <li><div className="bullet-icon">✓</div><span>Full conversation history per contact — see every message ever sent or received</span></li>
-                <li><div className="bullet-icon">✓</div><span>Search, filter, and edit contact details in seconds</span></li>
-              </ul>
-              <Link href="/auth/login" className="btn btn-cta" style={{ marginTop: '8px' }}>Import contacts →</Link>
-            </div>
+      {/* Closing CTA */}
+      <section style={{background:'var(--bg)'}}>
+        <div className="wrap" style={{textAlign:'center', maxWidth:720, margin:'0 auto'}}>
+          <h2 style={{fontSize:'clamp(2rem, 3.6vw, 3.2rem)', color:'var(--ink)', letterSpacing:'-0.025em', marginBottom:18}}>
+            Want to see it<br/>
+            <span style={{color:'var(--teal-mid)', fontStyle:'italic'}}>on your WhatsApp?</span>
+          </h2>
+          <p style={{fontSize:17, color:'var(--ink-soft)', marginBottom:32, maxWidth:480, margin:'0 auto 32px'}}>
+            Connect your WhatsApp Business number and watch your first AI reply happen in under 20 minutes. Free for 14 days.
+          </p>
+          <div style={{display:'flex', justifyContent:'center', gap:12, flexWrap:'wrap'}}>
+            <Link href="/auth/login" className="btn btn-primary" style={{padding:'16px 26px', fontSize:16}}>
+              Start free
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </Link>
+            <Link href="/pricing" className="btn btn-ghost" style={{padding:'16px 26px', fontSize:16}}>
+              See pricing
+            </Link>
           </div>
-        </div>
-      </section>
-
-      <div className="divider" />
-
-      {/* ── FEATURE 4: TEAM ── */}
-      <section style={{ background: 'var(--slate-50)' }}>
-        <div className="section-inner">
-          <div className="feature-detail-grid reverse">
-            <div className="feature-detail-content">
-              <h2>Role-Based Team Access</h2>
-              <p>Invite your team and control exactly what each person can see and do inside SyncChat.</p>
-              <ul className="feature-bullets">
-                <li><div className="bullet-icon">✓</div><span>Up to <strong>10 team members</strong> included on every plan</span></li>
-                <li><div className="bullet-icon">✓</div><span><strong>4 role levels</strong>: Super Admin, Org Admin, Agent, Viewer</span></li>
-                <li><div className="bullet-icon">✓</div><span>Agents see only assigned conversations; admins see everything</span></li>
-                <li><div className="bullet-icon">✓</div><span>Super Admins manage WhatsApp instance credentials — kept hidden from org members</span></li>
-              </ul>
-              <Link href="/auth/login" className="btn btn-cta" style={{ marginTop: '8px' }}>Invite your team →</Link>
-            </div>
-            <div className="feature-detail-img">
-              <div style={{ background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden' }}>
-                <div style={{ padding: '14px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 700 }}>Team Members</span>
-                </div>
-                <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', background: '#f0fdf4', borderRadius: '10px', border: '1.5px solid #bbf7d0' }}>
-                    <div style={{ width: '36px', height: '36px', background: '#075e54', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: '13px' }}>SA</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '13px', fontWeight: 600 }}>Andre D.</div>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>Super Admin</div>
-                    </div>
-                    <span style={{ background: '#075e54', color: 'white', fontSize: '10px', padding: '3px 9px', borderRadius: '50px', fontWeight: 600 }}>SUPER</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', background: '#f8fafc', borderRadius: '10px', border: '1.5px solid #e2e8f0' }}>
-                    <div style={{ width: '36px', height: '36px', background: '#25d366', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: '13px' }}>TM</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '13px', fontWeight: 600 }}>Thabo M.</div>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>Org Admin</div>
-                    </div>
-                    <span style={{ background: '#dcfce7', color: '#166534', fontSize: '10px', padding: '3px 9px', borderRadius: '50px', fontWeight: 600 }}>ADMIN</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', background: '#f8fafc', borderRadius: '10px', border: '1.5px solid #e2e8f0' }}>
-                    <div style={{ width: '36px', height: '36px', background: '#7c3aed', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: '13px' }}>PS</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '13px', fontWeight: 600 }}>Priya S.</div>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>Agent</div>
-                    </div>
-                    <span style={{ background: '#ede9fe', color: '#6d28d9', fontSize: '10px', padding: '3px 9px', borderRadius: '50px', fontWeight: 600 }}>AGENT</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── ALL FEATURES GRID ── */}
-      <section style={{ background: '#f0fdf4' }}>
-        <div className="section-inner">
-          <div className="section-head">
-            <div className="section-label">Full Feature List</div>
-            <h2 className="section-title">Everything included</h2>
-          </div>
-          <div className="features-grid">
-            <div className="feature-card"><div className="feature-icon" style={{ background: '#dcfce7' }}><svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg></div><h3>WhatsApp Messaging</h3><p>Full two-way messaging with read receipts, media support, and conversation threading.</p></div>
-            <div className="feature-card"><div className="feature-icon" style={{ background: '#ede9fe' }}><svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2.2" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg></div><h3>AI Agent Flows</h3><p>Multi-step prompt builder with roles, guardrails, tone and selectable tools.</p></div>
-            <div className="feature-card"><div className="feature-icon" style={{ background: '#fce7f3' }}><svg viewBox="0 0 24 24" fill="none" stroke="#db2777" strokeWidth="2.2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg></div><h3>Message Templates</h3><p>Dynamic templates with variables for name, phone, email and custom fields.</p></div>
-            <div className="feature-card"><div className="feature-icon" style={{ background: '#fef9c3' }}><svg viewBox="0 0 24 24" fill="none" stroke="#ca8a04" strokeWidth="2.2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.69h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg></div><h3>Bulk Campaigns</h3><p>Send to thousands with personalisation, progress tracking and delivery reports.</p></div>
-            <div className="feature-card"><div className="feature-icon" style={{ background: '#e0f2fe' }}><svg viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2.2" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg></div><h3>Live Dashboard</h3><p>Real-time metrics, instance status, connected agents and message activity at a glance.</p></div>
-            <div className="feature-card"><div className="feature-icon" style={{ background: '#dcfce7' }}><svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.2" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2" /><line x1="12" y1="18" x2="12.01" y2="18" /></svg></div><h3>Multi-Instance</h3><p>Manage multiple WhatsApp numbers from a single dashboard. QR scan to connect.</p></div>
-            <div className="feature-card"><div className="feature-icon" style={{ background: '#ede9fe' }}><svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2.2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg></div><h3>Team Roles</h3><p>Granular role-based access control for super admins, admins, agents and viewers.</p></div>
-            <div className="feature-card"><div className="feature-icon" style={{ background: '#fce7f3' }}><svg viewBox="0 0 24 24" fill="none" stroke="#db2777" strokeWidth="2.2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg></div><h3>Conversations</h3><p>Full inbox with threaded conversations, contact history, and message status tracking.</p></div>
-            <div className="feature-card"><div className="feature-icon" style={{ background: '#fef9c3' }}><svg viewBox="0 0 24 24" fill="none" stroke="#ca8a04" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" /><path d="M4.93 4.93a10 10 0 0 0 0 14.14" /></svg></div><h3>Real-Time Sync</h3><p>All messages sync instantly across your team — no refresh needed, no missed conversations.</p></div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── CTA ── */}
-      <section className="cta-section">
-        <h2>Ready to get started?</h2>
-        <p>Set up SyncChat in minutes and put your WhatsApp on autopilot today.</p>
-        <div className="cta-btns">
-          <Link href="/auth/login" className="btn btn-white btn-lg">Start Free →</Link>
-          <Link href="/pricing" className="btn btn-lg" style={{ background: 'rgba(255,255,255,.15)', color: 'white', border: '1.5px solid rgba(255,255,255,.35)' }}>View Pricing</Link>
         </div>
       </section>
 

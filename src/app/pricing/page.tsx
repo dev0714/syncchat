@@ -1,9 +1,12 @@
 'use client';
-
 import Link from 'next/link';
 import { useState } from 'react';
 import Navbar from '@/components/marketing/Navbar';
 import Footer from '@/components/marketing/Footer';
+
+const WavyDivider = () => (
+  <div style={{width:'100%', height:1, background:'rgba(11,31,28,.14)'}} aria-hidden="true"/>
+);
 
 const TIERS = [
   { conv: 5000,  monthly: 2500 },
@@ -15,226 +18,265 @@ const PLATFORM = 1500;
 
 function fmt(n: number) { return 'R' + n.toLocaleString('en-ZA'); }
 
-export default function PricingPage() {
+function PageHero() {
+  return (
+    <div className="page-hero-band">
+      <div className="wrap">
+        <div className="breadcrumb">
+          <Link href="/" style={{color:'var(--teal-mid)'}}>home</Link>
+          {' / pricing'}
+        </div>
+        <h1 style={{fontSize:'clamp(2.4rem, 4.5vw, 4rem)', color:'var(--ink)', letterSpacing:'-0.03em', marginBottom:18, lineHeight:1.05}}>
+          Simple pricing. <span style={{color:'var(--teal-mid)', fontStyle:'italic'}}>No surprises.</span>
+        </h1>
+        <p style={{fontSize:18, color:'var(--ink-soft)', maxWidth:600}}>
+          Two parts — the Platform (your CRM) and an optional AI Agent add-on. Slide to pick your conversation volume. Pay only for what you use.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function Calculator() {
   const [isAnnual, setIsAnnual] = useState(false);
-  const [currentTier, setCurrentTier] = useState(0);
+  const [tierIdx, setTierIdx] = useState(1);
+  const [withAI, setWithAI] = useState(true);
 
-  const disc = isAnnual ? 0.8 : 1;
+  const disc  = isAnnual ? 0.8 : 1;
   const platM = Math.round(PLATFORM * disc);
-  const aiM   = Math.round(TIERS[currentTier].monthly * disc);
-  const total  = platM + aiM;
-
-  const savingsMsg = isAnnual
-    ? `🎉 You save ${fmt((PLATFORM + TIERS[currentTier].monthly) * 12 - total * 12)} per year on this plan`
-    : null;
+  const aiM   = Math.round(TIERS[tierIdx].monthly * disc);
+  const total = withAI ? platM + aiM : platM;
+  const yearSaving = isAnnual
+    ? ((PLATFORM + (withAI ? TIERS[tierIdx].monthly : 0)) * 12 - total * 12)
+    : 0;
 
   return (
-    <div style={{ background: '#ffffff', color: '#1e293b' }}>
-      <Navbar />
+    <section style={{padding:'80px 0', background:'var(--paper)', borderBottom:'1px solid var(--line)'}}>
+      <div className="wrap">
+        <div style={{display:'flex', justifyContent:'center', alignItems:'center', gap:14, marginBottom:48}}>
+          <span style={{fontSize:14, fontWeight:600, color: isAnnual ? 'var(--muted)' : 'var(--ink)'}}>Monthly</span>
+          <button
+            onClick={() => setIsAnnual(!isAnnual)}
+            style={{
+              width:52, height:28, borderRadius:14,
+              background: isAnnual ? 'var(--green)' : 'var(--line)',
+              position:'relative', transition:'background .2s',
+            }}>
+            <div style={{
+              width:22, height:22, borderRadius:50, background:'#fff',
+              position:'absolute', top:3, left: isAnnual ? 27 : 3,
+              transition:'left .2s', boxShadow:'0 1px 3px rgba(0,0,0,.15)',
+            }}/>
+          </button>
+          <span style={{fontSize:14, fontWeight:600, color: isAnnual ? 'var(--ink)' : 'var(--muted)', display:'flex', alignItems:'center', gap:8}}>
+            Annual
+            <span style={{
+              fontSize:11, fontWeight:700, padding:'3px 8px', borderRadius:50,
+              background: isAnnual ? 'var(--sage)' : 'var(--bg)',
+              color:'var(--teal)',
+              border:'1px solid rgba(11,59,54,.12)',
+            }}>Save 20%</span>
+          </span>
+        </div>
 
-      {/* ── PAGE HERO ── */}
-      <div className="page-hero">
-<h1>Simple, Transparent Pricing</h1>
-        <p>Two components — Platform + AI. Pay only for what you use. No surprises.</p>
-      </div>
-
-      {/* ── PRICING SECTION ── */}
-      <section>
-        <div className="section-inner">
-
-          {/* Billing toggle */}
-          <div className="toggle-wrap">
-            <span className={`toggle-label${!isAnnual ? ' active' : ''}`}>Monthly</span>
-            <button
-              className={`toggle-btn${isAnnual ? ' on' : ''}`}
-              onClick={() => setIsAnnual(!isAnnual)}
-              aria-label="Toggle billing period"
-            >
-              <div className="toggle-knob" />
-            </button>
-            <span className={`toggle-label${isAnnual ? ' active' : ''}`}>
-              Annual <span className="save-badge">Save 20%</span>
-            </span>
+        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, maxWidth:980, margin:'0 auto'}} className="pricing-grid">
+          <div style={{
+            background:'var(--paper)', border:'1px solid var(--line)',
+            borderRadius:24, padding:32,
+            display:'flex', flexDirection:'column',
+            position:'relative', overflow:'hidden',
+          }}>
+            <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:20}}>
+              <div style={{width:38, height:38, borderRadius:10, background:'var(--sage)', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+              </div>
+              <div>
+                <div style={{fontSize:18, fontWeight:700, color:'var(--ink)', fontFamily:"'Bricolage Grotesque'"}}>Platform</div>
+                <div style={{fontSize:12, color:'var(--muted)'}}>The WhatsApp Business CRM</div>
+              </div>
+            </div>
+            <div style={{marginBottom:24}}>
+              <div style={{display:'flex', alignItems:'baseline', gap:8}}>
+                <span style={{fontFamily:"'Bricolage Grotesque'", fontSize:48, fontWeight:700, color:'var(--ink)', letterSpacing:'-0.03em', lineHeight:1}}>{fmt(platM)}</span>
+                <span style={{fontSize:14, color:'var(--muted)'}}>/ month</span>
+              </div>
+              {isAnnual && <div style={{fontSize:12, color:'var(--muted)', marginTop:6}}>{fmt(platM * 12)} billed annually</div>}
+            </div>
+            <ul style={{listStyle:'none', display:'flex', flexDirection:'column', gap:10, marginBottom:20, flex:1}}>
+              {['WhatsApp messaging (Business API)','Up to 10 team members','Role-based access (Super/Admin/Agent/Viewer)','Bulk messaging campaigns','Message templates with variables','CSV contact import & tagging','Conversation inbox + history','Real-time dashboard','Multi-instance support'].map(f => (
+                <li key={f} style={{display:'flex', gap:10, alignItems:'center', fontSize:14, color:'var(--ink-soft)'}}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green-bright)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <div style={{padding:'12px 14px', background:'var(--bg)', borderRadius:10, fontSize:12, color:'var(--muted)', fontFamily:"'JetBrains Mono'", borderLeft:'3px solid var(--green)'}}>
+              <span style={{color:'var(--teal)'}}>✓</span> Always included. No add-on required.
+            </div>
           </div>
 
-          {/* Platform + AI cards */}
-          <div className="pricing-cards-grid">
-
-            {/* Platform */}
-            <div className="pricing-card" style={{ borderColor: 'var(--green)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-                <div style={{ width: '40px', height: '40px', background: '#dcfce7', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+          <div style={{
+            background:'linear-gradient(165deg, #0B1F1C 0%, #1B312D 100%)',
+            color:'#fff', border:'1px solid rgba(106,79,182,.4)',
+            borderRadius:24, padding:32,
+            display:'flex', flexDirection:'column',
+            position:'relative', overflow:'hidden',
+            boxShadow:'0 30px 60px -20px rgba(11,31,28,.4)',
+          }}>
+            <div style={{position:'absolute', top:-30, right:-30, width:200, height:200, background:'radial-gradient(circle, rgba(106,79,182,.3), transparent 70%)', filter:'blur(20px)', pointerEvents:'none'}}/>
+            <div style={{position:'relative', display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20}}>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div style={{width:38, height:38, borderRadius:10, background:'#6A4FB6', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/></svg>
                 </div>
                 <div>
-                  <div className="pricing-name">Platform</div>
-                  <div className="pricing-desc" style={{ margin: 0 }}>WhatsApp CRM &amp; Team Collaboration</div>
+                  <div style={{fontSize:18, fontWeight:700, color:'#fff', fontFamily:"'Bricolage Grotesque'"}}>AI Agent</div>
+                  <div style={{fontSize:12, color:'rgba(255,255,255,.6)'}}>The autonomous brain</div>
                 </div>
               </div>
-              <div className="pricing-price">
-                <div><span className="amount">{fmt(platM)}</span> <span className="period">/ month</span></div>
-                {isAnnual && <div style={{ fontSize: '13px', color: 'var(--slate-400)', marginTop: '4px' }}>{fmt(platM * 12)} billed annually</div>}
-              </div>
-              <ul className="pricing-features">
-                <li><span className="check">✓</span> WhatsApp messaging</li>
-                <li><span className="check">✓</span> Up to 10 team members</li>
-                <li><span className="check">✓</span> Role-based access control</li>
-                <li><span className="check">✓</span> Bulk messaging campaigns</li>
-                <li><span className="check">✓</span> Message templates</li>
-                <li><span className="check">✓</span> Contact management &amp; CSV import</li>
-                <li><span className="check">✓</span> Conversation inbox</li>
-                <li><span className="check">✓</span> Real-time dashboard</li>
-                <li><span className="check">✓</span> Multi-instance support</li>
-              </ul>
+              <span style={{fontSize:10, fontWeight:700, padding:'4px 10px', borderRadius:50, background:'#6A4FB6', color:'#fff', letterSpacing:'.05em'}}>ADD-ON</span>
             </div>
-
-            {/* AI Add-on */}
-            <div className="ai-card featured">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ width: '40px', height: '40px', background: '#ede9fe', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2.2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-                  </div>
-                  <div>
-                    <div className="pricing-name">AI Bot Add-on</div>
-                    <div className="pricing-desc" style={{ margin: 0 }}>AI-Powered Conversations</div>
-                  </div>
-                </div>
-                <span style={{ background: '#7c3aed', color: 'white', fontSize: '11px', fontWeight: 700, padding: '4px 12px', borderRadius: '50px' }}>ADD-ON</span>
+            <div style={{position:'relative', marginBottom:24}}>
+              <div style={{display:'flex', alignItems:'baseline', gap:8}}>
+                <span style={{fontFamily:"'Bricolage Grotesque'", fontSize:48, fontWeight:700, color:'#C4B5FD', letterSpacing:'-0.03em', lineHeight:1}}>{fmt(aiM)}</span>
+                <span style={{fontSize:14, color:'rgba(255,255,255,.55)'}}>/ month</span>
               </div>
-
-              <div className="pricing-price">
-                <div><span className="amount" style={{ color: '#7c3aed' }}>{fmt(aiM)}</span> <span className="period">/ month</span></div>
-                <div style={{ fontSize: '13px', color: 'var(--slate-400)', marginTop: '4px' }}>{TIERS[currentTier].conv.toLocaleString()} AI conversations / month</div>
-              </div>
-
-              {/* Slider */}
-              <div style={{ margin: '20px 0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--slate-400)', marginBottom: '4px' }}>
-                  <span>Conversations / month</span>
-                  <span style={{ fontWeight: 700, color: '#7c3aed' }}>{TIERS[currentTier].conv.toLocaleString()}</span>
-                </div>
-                <input
-                  type="range" min="0" max="3" value={currentTier}
-                  className="tier-slider"
-                  onChange={e => setCurrentTier(parseInt(e.target.value))}
-                />
-                <div className="tier-btns">
-                  {TIERS.map((t, i) => (
-                    <div
-                      key={i}
-                      className={`tier-btn${currentTier === i ? ' active' : ''}`}
-                      onClick={() => setCurrentTier(i)}
-                    >
-                      {t.conv >= 1000 ? `${t.conv / 1000}k` : t.conv}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <ul className="pricing-features">
-                <li><span className="check">✓</span> AI agent prompt builder</li>
-                <li><span className="check">✓</span> Role, guardrails, tone &amp; context</li>
-                <li><span className="check">✓</span> Selectable AI tools</li>
-                <li><span className="check">✓</span> Keyword &amp; event triggers</li>
-                <li><span className="check">✓</span> 24/7 automated responses</li>
-                <li><span className="check">✓</span> Conversation count tracking</li>
-              </ul>
+              <div style={{fontSize:12, color:'rgba(255,255,255,.55)', marginTop:6}}>{TIERS[tierIdx].conv.toLocaleString()} AI conversations / month</div>
             </div>
+            <div style={{position:'relative', marginBottom:20}}>
+              <div style={{display:'flex', justifyContent:'space-between', fontSize:11, color:'rgba(255,255,255,.55)', marginBottom:8, fontFamily:"'JetBrains Mono'", textTransform:'uppercase', letterSpacing:'.06em'}}>
+                <span>Tier</span>
+                <span style={{color:'#C4B5FD', fontWeight:700}}>{TIERS[tierIdx].conv.toLocaleString()} conv</span>
+              </div>
+              <input type="range" min="0" max="3" step="1" value={tierIdx} onChange={e => setTierIdx(parseInt(e.target.value))} style={{width:'100%', accentColor:'#6A4FB6', cursor:'pointer', height:6}}/>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:6, marginTop:10}}>
+                {TIERS.map((t, i) => (
+                  <button key={i} onClick={() => setTierIdx(i)} style={{padding:'7px 4px', borderRadius:8, background: tierIdx === i ? '#6A4FB6' : 'rgba(255,255,255,.04)', border: tierIdx === i ? '1px solid #6A4FB6' : '1px solid rgba(255,255,255,.1)', color: tierIdx === i ? '#fff' : 'rgba(255,255,255,.6)', fontSize:12, fontWeight:600, fontFamily:"'JetBrains Mono'"}}>{t.conv >= 1000 ? `${t.conv/1000}k` : t.conv}</button>
+                ))}
+              </div>
+            </div>
+            <ul style={{position:'relative', listStyle:'none', display:'flex', flexDirection:'column', gap:10, marginBottom:20, flex:1}}>
+              {['AI agent prompt builder','Role, guardrails, tone, business context','Selectable AI tools (CRM, inventory, etc.)','Keyword & event triggers','24/7 automated responses','Conversation count tracking'].map(f => (
+                <li key={f} style={{display:'flex', gap:10, alignItems:'center', fontSize:14, color:'rgba(255,255,255,.85)'}}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#25D366" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <label style={{position:'relative', display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background:'rgba(255,255,255,.04)', borderRadius:10, cursor:'pointer', border:'1px solid rgba(255,255,255,.08)'}}>
+              <input type="checkbox" checked={withAI} onChange={e => setWithAI(e.target.checked)} style={{accentColor:'#6A4FB6', width:16, height:16, cursor:'pointer'}}/>
+              <span style={{fontSize:13, color:'rgba(255,255,255,.85)'}}>Include AI Agent in my total</span>
+            </label>
           </div>
+        </div>
 
-          {/* Total box */}
-          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-            <div className="total-box">
-              <h3>Combined Total</h3>
-              <div className="total-price">{fmt(total)} / mo</div>
-              <div className="total-sub">Platform {fmt(platM)} + AI {TIERS[currentTier].conv.toLocaleString()} conv. {fmt(aiM)}</div>
-              {savingsMsg && (
-                <div style={{ marginTop: '12px', background: 'rgba(255,255,255,.15)', borderRadius: '50px', padding: '6px 16px', fontSize: '13px', fontWeight: 600, display: 'inline-block' }}>
-                  {savingsMsg}
+        <div style={{maxWidth:980, margin:'24px auto 0'}}>
+          <div style={{background:'linear-gradient(135deg, var(--teal) 0%, var(--teal-deep) 100%)', borderRadius:24, padding:'36px 40px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:32, flexWrap:'wrap', position:'relative', overflow:'hidden'}}>
+            <div style={{position:'absolute', top:-50, left:'40%', width:300, height:300, background:'radial-gradient(circle, rgba(37,211,102,.18), transparent 70%)', filter:'blur(30px)'}}/>
+            <div style={{position:'relative'}}>
+              <div style={{fontSize:13, color:'rgba(255,255,255,.65)', marginBottom:8, fontFamily:"'JetBrains Mono'", letterSpacing:'.06em', textTransform:'uppercase'}}>Your total</div>
+              <div style={{display:'flex', alignItems:'baseline', gap:10}}>
+                <span style={{fontFamily:"'Bricolage Grotesque'", fontSize:56, fontWeight:700, color:'#fff', letterSpacing:'-0.03em', lineHeight:1}}>{fmt(total)}</span>
+                <span style={{fontSize:16, color:'rgba(255,255,255,.65)'}}>/ month</span>
+              </div>
+              <div style={{fontSize:13, color:'rgba(255,255,255,.7)', marginTop:10}}>Platform {fmt(platM)}{withAI && ` + AI ${TIERS[tierIdx].conv.toLocaleString()} conv. ${fmt(aiM)}`}</div>
+              {isAnnual && yearSaving > 0 && (
+                <div style={{marginTop:14, display:'inline-flex', alignItems:'center', gap:6, background:'rgba(37,211,102,.18)', color:'#DCF8C6', padding:'5px 12px', borderRadius:50, fontSize:12, fontWeight:600, border:'1px solid rgba(37,211,102,.3)'}}>
+                  🎉 You save {fmt(yearSaving)} / year
                 </div>
               )}
-              <Link href="/auth/login" className="btn btn-white btn-lg" style={{ marginTop: '24px', display: 'inline-flex' }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-                Get Started — {fmt(total)} / month
+            </div>
+            <div style={{position:'relative', display:'flex', flexDirection:'column', gap:10}}>
+              <Link href="/auth/login" className="btn btn-green" style={{padding:'16px 26px', fontSize:16}}>
+                Start free trial
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
               </Link>
-              <p style={{ fontSize: '12px', opacity: 0.6, marginTop: '12px' }}>Secure payment · Cancel anytime · VAT may apply</p>
+              <div style={{fontSize:11, color:'rgba(255,255,255,.55)', textAlign:'center'}}>14 days free · no card</div>
             </div>
           </div>
         </div>
-      </section>
+      </div>
+      <style>{`@media (max-width: 900px){ .pricing-grid{ grid-template-columns: 1fr !important; } }`}</style>
+    </section>
+  );
+}
 
-      {/* ── COMPARISON TABLE ── */}
-      <section style={{ background: 'var(--slate-50)' }}>
-        <div className="section-inner">
-          <div className="section-head">
-            <div className="section-label">Compare</div>
-            <h2 className="section-title">What&apos;s included</h2>
-          </div>
-          <div style={{ overflowX: 'auto', borderRadius: '16px', border: '1.5px solid var(--slate-200)', background: 'white' }}>
-            <table className="compare-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '40%' }}>Feature</th>
-                  <th>Platform</th>
-                  <th>AI Add-on</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td>WhatsApp messaging</td><td><span className="check-icon">✓</span></td><td><span className="dash-icon">—</span></td></tr>
-                <tr><td>Team members (up to 10)</td><td><span className="check-icon">✓</span></td><td><span className="dash-icon">—</span></td></tr>
-                <tr><td>Role-based access control</td><td><span className="check-icon">✓</span></td><td><span className="dash-icon">—</span></td></tr>
-                <tr><td>Contact management &amp; CSV import</td><td><span className="check-icon">✓</span></td><td><span className="dash-icon">—</span></td></tr>
-                <tr><td>Message templates</td><td><span className="check-icon">✓</span></td><td><span className="dash-icon">—</span></td></tr>
-                <tr><td>Bulk campaign sending</td><td><span className="check-icon">✓</span></td><td><span className="dash-icon">—</span></td></tr>
-                <tr><td>Conversation inbox</td><td><span className="check-icon">✓</span></td><td><span className="dash-icon">—</span></td></tr>
-                <tr><td>Real-time dashboard &amp; stats</td><td><span className="check-icon">✓</span></td><td><span className="dash-icon">—</span></td></tr>
-                <tr><td>Multi-instance support</td><td><span className="check-icon">✓</span></td><td><span className="dash-icon">—</span></td></tr>
-                <tr><td>AI agent builder (role, guardrails, tone)</td><td><span className="dash-icon">—</span></td><td><span className="check-icon">✓</span></td></tr>
-                <tr><td>AI flows &amp; automation triggers</td><td><span className="dash-icon">—</span></td><td><span className="check-icon">✓</span></td></tr>
-                <tr><td>Selectable AI tools</td><td><span className="dash-icon">—</span></td><td><span className="check-icon">✓</span></td></tr>
-                <tr><td>AI conversations / month</td><td><span className="dash-icon">—</span></td><td>5k – 20k</td></tr>
-                <tr><td>24/7 automated responses</td><td><span className="dash-icon">—</span></td><td><span className="check-icon">✓</span></td></tr>
-              </tbody>
-            </table>
-          </div>
+const COMP_ROWS: [string, boolean | null | string, boolean | string][] = [
+  ['WhatsApp Business messaging',true,false],['Up to 10 team members',true,false],['Role-based access control',true,false],['Contact management & CSV import',true,false],['Message templates',true,false],['Bulk campaign sending',true,false],['Conversation inbox',true,false],['Real-time dashboard & stats',true,false],['Multi-instance support',true,false],['Scheduled bulk (one-time + recurring)',true,false],['AI agent builder (role, guardrails, tone)',false,true],['AI flows & automation triggers',false,true],['Selectable AI tools (CRM, inventory)',false,true],['AI conversations / month',null,'5k – 20k'],['24/7 automated responses',false,true],['Conversation memory per contact',false,true],
+];
+
+function Comparison() {
+  return (
+    <section style={{background:'var(--bg)'}}>
+      <div className="wrap">
+        <div style={{textAlign:'center', maxWidth:680, margin:'0 auto 56px'}}>
+          <div className="eyebrow">Compare</div>
+          <h2 style={{fontSize:'clamp(2rem, 3.4vw, 3rem)', marginTop:12, color:'var(--ink)'}}>What&apos;s in each plan.</h2>
         </div>
-      </section>
-
-      {/* ── FAQ ── */}
-      <section>
-        <div className="section-inner" style={{ maxWidth: '760px' }}>
-          <div className="section-head">
-            <div className="section-label">FAQ</div>
-            <h2 className="section-title">Common questions</h2>
+        <div style={{background:'var(--paper)', border:'1px solid var(--line)', borderRadius:18, overflow:'hidden', boxShadow:'0 10px 30px -15px rgba(11,31,28,.1)'}}>
+          <div style={{display:'grid', gridTemplateColumns:'2fr 1fr 1fr', gap:0, padding:'18px 28px', background:'var(--ink)', color:'#fff'}}>
+            <div style={{fontSize:11, fontFamily:"'JetBrains Mono'", letterSpacing:'.08em', textTransform:'uppercase', color:'rgba(255,255,255,.6)'}}>Feature</div>
+            <div style={{fontSize:13, fontWeight:700, textAlign:'center'}}>Platform</div>
+            <div style={{fontSize:13, fontWeight:700, textAlign:'center', color:'#C4B5FD'}}>AI Agent</div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {[
-              { q: 'What counts as an AI conversation?', a: 'A conversation is a single AI-handled WhatsApp thread within a 24-hour window. Human-agent replies do not count toward your AI usage.' },
-              { q: 'Can I change my conversation tier?', a: 'Yes. You can upgrade or downgrade your AI tier at any time. Changes take effect at the start of your next billing period.' },
-              { q: 'What happens if I exceed my conversation limit?', a: "You'll receive a notification and the AI bot will pause until you upgrade your tier or the next billing period begins. Your human team can still use the platform normally." },
-              { q: 'Do I need the AI add-on?', a: 'No. The Platform plan gives you full WhatsApp messaging, team management, bulk sending and templates. The AI add-on is optional and adds automated, AI-powered conversation handling.' },
-              { q: 'What payment methods are accepted?', a: 'We accept all major credit and debit cards. EFT and invoicing available for annual plans on request.' },
-            ].map((item, i, arr) => (
-              <div key={i} style={{ padding: '24px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--slate-200)' : 'none' }}>
-                <h3 style={{ fontSize: '16px', marginBottom: '10px', color: 'var(--slate-900)' }}>{item.q}</h3>
-                <p style={{ fontSize: '14px', color: 'var(--slate-500)' }}>{item.a}</p>
-              </div>
-            ))}
-          </div>
+          {COMP_ROWS.map((r, i) => (
+            <div key={i} style={{display:'grid', gridTemplateColumns:'2fr 1fr 1fr', padding:'14px 28px', borderBottom: i < COMP_ROWS.length-1 ? '1px solid var(--line-soft)' : 'none', alignItems:'center', background: i % 2 ? 'var(--bg)' : 'transparent', fontSize:14}}>
+              <div style={{color:'var(--ink)', fontWeight:500}}>{r[0]}</div>
+              <div style={{textAlign:'center', color: r[1] === true ? 'var(--green-bright)' : 'var(--line)', fontSize:16}}>{r[1] === true ? '✓' : r[1] === null ? '—' : '—'}</div>
+              <div style={{textAlign:'center', color: r[2] === true ? 'var(--green-bright)' : typeof r[2] === 'string' ? 'var(--ink)' : 'var(--line)', fontWeight: typeof r[2] === 'string' ? 600 : 'normal', fontSize: typeof r[2] === 'string' ? 13 : 16}}>{r[2] === true ? '✓' : r[2] === false ? '—' : r[2]}</div>
+            </div>
+          ))}
         </div>
-      </section>
+      </div>
+    </section>
+  );
+}
 
-      {/* ── CTA ── */}
-      <section className="cta-section">
-        <h2>Start automating today</h2>
-        <p>No long-term contracts. Cancel anytime. Get your first AI-powered conversation flowing in minutes.</p>
-        <div className="cta-btns">
-          <Link href="/auth/login" className="btn btn-white btn-lg">Get Started →</Link>
-          <Link href="/contact" className="btn btn-lg" style={{ background: 'rgba(255,255,255,.15)', color: 'white', border: '1.5px solid rgba(255,255,255,.35)' }}>Talk to Us</Link>
+const FAQS: [string, string][] = [
+  ['What counts as an AI conversation?','A single AI-handled WhatsApp thread within a 24-hour window. Human-agent replies do not count toward your AI usage — only autonomous AI responses.'],
+  ['Can I change my conversation tier?','Yes — upgrade or downgrade anytime. Changes take effect at the start of your next billing period.'],
+  ['What happens if I exceed my limit?',"You'll get a notification and the AI agent pauses until you upgrade or the next period begins. Your human team can still use the platform normally."],
+  ['Do I need the AI add-on?',"No. The Platform plan gives you full WhatsApp messaging, team management, bulk sending and templates. The AI Agent is optional — add it when you're ready to automate."],
+  ['What payment methods are accepted?','All major credit and debit cards via Paystack. EFT and invoicing available for annual plans on request.'],
+  ['Is there a free trial?','14 days free, no credit card. Both Platform and AI Agent are included in the trial.'],
+];
+
+function FAQ() {
+  const [open, setOpen] = useState(0);
+  return (
+    <section style={{background:'var(--paper)'}}>
+      <div className="wrap" style={{maxWidth:880, margin:'0 auto'}}>
+        <div style={{textAlign:'center', marginBottom:48}}>
+          <div className="eyebrow">FAQ</div>
+          <h2 style={{fontSize:'clamp(2rem, 3.4vw, 3rem)', marginTop:12, color:'var(--ink)'}}>Questions worth asking.</h2>
         </div>
-      </section>
+        <div>
+          {FAQS.map(([q, a], i) => (
+            <div key={i} style={{borderTop:'1px solid var(--line)', borderBottom: i === FAQS.length-1 ? '1px solid var(--line)' : 'none'}}>
+              <button onClick={() => setOpen(open === i ? -1 : i)} style={{display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', padding:'22px 0', textAlign:'left', fontSize:17, fontWeight:600, color:'var(--ink)', letterSpacing:'-0.005em'}}>
+                {q}
+                <span style={{width:28, height:28, borderRadius:50, background: open === i ? 'var(--ink)' : 'transparent', color: open === i ? '#fff' : 'var(--ink)', border:'1px solid var(--line)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0}}>{open === i ? '−' : '+'}</span>
+              </button>
+              {open === i && <div style={{paddingBottom:22, fontSize:15, color:'var(--ink-soft)', lineHeight:1.65, maxWidth:680}}>{a}</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
+export default function PricingPage() {
+  return (
+    <div style={{background:'var(--bg)'}}>
+      <Navbar />
+      <PageHero />
+      <WavyDivider />
+      <Calculator />
+      <WavyDivider />
+      <Comparison />
+      <WavyDivider />
+      <FAQ />
       <Footer />
     </div>
   );

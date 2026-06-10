@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   MessageSquare, LayoutDashboard, Smartphone, Users, MessageCircle,
-  FileText, Zap, Settings, Shield, LogOut, ChevronDown, Building2, CreditCard, CalendarClock,
+  FileText, Zap, Settings, Shield, LogOut, Building2, CreditCard, CalendarClock,
 } from "lucide-react";
 import { cn, getInitials, ROLE_LABELS } from "@/lib/utils";
 import type { OrgMember } from "@/types";
@@ -28,7 +28,7 @@ interface SidebarProps {
 export default function Sidebar({ member }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [orgOpen, setOrgOpen] = useState(false);
+
   const asideRef = useRef<HTMLElement | null>(null);
   const navRef = useRef<HTMLElement | null>(null);
   const itemRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
@@ -86,44 +86,19 @@ export default function Sidebar({ member }: SidebarProps) {
         </div>
       </div>
 
-      {/* Org switcher */}
+      {/* Org display */}
       <div className="p-3 border-b border-slate-100">
-        <button
-          onClick={() => setOrgOpen(!orgOpen)}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors"
-        >
+        <div className="flex items-center gap-2 px-3 py-2">
           <div className="w-7 h-7 bg-whatsapp-teal/10 rounded-lg flex items-center justify-center">
             <Building2 className="w-4 h-4 text-whatsapp-teal" />
           </div>
-          <div className="flex-1 text-left">
+          <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-slate-800 truncate">
               {member.organization?.name ?? "My Organization"}
             </p>
             <p className="text-xs text-slate-400">{ROLE_LABELS[member.role]}</p>
           </div>
-          <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 transition-transform duration-200", orgOpen && "rotate-180")} />
-        </button>
-
-        {orgOpen && (
-          <div className="mt-1 mx-1 rounded-lg border border-slate-100 bg-slate-50 overflow-hidden">
-            <Link
-              href="/dashboard/settings"
-              onClick={() => setOrgOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
-            >
-              <Settings className="w-3.5 h-3.5" />
-              Organisation Settings
-            </Link>
-            <Link
-              href="/dashboard/billing"
-              onClick={() => setOrgOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
-            >
-              <CreditCard className="w-3.5 h-3.5" />
-              Billing & Plan
-            </Link>
-          </div>
-        )}
+        </div>
       </div>
 
       {/* Nav */}

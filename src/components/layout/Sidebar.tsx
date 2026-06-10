@@ -101,8 +101,29 @@ export default function Sidebar({ member }: SidebarProps) {
             </p>
             <p className="text-xs text-slate-400">{ROLE_LABELS[member.role]}</p>
           </div>
-          <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 transition-transform", orgOpen && "rotate-180")} />
+          <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 transition-transform duration-200", orgOpen && "rotate-180")} />
         </button>
+
+        {orgOpen && (
+          <div className="mt-1 mx-1 rounded-lg border border-slate-100 bg-slate-50 overflow-hidden">
+            <Link
+              href="/dashboard/settings"
+              onClick={() => setOrgOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              Organisation Settings
+            </Link>
+            <Link
+              href="/dashboard/billing"
+              onClick={() => setOrgOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              Billing & Plan
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Nav */}

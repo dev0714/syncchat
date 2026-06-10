@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import {
   MessageCircle, Search, Send, Phone, X,
-  CheckCheck, Check, Clock, ChevronDown, ChevronUp,
+  CheckCheck, Check, Clock, ChevronDown, ChevronUp, Bot, UserCheck,
 } from "lucide-react";
 import type { Conversation, Message } from "@/types";
 import { cn, formatRelativeTime } from "@/lib/utils";
@@ -257,6 +257,16 @@ export default function ConversationsPage() {
                               ? `${group.conversations.length} conversations`
                               : highlight(latest.last_message) || (totalUnread > 0 ? "New message" : "No messages")}
                           </p>
+                          {!hasMultiple && latest.status === "bot" && (
+                            <span className="flex items-center gap-0.5 text-[10px] text-purple-500 font-medium mt-0.5">
+                              <Bot className="w-2.5 h-2.5" /> AI handling
+                            </span>
+                          )}
+                          {!hasMultiple && latest.status === "open" && (
+                            <span className="flex items-center gap-0.5 text-[10px] text-green-600 font-medium mt-0.5">
+                              <UserCheck className="w-2.5 h-2.5" /> Agent handling
+                            </span>
+                          )}
                           {totalUnread > 0 && (
                             <span className="ml-2 w-5 h-5 bg-whatsapp-green rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                               {totalUnread}
@@ -328,34 +338,83 @@ export default function ConversationsPage() {
           </div>
         ) : (
           <>
-            <div className="bg-white border-b border-slate-200 px-5 py-3.5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-whatsapp-teal/10 rounded-full flex items-center justify-center text-whatsapp-teal font-semibold text-sm">
-                  {(selected.contact?.name ?? selected.contact?.phone ?? "?")[0].toUpperCase()}
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-900 text-sm">
-                    {selected.contact?.name ?? selected.contact?.phone}
-                  </p>
-                  <div className="flex items-center gap-1 text-xs text-slate-400">
-                    <Phone className="w-3 h-3" />{selected.contact?.phone}
+            {/* Chat header */}
+            <div className="bg-white border-b border-slate-200">
+              <div className="px-5 py-3.5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-whatsapp-teal/10 rounded-full flex items-center justify-center text-whatsapp-teal font-semibold text-sm">
+                    {(selected.contact?.name ?? selected.contact?.phone ?? "?")[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900 text-sm">
+                      {selected.contact?.name ?? selected.contact?.phone}
+                    </p>
+                    <div className="flex items-center gap-1 text-xs text-slate-400">
+                      <Phone className="w-3 h-3" />{selected.contact?.phone}
+                    </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  {selected.unread_count > 0 && (
+                    <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-whatsapp-green/10 text-whatsapp-green">
+                      {selected.unread_count} unread
+                    </span>
+                  )}
+                  {selected.status !== "closed" && (
+                    <button
+                      onClick={() => updateStatus(selected.id, "closed")}
+                      className="text-xs px-2.5 py-1 rounded-full font-medium bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
+                    >
+                      Close
+                    </button>
+                  )}
+                  {selected.status === "closed" && (
+                    <button
+                      onClick={() => updateStatus(selected.id, "open")}
+                      className="text-xs px-2.5 py-1 rounded-full font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
+                    >
+                      Reopen
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium capitalize",
-                  selected.status === "open" ? "bg-green-100 text-green-700" :
-                  selected.status === "closed" ? "bg-slate-100 text-slate-500" :
-                  "bg-amber-100 text-amber-700"
-                )}>
-                  {selected.status}
-                </span>
-                {selected.unread_count > 0 && (
-                  <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-whatsapp-green/10 text-whatsapp-green">
-                    {selected.unread_count} unread
-                  </span>
-                )}
-              </div>
+
+              {/* Handoff banner */}
+              {selected.status === "bot" ? (
+                <div className="mx-4 mb-3 flex items-center justify-between gap-3 rounded-xl bg-purple-50 border border-purple-200 px-4 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <Bot className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-semibold text-purple-800">AI agent is handling this conversation</p>
+                      <p className="text-xs text-purple-500">The bot is replying automatically. Take over to respond manually.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => updateStatus(selected.id, "open")}
+                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold transition-colors"
+                  >
+                    <UserCheck className="w-3.5 h-3.5" />
+                    Take over
+                  </button>
+                </div>
+              ) : selected.status === "open" ? (
+                <div className="mx-4 mb-3 flex items-center justify-between gap-3 rounded-xl bg-green-50 border border-green-200 px-4 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-green-600 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-semibold text-green-800">Human agent is handling this conversation</p>
+                      <p className="text-xs text-green-500">AI is paused. Hand back to let the bot resume automatic replies.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => updateStatus(selected.id, "bot")}
+                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-semibold transition-colors"
+                  >
+                    <Bot className="w-3.5 h-3.5" />
+                    Hand to AI
+                  </button>
+                </div>
+              ) : null}
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3">

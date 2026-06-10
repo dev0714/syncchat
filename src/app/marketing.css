@@ -6,7 +6,7 @@
   --paper: #FFFFFF;
   --ink: #0B1F1C;
   --ink-soft: #1B312D;
-  --muted: #6B807B;
+  --mk-muted: #6B807B;
   --line: rgba(11,31,28,0.10);
   --line-soft: rgba(11,31,28,0.06);
   --teal-deep: #0B3B36;
@@ -99,7 +99,7 @@ section{padding:96px 0;}
 }
 .page-hero-band .breadcrumb{
   font-family:'JetBrains Mono', monospace;
-  font-size:11px; color:var(--muted); letter-spacing:.06em;
+  font-size:11px; color:var(--mk-muted); letter-spacing:.06em;
   margin-bottom:18px;
 }
 .page-hero-band .breadcrumb a{color:var(--teal-mid);}
@@ -169,7 +169,7 @@ section{padding:96px 0;}
 ::-webkit-scrollbar{width:6px;height:6px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
-::-webkit-scrollbar-thumb:hover{background:var(--muted);}
+::-webkit-scrollbar-thumb:hover{background:var(--mk-muted);}
 
 @media (max-width:900px){
   section{padding:64px 0;}
@@ -179,4 +179,10 @@ section{padding:96px 0;}
 }
 @media (max-width:540px){
   .steps{grid-template-columns:1fr;}
+}
+
+/* Auth pages */
+@media (max-width:900px){
+  .auth-root { grid-template-columns: 1fr !important; }
+  .auth-right-panel { display: none !important; }
 }

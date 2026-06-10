@@ -146,7 +146,7 @@ export default function LoginPage() {
                     width: 32, height: 32, borderRadius: 8,
                     background: "none", border: "none", cursor: "pointer",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "var(--muted)",
+                    color: "var(--mk-muted)",
                   }}
                 >
                   {showPass ? <EyeOff size={16}/> : <Eye size={16}/>}
@@ -186,7 +186,7 @@ export default function LoginPage() {
 
             <div style={{
               display: "flex", alignItems: "center", gap: 12,
-              color: "var(--muted)", fontSize: 12,
+              color: "var(--mk-muted)", fontSize: 12,
               fontFamily: "'JetBrains Mono', monospace",
             }}>
               <div style={{ flex: 1, height: 1, background: "var(--line)" }}/>
@@ -208,7 +208,7 @@ export default function LoginPage() {
         </div>
 
         {/* Bottom note */}
-        <p style={{ fontSize: 12, color: "var(--muted)", textAlign: "center" }}>
+        <p style={{ fontSize: 12, color: "var(--mk-muted)", textAlign: "center" }}>
           © 2026 Syncchat · <Link href="/legal/terms" style={{ color: "var(--teal-mid)" }}>Terms</Link>
         </p>
       </div>
@@ -307,12 +307,6 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <style>{`
-        @media (max-width: 900px) {
-          .auth-root { grid-template-columns: 1fr !important; }
-          .auth-right-panel { display: none !important; }
-        }
-      `}</style>
     </div>
   );
 }

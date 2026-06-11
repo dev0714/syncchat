@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
 import {
   CreditCard, CheckCircle2, Zap, Shield, Users, MessageSquare,
   RefreshCw, Bot, MessageCircle, ChevronRight, Receipt, ExternalLink,
@@ -76,9 +75,8 @@ export default function BillingClient({
   activeSubscription: ActiveSubscription;
   trialDaysLeft: number | null;
   trialExpired: boolean;
+  isWelcome?: boolean;
 }) {
-  const searchParams = useSearchParams();
-  const isWelcome = searchParams.get("welcome") === "1";
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
   const [tierIdx, setTierIdx] = useState(0);
 

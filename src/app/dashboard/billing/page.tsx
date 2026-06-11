@@ -21,9 +21,14 @@ export type ActiveSubscription = {
   billing_period: string;
 } | null;
 
-export default async function BillingPage() {
+export default async function BillingPage({
+  searchParams,
+}: {
+  searchParams?: { welcome?: string };
+}) {
   const user = await getCurrentUser();
   if (!user || !user.orgId) redirect("/auth/login");
+  const isWelcome = searchParams?.welcome === "1";
 
   const supabase = createAdminClient();
 
@@ -65,6 +70,7 @@ export default async function BillingPage() {
       activeSubscription={activeSubscription}
       trialDaysLeft={trialDaysLeft}
       trialExpired={trialExpired}
+      isWelcome={isWelcome}
     />
   );
 }

@@ -90,7 +90,12 @@ export default function BillingClient({
       const fd = new FormData();
       fd.append("tierIdx", String(tierIdx));
       fd.append("billing", billing);
-      await startPayment(fd);
+      const result = await startPayment(fd);
+      if (result?.url) {
+        window.location.href = result.url;
+      } else {
+        throw new Error("No payment URL returned.");
+      }
     } catch (err) {
       setUpgradeError(err instanceof Error ? err.message : "Payment could not be started. Please try again.");
       setUpgrading(false);

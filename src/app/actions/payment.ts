@@ -1,6 +1,5 @@
 'use server'
 
-import { redirect } from 'next/navigation'
 import {
   initializeTransaction,
   verifyTransaction,
@@ -115,7 +114,7 @@ export async function startPayment(formData: FormData) {
     },
   })
 
-  redirect(result.data.authorization_url)
+  return { url: result.data.authorization_url }
 }
 
 export async function confirmPayment(reference: string) {

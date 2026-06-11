@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   CreditCard, CheckCircle2, Zap, Shield, Users, MessageSquare,
   RefreshCw, Bot, MessageCircle, ChevronRight, Receipt, ExternalLink,
@@ -76,6 +77,8 @@ export default function BillingClient({
   trialDaysLeft: number | null;
   trialExpired: boolean;
 }) {
+  const searchParams = useSearchParams();
+  const isWelcome = searchParams.get("welcome") === "1";
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
   const [tierIdx, setTierIdx] = useState(0);
 
@@ -97,6 +100,21 @@ export default function BillingClient({
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
+      {/* Welcome / trial start banner */}
+      {isWelcome && !trialExpired && trialDaysLeft !== null && (
+        <div className="rounded-xl border border-whatsapp-teal/30 bg-whatsapp-teal/5 p-5 flex items-start gap-4">
+          <div className="w-10 h-10 rounded-xl bg-whatsapp-teal flex items-center justify-center flex-shrink-0">
+            <CheckCircle2 className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-slate-900">Welcome to SyncChat! Your 14-day free trial has started.</p>
+            <p className="text-sm text-slate-500 mt-1">
+              You have full access to all features for the next {trialDaysLeft} days — no credit card required. Subscribe anytime below to continue after your trial ends.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Trial banner */}
       {trialExpired && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 flex items-start gap-3">

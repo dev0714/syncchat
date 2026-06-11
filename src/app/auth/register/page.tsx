@@ -158,7 +158,7 @@ export default function RegisterPage() {
         return;
       }
 
-      router.replace("/dashboard");
+      router.replace("/dashboard/billing?welcome=1");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred. Please try again.");

@@ -19,103 +19,106 @@ const TIERS = [
 ]
 const PLATFORM_PRICE = 1500
 
-export async function startPayment(formData: FormData) {
+export async function startPayment(formData: FormData): Promise<{ url: string; error?: string }> {
   const user = await getCurrentUser()
   if (!user || !user.orgId) redirect('/auth/login')
 
-  const tierIdx = Math.min(Number(formData.get('tierIdx') ?? 0), TIERS.length - 1)
-  const billing = (formData.get('billing') as string) === 'annual' ? 'annual' : 'monthly'
+  try {
+    const tierIdx = Math.min(Number(formData.get('tierIdx') ?? 0), TIERS.length - 1)
+    const billing = (formData.get('billing') as string) === 'annual' ? 'annual' : 'monthly'
 
-  const tier = TIERS[tierIdx]
-  const disc = billing === 'annual' ? 0.8 : 1
-  const platformMonthly = Math.round(PLATFORM_PRICE * disc)
-  const aiMonthly = Math.round(tier.monthly * disc)
-  const totalMonthly = platformMonthly + aiMonthly
-  const amountCents = totalMonthly * 100
+    const tier = TIERS[tierIdx]
+    const disc = billing === 'annual' ? 0.8 : 1
+    const platformMonthly = Math.round(PLATFORM_PRICE * disc)
+    const aiMonthly = Math.round(tier.monthly * disc)
+    const totalMonthly = platformMonthly + aiMonthly
+    const amountCents = totalMonthly * 100
 
-  const supabase = createAdminClient()
+    const supabase = createAdminClient()
 
-  // Look up the Paystack plan code set by the admin
-  const { data: plan } = await supabase
-    .from('paystack_plans')
-    .select('plan_code')
-    .eq('tier_conversations', tier.conversations)
-    .eq('billing_period', billing)
-    .maybeSingle()
+    // Look up the Paystack plan code set by the admin
+    const { data: plan } = await supabase
+      .from('paystack_plans')
+      .select('plan_code')
+      .eq('tier_conversations', tier.conversations)
+      .eq('billing_period', billing)
+      .maybeSingle()
 
-  if (!plan) {
-    return {
-      url: '',
-      error: `No subscription plan configured for ${tier.conversations.toLocaleString('en-ZA')} conversations (${billing}). Ask the admin to set it up in the Plans tab.`,
-    }
-  }
-
-  // Cancel any existing active subscription before switching
-  const { data: existingSub } = await supabase
-    .from('billing_subscriptions')
-    .select('id, subscription_code, email_token, tier_conversations, billing_period')
-    .eq('org_id', user.orgId)
-    .eq('status', 'success')
-    .not('subscription_code', 'is', null)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (existingSub?.subscription_code && existingSub?.email_token) {
-    const isSamePlan =
-      existingSub.tier_conversations === tier.conversations &&
-      existingSub.billing_period === billing
-
-    if (isSamePlan) {
-      // Client should block this but double-check server-side
-      throw new Error('You are already subscribed to this plan.')
+    if (!plan) {
+      return {
+        url: '',
+        error: `No subscription plan configured for ${tier.conversations.toLocaleString('en-ZA')} conversations (${billing}). Ask the admin to set it up in the Plans tab.`,
+      }
     }
 
-    try {
-      await disableSubscription(existingSub.subscription_code, existingSub.email_token)
-      // Mark old subscription as cancelled
-      await supabase
-        .from('billing_subscriptions')
-        .update({ status: 'cancelled' } as never)
-        .eq('id', existingSub.id)
-    } catch {
-      // Non-fatal — continue with new subscription
+    // Cancel any existing active subscription before switching
+    const { data: existingSub } = await supabase
+      .from('billing_subscriptions')
+      .select('id, subscription_code, email_token, tier_conversations, billing_period')
+      .eq('org_id', user.orgId)
+      .eq('status', 'success')
+      .not('subscription_code', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (existingSub?.subscription_code && existingSub?.email_token) {
+      const isSamePlan =
+        existingSub.tier_conversations === tier.conversations &&
+        existingSub.billing_period === billing
+
+      if (isSamePlan) {
+        return { url: '', error: 'You are already subscribed to this plan.' }
+      }
+
+      try {
+        await disableSubscription(existingSub.subscription_code, existingSub.email_token)
+        await supabase
+          .from('billing_subscriptions')
+          .update({ status: 'cancelled' } as never)
+          .eq('id', existingSub.id)
+      } catch {
+        // Non-fatal — continue with new subscription
+      }
     }
-  }
 
-  const reference = `syncchat_${user.orgId}_${Date.now()}`
+    const reference = `syncchat_${user.orgId}_${Date.now()}`
 
-  // Remove stale pending attempts
-  await supabase
-    .from('billing_subscriptions')
-    .delete()
-    .eq('org_id', user.orgId)
-    .eq('status', 'pending')
+    // Remove stale pending attempts
+    await supabase
+      .from('billing_subscriptions')
+      .delete()
+      .eq('org_id', user.orgId)
+      .eq('status', 'pending')
 
-  await supabase.from('billing_subscriptions').insert({
-    org_id: user.orgId,
-    user_id: user.userId,
-    paystack_reference: reference,
-    amount_cents: amountCents,
-    billing_period: billing,
-    tier_conversations: tier.conversations,
-    plan_code: plan.plan_code,
-    status: 'pending',
-  })
-
-  const result = await initializeTransaction(user.email, amountCents, {
-    reference,
-    callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment/verify`,
-    plan: plan.plan_code,
-    metadata: {
+    await supabase.from('billing_subscriptions').insert({
       org_id: user.orgId,
       user_id: user.userId,
-      tier_conversations: tier.conversations,
+      paystack_reference: reference,
+      amount_cents: amountCents,
       billing_period: billing,
-    },
-  })
+      tier_conversations: tier.conversations,
+      plan_code: plan.plan_code,
+      status: 'pending',
+    })
 
-  return { url: result.data.authorization_url, error: undefined }
+    const result = await initializeTransaction(user.email, amountCents, {
+      reference,
+      callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment/verify`,
+      plan: plan.plan_code,
+      metadata: {
+        org_id: user.orgId,
+        user_id: user.userId,
+        tier_conversations: tier.conversations,
+        billing_period: billing,
+      },
+    })
+
+    return { url: result.data.authorization_url }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Payment could not be started. Please try again.'
+    return { url: '', error: message }
+  }
 }
 
 export async function confirmPayment(reference: string) {

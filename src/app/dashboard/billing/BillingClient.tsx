@@ -79,6 +79,22 @@ export default function BillingClient({
 }) {
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
   const [tierIdx, setTierIdx] = useState(0);
+  const [upgrading, setUpgrading] = useState(false);
+  const [upgradeError, setUpgradeError] = useState("");
+
+  async function handleUpgrade() {
+    setUpgrading(true);
+    setUpgradeError("");
+    try {
+      const fd = new FormData();
+      fd.append("tierIdx", String(tierIdx));
+      fd.append("billing", billing);
+      await startPayment(fd);
+    } catch (err) {
+      setUpgradeError(err instanceof Error ? err.message : "Payment could not be started. Please try again.");
+      setUpgrading(false);
+    }
+  }
 
   const tier = TIERS[tierIdx];
   const platformMonthly = billing === "annual" ? Math.round(PLATFORM_PRICE * 0.8) : PLATFORM_PRICE;
@@ -356,14 +372,21 @@ export default function BillingClient({
             This is your current plan
           </div>
         ) : (
-          <form action={startPayment}>
-            <input type="hidden" name="tierIdx" value={tierIdx} />
-            <input type="hidden" name="billing" value={billing} />
-            <button type="submit" className="btn-primary w-full py-3 text-base flex items-center justify-center gap-2">
+          <div className="space-y-3">
+            <button
+              onClick={handleUpgrade}
+              disabled={upgrading}
+              className="btn-primary w-full py-3 text-base flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
               <CreditCard className="w-4 h-4" />
-              {activeSubscription ? "Switch plan" : isPaid ? "Change plan" : "Upgrade"} — R{totalMonthly.toLocaleString('en-ZA')} / month
+              {upgrading ? "Redirecting to payment…" : `${activeSubscription ? "Switch plan" : isPaid ? "Change plan" : "Upgrade"} — R${totalMonthly.toLocaleString('en-ZA')} / month`}
             </button>
-          </form>
+            {upgradeError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {upgradeError}
+              </div>
+            )}
+          </div>
         )}
         <p className="text-xs text-center text-slate-400 mt-3">
           {activeSubscription && !isCurrentPlan

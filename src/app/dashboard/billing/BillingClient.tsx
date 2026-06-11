@@ -91,7 +91,9 @@ export default function BillingClient({
       fd.append("tierIdx", String(tierIdx));
       fd.append("billing", billing);
       const result = await startPayment(fd);
-      if (result?.url) {
+      if (result?.error) {
+        throw new Error(result.error);
+      } else if (result?.url) {
         window.location.href = result.url;
       } else {
         throw new Error("No payment URL returned.");

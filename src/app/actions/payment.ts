@@ -44,10 +44,10 @@ export async function startPayment(formData: FormData) {
     .maybeSingle()
 
   if (!plan) {
-    throw new Error(
-      `No subscription plan configured for ${tier.conversations.toLocaleString('en-ZA')} conversations (${billing}). ` +
-      `Ask the admin to set it up in the Plans tab.`
-    )
+    return {
+      url: '',
+      error: `No subscription plan configured for ${tier.conversations.toLocaleString('en-ZA')} conversations (${billing}). Ask the admin to set it up in the Plans tab.`,
+    }
   }
 
   // Cancel any existing active subscription before switching
@@ -115,7 +115,7 @@ export async function startPayment(formData: FormData) {
     },
   })
 
-  return { url: result.data.authorization_url }
+  return { url: result.data.authorization_url, error: undefined }
 }
 
 export async function confirmPayment(reference: string) {

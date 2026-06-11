@@ -69,6 +69,7 @@ export default function BillingClient({
   activeSubscription,
   trialDaysLeft,
   trialExpired,
+  isWelcome,
 }: {
   currentPlan: string;
   invoices: Invoice[];

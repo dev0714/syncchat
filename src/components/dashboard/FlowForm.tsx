@@ -54,12 +54,21 @@ const PROMPT_TABS = [
 ];
 
 /* ── Tools catalogue ── */
+interface ToolConfigField {
+  key: string;
+  label: string;
+  placeholder: string;
+  type?: "text" | "textarea" | "select";
+  options?: { value: string; label: string }[];
+  hint?: string;
+}
+
 interface ToolDef {
   id: string;
   label: string;
   description: string;
   emoji: string;
-  configFields?: { key: string; label: string; placeholder: string }[];
+  configFields?: ToolConfigField[];
 }
 
 const TOOL_CATALOGUE: ToolDef[] = [
@@ -110,13 +119,64 @@ const TOOL_CATALOGUE: ToolDef[] = [
     emoji: "🖼️",
   },
   {
-    id: "custom_webhook",
-    label: "Custom Webhook",
-    description: "Call any external API or endpoint when the agent needs data or wants to trigger an action.",
+    id: "api_call",
+    label: "API Call",
+    description: "Connect the agent to an external system — booking, ticketing, CRM, or any REST API. The agent calls your endpoint to fetch data or trigger an action, then uses the response in its reply.",
     emoji: "🔗",
     configFields: [
-      { key: "url",    label: "Endpoint URL",   placeholder: "https://your-api.com/webhook" },
-      { key: "secret", label: "Secret / Token", placeholder: "Bearer sk-..." },
+      {
+        key: "name",
+        label: "Tool name",
+        placeholder: "e.g. Booking System",
+        hint: "A short name the AI sees for this capability.",
+      },
+      {
+        key: "description",
+        label: "When to use it",
+        type: "textarea",
+        placeholder: "e.g. Use to check café availability and create table bookings. Always check availability before confirming a booking, then create it with the chosen date and slot.",
+        hint: "Describe what this API does and when the agent should call it — this is how the AI decides to use it.",
+      },
+      {
+        key: "method",
+        label: "HTTP method",
+        type: "select",
+        placeholder: "",
+        options: [
+          { value: "GET", label: "GET — read / look up data" },
+          { value: "POST", label: "POST — create / submit" },
+          { value: "PUT", label: "PUT — replace" },
+          { value: "PATCH", label: "PATCH — update" },
+          { value: "DELETE", label: "DELETE — remove" },
+        ],
+        hint: "Let the agent choose at runtime if your endpoint supports more than one action.",
+      },
+      {
+        key: "url",
+        label: "Endpoint URL",
+        placeholder: "https://meankatcafe.co.za/api/agent/bookings",
+        hint: "Supports {placeholders} the AI fills in, e.g. ?date={date}.",
+      },
+      {
+        key: "auth_header",
+        label: "Authorization header",
+        placeholder: "Bearer <BOOKING_API_KEY>",
+        hint: "Sent as the Authorization header on every request. Leave blank if the API needs no auth.",
+      },
+      {
+        key: "query_params",
+        label: "Query parameters",
+        type: "textarea",
+        placeholder: "date — the day to check (YYYY-MM-DD)\nfrom, to — scan a date range (max 62 days)",
+        hint: "Describe the query params the agent may set — one per line. Used mainly for GET.",
+      },
+      {
+        key: "body_params",
+        label: "Body fields",
+        type: "textarea",
+        placeholder: "date (YYYY-MM-DD), slot (HH:MM), name, partySize, email, phone",
+        hint: "For POST / PUT / PATCH — describe the JSON fields the agent may send.",
+      },
     ],
   },
   {
@@ -400,12 +460,35 @@ export default function FlowForm({ editing }: { editing?: N8nFlow | null }) {
                           {def.configFields.map(field => (
                             <div key={field.key}>
                               <label className="text-xs font-medium text-slate-600 block mb-1">{field.label}</label>
-                              <input
-                                className="input text-sm"
-                                placeholder={field.placeholder}
-                                value={tool.config?.[field.key] ?? ""}
-                                onChange={e => setToolConfig(def.id, field.key, e.target.value)}
-                              />
+                              {field.type === "select" ? (
+                                <select
+                                  className="input text-sm"
+                                  value={tool.config?.[field.key] ?? field.options?.[0]?.value ?? ""}
+                                  onChange={e => setToolConfig(def.id, field.key, e.target.value)}
+                                >
+                                  {field.options?.map(opt => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                  ))}
+                                </select>
+                              ) : field.type === "textarea" ? (
+                                <textarea
+                                  className="input text-sm resize-y"
+                                  style={{ minHeight: 72 }}
+                                  placeholder={field.placeholder}
+                                  value={tool.config?.[field.key] ?? ""}
+                                  onChange={e => setToolConfig(def.id, field.key, e.target.value)}
+                                />
+                              ) : (
+                                <input
+                                  className="input text-sm"
+                                  placeholder={field.placeholder}
+                                  value={tool.config?.[field.key] ?? ""}
+                                  onChange={e => setToolConfig(def.id, field.key, e.target.value)}
+                                />
+                              )}
+                              {field.hint && (
+                                <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">{field.hint}</p>
+                              )}
                             </div>
                           ))}
                         </div>

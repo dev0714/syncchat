@@ -115,20 +115,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Selected WhatsApp instance was not found for this organization." }, { status: 400 });
   }
 
-  const { error } = await supabase.from("n8n_flows").insert({
-    org_id: body.orgId ?? orgId,
-    instance_id: body.instance_id,
-    name: body.name,
-    description: body.description || null,
-    trigger_type: body.trigger_type ?? "inbound_message",
-    trigger_keyword: body.trigger_keyword || null,
-    prompt_role: body.prompt_role || "",
-    prompt_guardrails: body.prompt_guardrails || "",
-    prompt_tone: body.prompt_tone || "",
-    prompt_context: body.prompt_context || "",
-    prompt_tools: body.prompt_tools ?? [],
-    is_active: true,
-  });
+  // Upsert on instance_id so re-creating a flow for the same WhatsApp
+  // instance overwrites the existing row instead of producing duplicates
+  // (duplicates make the n8n workflow reply more than once).
+  const { error } = await supabase
+    .from("n8n_flows")
+    .upsert(
+      {
+        org_id: body.orgId ?? orgId,
+        instance_id: body.instance_id,
+        name: body.name,
+        description: body.description || null,
+        trigger_type: body.trigger_type ?? "inbound_message",
+        trigger_keyword: body.trigger_keyword || null,
+        prompt_role: body.prompt_role || "",
+        prompt_guardrails: body.prompt_guardrails || "",
+        prompt_tone: body.prompt_tone || "",
+        prompt_context: body.prompt_context || "",
+        prompt_tools: body.prompt_tools ?? [],
+        is_active: true,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "instance_id" }
+    );
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });

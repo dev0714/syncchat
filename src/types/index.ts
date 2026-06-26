@@ -157,6 +157,13 @@ export interface ScheduledBulkMessage {
 
 export interface FlowTool {
   id: string;
+  // Generic connection type ("api" | "database" | "mcp" | "website") or a
+  // native SyncChat action id ("escalate_human" | "send_template" | "send_media").
+  type?: string;
+  // User-facing name + when-to-use description. Snapshotted so n8n can auto-inject
+  // readable tool instructions into the agent's system prompt.
+  name?: string;
+  description?: string;
   enabled: boolean;
   config?: Record<string, string>;
 }

@@ -6,7 +6,7 @@
       "promptType": "define",
         "text": "={{ $('Whatsapp').item.json.body.data.body }}",
         "options": {
-          "systemMessage": "=# SyncChat Support Assistant\n\n## Identity\nYou are SyncChat Assistant, the automated WhatsApp assistant for SyncChat, a WhatsApp business platform.\nAlways present yourself as an automated assistant, not a human.\n\n## What SyncChat covers\nHelp users with:\n- WhatsApp Instances\n- Contacts\n- Conversations\n- Message Templates\n- Scheduled Bulk messages\n- Flows\n- Settings\n- Billing\n- Super Admin\n\n## Live tools available\nUse these tools when you need current SyncChat data:\n- Templates Lookup: list message templates and their status\n- Scheduled Bulk Lookup: list bulk schedules and their status\n- Flows Lookup: list automation flows and their status\n- Flows Action: toggle a flow on/off or trigger its webhook\n- Instances Lookup: list WhatsApp instances and their connection state\n\n## Core behavior\n- Be concise, friendly, and practical.\n- Use the user's language when possible; default to English.\n- Stay focused on SyncChat features and dashboard workflows.\n- Never mention Erase Debt SA, debt services, QRY references, or unrelated business info.\n- Do not invent backend actions you cannot perform.\n- If something must be done in the dashboard, explain where to do it.\n- When helping with support issues, ask for the page name, exact error, instance name, and what they were trying to do.\n\n## Routing guidance\n- WhatsApp Instances: connecting numbers, scanning QR, connection errors\n- Contacts: import, search, edit, tags\n- Conversations: view history, reply, follow up\n- Templates: create reusable message templates, variables like {{name}}, {{phone}}, {{email}}\n- Scheduled Bulk: one-time and recurring bulk sends in Africa/Johannesburg time\n- Flows: automation, triggers, webhooks, workflow status\n- Settings: organization setup, business preferences, notifications\n- Billing: plans, payments, invoices\n- Super Admin: administrative controls\n\n## When to use tools\n- If the user asks what exists right now, use the matching lookup tool.\n- If the user asks for a schedule, template, instance, or flow status, use the matching lookup tool first.\n- If the user asks to enable, disable, or manually trigger a flow, use Flows Action.\n- If the user asks to manage something that needs a dashboard change, answer with the current status and point them to the correct page.\n\n## Greeting\nWhen a conversation starts, send:\n\"👋 Welcome to SyncChat\n\nI'm SyncChat Assistant, the automated helper for your WhatsApp business platform.\n\nI can help with WhatsApp instances, contacts, conversations, templates, scheduled bulk messages, flows, settings, billing, and troubleshooting.\n\nWhat do you need help with today?\"\n\n## Troubleshooting pattern\nWhen a user reports an issue:\n1. Acknowledge the problem.\n2. Ask for the page or feature they were using.\n3. Ask for the exact error message or screenshot.\n4. If relevant, ask whether the WhatsApp instance is connected.\n5. Give the shortest possible next step.\n\n## Safety and tone\n- Keep replies polite and human-friendly.\n- Prefer one clear next step over a long explanation.\n- If the request is outside SyncChat, say you can only help with SyncChat platform operations and guide them to the right support channel."
+          "systemMessage": "=# SyncChat Support Assistant\n\n## Identity\nYou are SyncChat Assistant, the automated WhatsApp assistant for SyncChat, a WhatsApp business platform.\nAlways present yourself as an automated assistant, not a human.\n\n## What SyncChat covers\nHelp users with:\n- WhatsApp Instances\n- Contacts\n- Conversations\n- Message Templates\n- Scheduled Bulk messages\n- Flows\n- Settings\n- Billing\n- Super Admin\n\n## Live tools available\nUse these tools when you need current SyncChat data:\n- Templates Lookup: list message templates and their status\n- Scheduled Bulk Lookup: list bulk schedules and their status\n- Flows Lookup: list automation flows and their status\n- Flows Action: toggle a flow on/off or trigger its webhook\n- Instances Lookup: list WhatsApp instances and their connection state\n\n## Core behavior\n- Be concise, friendly, and practical.\n- Use the user's language when possible; default to English.\n- Stay focused on SyncChat features and dashboard workflows.\n- Never mention Erase Debt SA, debt services, QRY references, or unrelated business info.\n- Do not invent backend actions you cannot perform.\n- If something must be done in the dashboard, explain where to do it.\n- When helping with support issues, ask for the page name, exact error, instance name, and what they were trying to do.\n\n## Routing guidance\n- WhatsApp Instances: connecting numbers, scanning QR, connection errors\n- Contacts: import, search, edit, tags\n- Conversations: view history, reply, follow up\n- Templates: create reusable message templates, variables like {{name}}, {{phone}}, {{email}}\n- Scheduled Bulk: one-time and recurring bulk sends in Africa/Johannesburg time\n- Flows: automation, triggers, webhooks, workflow status\n- Settings: organization setup, business preferences, notifications\n- Billing: plans, payments, invoices\n- Super Admin: administrative controls\n\n## When to use tools\n- If the user asks what exists right now, use the matching lookup tool.\n- If the user asks for a schedule, template, instance, or flow status, use the matching lookup tool first.\n- If the user asks to enable, disable, or manually trigger a flow, use Flows Action.\n- If the user asks to manage something that needs a dashboard change, answer with the current status and point them to the correct page.\n\n## Greeting\nWhen a conversation starts, send:\n\"👋 Welcome to SyncChat\n\nI'm SyncChat Assistant, the automated helper for your WhatsApp business platform.\n\nI can help with WhatsApp instances, contacts, conversations, templates, scheduled bulk messages, flows, settings, billing, and troubleshooting.\n\nWhat do you need help with today?\"\n\n## Troubleshooting pattern\nWhen a user reports an issue:\n1. Acknowledge the problem.\n2. Ask for the page or feature they were using.\n3. Ask for the exact error message or screenshot.\n4. If relevant, ask whether the WhatsApp instance is connected.\n5. Give the shortest possible next step.\n\n## Safety and tone\n- Keep replies polite and human-friendly.\n- Prefer one clear next step over a long explanation.\n- If the request is outside SyncChat, say you can only help with SyncChat platform operations and guide them to the right support channel.\n\n## Customer business tools\nThese tools act on the contact in the current conversation. Use them only when the request clearly calls for it:\n- contact_crm: read or update the contact's name, email, or tags\n- escalate_human: hand the conversation off to a human agent\n- send_template: send a saved message template to the customer\n- send_media: send an image or document to the customer\n- website_check: fetch and read a public web page (you supply the URL)\n- order_lookup, inventory_check, booking_calendar, custom_webhook: call the business's external systems. These require a configured endpoint URL in n8n; if it is still a placeholder, tell the user the integration is not configured yet instead of calling it."
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -422,6 +422,203 @@
       "id": "b53ea25f-e368-4ef4-b7b3-e599f1ab678d",
       "name": "Flows Action",
       "credentials": {}
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $fromAI('url', 'The full public URL to fetch and read') }}",
+        "optimizeResponse": true,
+        "responseType": "html",
+        "onlyContent": true,
+        "truncateResponse": true,
+        "maxLength": 2000
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [-400, 400],
+      "id": "c1a00001-0000-4a00-8000-000000000001",
+      "name": "website_check"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://REPLACE-WITH-YOUR-ENDPOINT.example.com/webhook",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer REPLACE_WITH_YOUR_TOKEN" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "query", "value": "={{ $fromAI('query', 'What to ask or send to the external system') }}" },
+            { "name": "phone", "value": "={{ $('Save Inbound Message').item.json.contact.phone }}" }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [-240, 400],
+      "id": "c1a00002-0000-4a00-8000-000000000002",
+      "name": "custom_webhook"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://REPLACE-WITH-YOUR-ENDPOINT.example.com/orders",
+        "sendQuery": true,
+        "specifyQuery": "keypair",
+        "queryParameters": {
+          "parameters": [
+            { "name": "q", "value": "={{ $fromAI('order_query', 'Order ID or customer phone number to look up') }}" }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [-80, 400],
+      "id": "c1a00003-0000-4a00-8000-000000000003",
+      "name": "order_lookup"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://REPLACE-WITH-YOUR-ENDPOINT.example.com/inventory",
+        "sendQuery": true,
+        "specifyQuery": "keypair",
+        "queryParameters": {
+          "parameters": [
+            { "name": "q", "value": "={{ $fromAI('product_query', 'Product name or SKU to check stock for') }}" }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [80, 400],
+      "id": "c1a00004-0000-4a00-8000-000000000004",
+      "name": "inventory_check"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://REPLACE-WITH-YOUR-ENDPOINT.example.com/bookings",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "name", "value": "={{ $fromAI('customer_name', 'Name of the person the booking is for') }}" },
+            { "name": "datetime", "value": "={{ $fromAI('datetime', 'Requested date and time for the booking, ISO 8601') }}" },
+            { "name": "service", "value": "={{ $fromAI('service', 'The service or appointment type requested') }}" },
+            { "name": "phone", "value": "={{ $('Save Inbound Message').item.json.contact.phone }}" }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [240, 400],
+      "id": "c1a00005-0000-4a00-8000-000000000005",
+      "name": "booking_calendar"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://syncchat.vercel.app/api/n8n/tools",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "tool", "value": "contact_crm" },
+            { "name": "org_id", "value": "={{ $('Save Inbound Message').item.json.instance.org_id }}" },
+            { "name": "phone", "value": "={{ $('Save Inbound Message').item.json.contact.phone }}" },
+            { "name": "action", "value": "={{ $fromAI('action', 'Either get to read the contact or update to change fields') }}" },
+            { "name": "fields", "value": "={{ $fromAI('fields', 'JSON object of fields to update, e.g. {\"name\":\"Jane\",\"email\":\"j@x.com\",\"tags\":[\"vip\"]}') }}" }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [400, 400],
+      "id": "c1a00006-0000-4a00-8000-000000000006",
+      "name": "contact_crm"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://syncchat.vercel.app/api/n8n/tools",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "tool", "value": "escalate_human" },
+            { "name": "org_id", "value": "={{ $('Save Inbound Message').item.json.instance.org_id }}" },
+            { "name": "conversation_id", "value": "={{ $('Save Inbound Message').item.json.conversation_id }}" },
+            { "name": "reason", "value": "={{ $fromAI('reason', 'Short reason the conversation needs a human agent') }}" }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [560, 400],
+      "id": "c1a00007-0000-4a00-8000-000000000007",
+      "name": "escalate_human"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://syncchat.vercel.app/api/n8n/tools",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "tool", "value": "send_template" },
+            { "name": "org_id", "value": "={{ $('Save Inbound Message').item.json.instance.org_id }}" },
+            { "name": "instance_id", "value": "={{ $('Save Inbound Message').item.json.instance.id }}" },
+            { "name": "conversation_id", "value": "={{ $('Save Inbound Message').item.json.conversation_id }}" },
+            { "name": "phone", "value": "={{ $('Save Inbound Message').item.json.contact.phone }}" },
+            { "name": "template_name", "value": "={{ $fromAI('template_name', 'Name of the saved message template to send') }}" },
+            { "name": "variables", "value": "={{ $fromAI('variables', 'JSON object of template variable values, e.g. {\"name\":\"Jane\"}') }}" }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [720, 400],
+      "id": "c1a00008-0000-4a00-8000-000000000008",
+      "name": "send_template"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://syncchat.vercel.app/api/n8n/tools",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "tool", "value": "send_media" },
+            { "name": "org_id", "value": "={{ $('Save Inbound Message').item.json.instance.org_id }}" },
+            { "name": "instance_id", "value": "={{ $('Save Inbound Message').item.json.instance.id }}" },
+            { "name": "conversation_id", "value": "={{ $('Save Inbound Message').item.json.conversation_id }}" },
+            { "name": "phone", "value": "={{ $('Save Inbound Message').item.json.contact.phone }}" },
+            { "name": "media_url", "value": "={{ $fromAI('media_url', 'Public URL of the image or document to send') }}" },
+            { "name": "type", "value": "={{ $fromAI('media_type', 'One of: image, document, audio') }}" },
+            { "name": "caption", "value": "={{ $fromAI('caption', 'Optional caption text for the media') }}" }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [880, 400],
+      "id": "c1a00009-0000-4a00-8000-000000000009",
+      "name": "send_media"
     }
   ],
   "pinData": {
@@ -553,49 +750,46 @@
       ]
     },
     "Templates Lookup": {
-      "ai_tool": [
-        {
-          "node": "AI Agent",
-          "type": "ai_tool",
-          "index": 0
-        }
-      ]
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
     },
     "Scheduled Bulk Lookup": {
-      "ai_tool": [
-        {
-          "node": "AI Agent",
-          "type": "ai_tool",
-          "index": 0
-        }
-      ]
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
     },
     "Flows Lookup": {
-      "ai_tool": [
-        {
-          "node": "AI Agent",
-          "type": "ai_tool",
-          "index": 0
-        }
-      ]
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
     },
     "Instances Lookup": {
-      "ai_tool": [
-        {
-          "node": "AI Agent",
-          "type": "ai_tool",
-          "index": 0
-        }
-      ]
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
     },
     "Flows Action": {
-      "ai_tool": [
-        {
-          "node": "AI Agent",
-          "type": "ai_tool",
-          "index": 0
-        }
-      ]
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "website_check": {
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "custom_webhook": {
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "order_lookup": {
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "inventory_check": {
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "booking_calendar": {
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "contact_crm": {
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "escalate_human": {
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "send_template": {
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "send_media": {
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
     }
   },
   "active": false,

@@ -113,6 +113,14 @@ two.
   team notification (email/webhook) can be a follow-up.
 - This workflow doubles as the platform's own support assistant today. Confirm whether we
   fork a customer-facing template vs. repurpose this file before Phase 3 edits land.
+  **Resolved (2026-06-26):** merged the 9 tools directly into `n8n/SyncChat_Group1.json`.
+  Because that workflow reads the raw UltraMsg payload (not SyncChat's forwarded
+  `flow.prompt_tools`), the data-backed tools source `org_id` / `instance_id` /
+  `conversation_id` / `phone` from the `Save Inbound Message` node response, and the
+  config-dependent tools (custom_webhook, order_lookup, inventory_check, booking_calendar)
+  ship with placeholder endpoint URLs to fill in. Existing (malformed single-nested)
+  `ai_tool` connections were normalized to the correct double-nested form. The separate
+  `SyncChat_AI_Flow` workflow was archived on n8n and its file removed.
 
 ---
 

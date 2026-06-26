@@ -212,6 +212,20 @@ export default function FlowForm({ editing }: { editing?: N8nFlow | null }) {
     setSaving(true);
     setError("");
     try {
+      // Snapshot each tool's catalogue name + description into its config so n8n
+      // can auto-inject readable tool instructions into the agent's system prompt
+      // (the catalogue itself only lives in this frontend, not in the database).
+      const toolsWithMeta = tools.map(t => {
+        const def = TOOL_CATALOGUE.find(d => d.id === t.id);
+        return {
+          ...t,
+          config: {
+            ...t.config,
+            name: def?.label ?? t.id,
+            description: def?.description ?? "",
+          },
+        };
+      });
       const { response, body } = await fetchJsonWithTimeout("/api/flows", {
         method: editing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -220,7 +234,7 @@ export default function FlowForm({ editing }: { editing?: N8nFlow | null }) {
           orgId,
           ...form,
           description:  form.description || null,
-          prompt_tools: tools,
+          prompt_tools: toolsWithMeta,
         }),
       });
       if (!response.ok) throw new Error(body?.error ?? "Failed to save flow");

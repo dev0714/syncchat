@@ -114,13 +114,39 @@ export async function POST(req: NextRequest) {
 
   try {
     if (tool === "escalate_human") {
-      if (!body.conversation_id) {
-        return NextResponse.json({ error: "conversation_id is required." }, { status: 400 });
+      // Prefer an explicit conversation_id; otherwise resolve the latest open
+      // conversation from the contact's phone (some flows don't have the
+      // conversation id available when the agent runs).
+      let conversationId = body.conversation_id ?? null;
+      if (!conversationId) {
+        if (!body.org_id || !body.phone) {
+          return NextResponse.json({ error: "conversation_id, or org_id and phone, are required." }, { status: 400 });
+        }
+        const { data: contact } = await supabase
+          .from("contacts")
+          .select("id")
+          .eq("org_id", body.org_id)
+          .eq("phone", body.phone)
+          .maybeSingle();
+        if (contact) {
+          const { data: conversation } = await supabase
+            .from("conversations")
+            .select("id")
+            .eq("org_id", body.org_id)
+            .eq("contact_id", contact.id)
+            .order("last_message_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          conversationId = conversation?.id ?? null;
+        }
+      }
+      if (!conversationId) {
+        return NextResponse.json({ success: false, message: "No active conversation found to escalate yet." });
       }
       const { error } = await supabase
         .from("conversations")
         .update({ status: "pending", updated_at: new Date().toISOString() })
-        .eq("id", body.conversation_id)
+        .eq("id", conversationId)
         .eq("org_id", body.org_id ?? "");
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       return NextResponse.json({ success: true, status: "pending", message: "Conversation handed off to a human agent." });

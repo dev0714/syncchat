@@ -14,7 +14,7 @@ type FlowPayload = {
   prompt_guardrails?: string;
   prompt_tone?: string;
   prompt_context?: string;
-  prompt_tools?: { id: string; enabled: boolean; config?: Record<string, string> }[];
+  prompt_tools?: { id: string; type?: string; name?: string; description?: string; enabled: boolean; config?: Record<string, string> }[];
   is_active?: boolean;
   action?: "toggle" | "trigger";
 };

@@ -98,6 +98,16 @@ const TOOL_CATALOGUE: ToolDef[] = [
     emoji: "📅",
   },
   {
+    id: "meankat_booking",
+    label: "Meankat Booking API",
+    description: "Connect the agent to Meankat's booking API — it can check open slots for a date or range and create auto-confirmed bookings without a logged-in session.",
+    emoji: "☕",
+    configFields: [
+      { key: "base_url", label: "Booking API URL", placeholder: "https://meankatcafe.co.za/api/agent/bookings" },
+      { key: "api_key",  label: "API Key (BOOKING_API_KEY)", placeholder: "sk-... (sent as Bearer token)" },
+    ],
+  },
+  {
     id: "escalate_human",
     label: "Escalate to Human",
     description: "Notify your team and hand the conversation off to a human agent when needed.",

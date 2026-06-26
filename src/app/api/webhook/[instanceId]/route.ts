@@ -93,7 +93,7 @@ export async function POST(req: NextRequest, { params }: { params: { instanceId:
   // Forward to N8n flows
   const { data: flows } = await supabase
     .from("n8n_flows")
-    .select("id, instance_id, trigger_type, trigger_keyword, prompt_role, prompt_guardrails, prompt_tone, prompt_context, webhook_url")
+    .select("id, instance_id, trigger_type, trigger_keyword, prompt_role, prompt_guardrails, prompt_tone, prompt_context, prompt_tools, webhook_url")
     .eq("org_id", inst.org_id)
     .eq("is_active", true)
     .eq("instance_id", inst.id)
@@ -122,6 +122,8 @@ export async function POST(req: NextRequest, { params }: { params: { instanceId:
         content,
         instance_id: inst.id,
         org_id: inst.org_id,
+        contact_id: contact.id,
+        conversation_id: conversation?.id ?? null,
         flow_id: flow.id,
         flow: {
           trigger_type: flow.trigger_type,
@@ -130,6 +132,7 @@ export async function POST(req: NextRequest, { params }: { params: { instanceId:
           prompt_guardrails: flow.prompt_guardrails,
           prompt_tone: flow.prompt_tone,
           prompt_context: flow.prompt_context,
+          prompt_tools: flow.prompt_tools ?? [],
         },
         payload,
       }),

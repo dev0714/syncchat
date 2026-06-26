@@ -78,6 +78,10 @@ const TOOL_CATALOGUE: ToolDef[] = [
     label: "Order Lookup",
     description: "Let the agent look up order status and details by order ID or customer phone number.",
     emoji: "📦",
+    configFields: [
+      { key: "endpoint", label: "Order API endpoint", placeholder: "https://your-system.com/api/orders" },
+      { key: "secret",   label: "Secret / Token (optional)", placeholder: "Bearer sk-..." },
+    ],
   },
   {
     id: "contact_crm",
@@ -90,12 +94,20 @@ const TOOL_CATALOGUE: ToolDef[] = [
     label: "Inventory Check",
     description: "Check product stock levels and availability before confirming orders or holds.",
     emoji: "🏷️",
+    configFields: [
+      { key: "endpoint", label: "Inventory API endpoint", placeholder: "https://your-system.com/api/inventory" },
+      { key: "secret",   label: "Secret / Token (optional)", placeholder: "Bearer sk-..." },
+    ],
   },
   {
     id: "booking_calendar",
     label: "Booking & Calendar",
     description: "Check availability and create bookings or appointments on your calendar.",
     emoji: "📅",
+    configFields: [
+      { key: "endpoint", label: "Booking API endpoint", placeholder: "https://your-system.com/api/bookings" },
+      { key: "secret",   label: "Secret / Token (optional)", placeholder: "Bearer sk-..." },
+    ],
   },
   {
     id: "escalate_human",

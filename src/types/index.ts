@@ -96,7 +96,7 @@ export interface Message {
   org_id: string;
   direction: "inbound" | "outbound";
   source: "direct" | "bulk" | "scheduled_bulk" | "system";
-  type: "text" | "image" | "video" | "audio" | "document" | "location" | "vcard" | "contact" | "reaction";
+  type: "text" | "image" | "video" | "audio" | "ptt" | "document" | "location" | "vcard" | "contact" | "reaction";
   content: string;
   media_url?: string;
   status: "sending" | "sent" | "delivered" | "read" | "failed";

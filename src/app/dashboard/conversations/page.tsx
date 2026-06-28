@@ -294,6 +294,7 @@ export default function ConversationsPage() {
                           onClick={() => selectConversation(conv)}
                           className={cn(
                             "w-full text-left px-4 py-2.5 hover:bg-slate-100 transition-colors flex items-start gap-3 border-b border-slate-100 last:border-0",
+                            conv.awaiting_agent && "flash-attention",
                             selected?.id === conv.id && "bg-whatsapp-teal/10 border-r-2 border-whatsapp-teal"
                           )}
                         >
@@ -302,13 +303,19 @@ export default function ConversationsPage() {
                             <div className="flex items-center justify-between">
                               <p className="text-xs font-medium text-slate-600 truncate">
                                 Conversation {i + 1}
-                                <span className={cn("ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium",
-                                  conv.status === "open" ? "bg-green-100 text-green-700" :
-                                  conv.status === "closed" ? "bg-slate-100 text-slate-500" :
-                                  "bg-amber-100 text-amber-700"
-                                )}>
-                                  {conv.status}
-                                </span>
+                                {conv.awaiting_agent ? (
+                                  <span className="ml-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700">
+                                    <span className="flash-dot w-1.5 h-1.5 rounded-full bg-amber-500" /> awaiting reply
+                                  </span>
+                                ) : (
+                                  <span className={cn("ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium",
+                                    conv.status === "open" ? "bg-green-100 text-green-700" :
+                                    conv.status === "closed" ? "bg-slate-100 text-slate-500" :
+                                    "bg-amber-100 text-amber-700"
+                                  )}>
+                                    {conv.status}
+                                  </span>
+                                )}
                               </p>
                               {conv.last_message_at && (
                                 <span className="text-[10px] text-slate-400 flex-shrink-0 ml-1">{formatRelativeTime(conv.last_message_at)}</span>

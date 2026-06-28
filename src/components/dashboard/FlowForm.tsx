@@ -203,6 +203,7 @@ export default function FlowForm({ editing }: { editing?: N8nFlow | null }) {
     prompt_guardrails: editing?.prompt_guardrails ?? "",
     prompt_tone:       editing?.prompt_tone ?? "",
     prompt_context:    editing?.prompt_context ?? "",
+    terms_conditions:  editing?.terms_conditions ?? "",
   });
 
   const [connections, setConnections] = useState<FlowTool[]>(() => initConnections(editing?.prompt_tools));
@@ -374,6 +375,18 @@ export default function FlowForm({ editing }: { editing?: N8nFlow | null }) {
               ))}
             </select>
             <p className="text-xs text-slate-400 mt-1">The WhatsApp number this flow will run on</p>
+          </div>
+
+          <div>
+            <label className="label">Terms &amp; Conditions</label>
+            <textarea
+              className="input resize-y"
+              style={{ minHeight: 120 }}
+              placeholder="Optional. If set, the agent shows this at the start of a new conversation and asks the customer to reply YES to accept before continuing. e.g. Visits are subject to our café rules and cat-welfare guidelines… Reply YES to accept."
+              value={form.terms_conditions}
+              onChange={e => setForm({ ...form, terms_conditions: e.target.value })}
+            />
+            <p className="text-xs text-slate-400 mt-1">Shown once at the start of each new conversation; the customer must accept before the agent helps.</p>
           </div>
 
           {error && (

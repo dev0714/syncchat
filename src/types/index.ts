@@ -181,6 +181,7 @@ export interface N8nFlow {
   prompt_tone?: string;
   prompt_context?: string;
   prompt_tools?: FlowTool[];
+  terms_conditions?: string;
   is_active: boolean;
   last_triggered_at?: string;
   created_at: string;

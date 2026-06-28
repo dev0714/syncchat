@@ -22,9 +22,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  const response = NextResponse.next()
-  response.headers.set('x-pathname', pathname)
-  return response
+  // Expose the current path to server components via a REQUEST header so
+  // `headers().get('x-pathname')` works on both full loads and RSC/soft
+  // navigations. Setting it on the response does not reach `headers()` on
+  // soft navigations, which made the trial gate redirect-loop to /billing
+  // (blank screen after login until a hard refresh).
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-pathname', pathname)
+  return NextResponse.next({ request: { headers: requestHeaders } })
 }
 
 export const config = {

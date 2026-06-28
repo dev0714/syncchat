@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
       *,
       contact:contacts(id, name, phone),
       instance:whatsapp_instances(id, name),
-      last_msg:messages(content, created_at, direction)
+      last_msg:messages(content, created_at, direction, sent_by)
     `)
     .eq("org_id", orgId)
     .order("updated_at", { ascending: false })
@@ -59,10 +59,16 @@ export async function GET(req: NextRequest) {
   // Merge last_msg into last_message if null
   const conversations = (data ?? []).map((c: Record<string, unknown>) => {
     const lastMsg = Array.isArray(c.last_msg) ? c.last_msg[0] : c.last_msg;
+    // A handed-over (human) conversation is "awaiting agent" until a human
+    // actually replies — i.e. the last message is an agent-sent outbound
+    // (sent_by is only set by the dashboard send route, never by the AI/n8n).
+    const repliedByAgent = !!(lastMsg && lastMsg.direction === "outbound" && lastMsg.sent_by);
+    const awaiting_agent = c.status === "open" && !repliedByAgent;
     return {
       ...c,
       last_message: c.last_message ?? lastMsg?.content ?? null,
       last_message_at: c.last_message_at ?? lastMsg?.created_at ?? null,
+      awaiting_agent,
       last_msg: undefined,
     };
   });

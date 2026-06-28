@@ -223,12 +223,14 @@ export default function ConversationsPage() {
               const hasMultiple = group.conversations.length > 1;
               const totalUnread = group.conversations.reduce((sum, c) => sum + c.unread_count, 0);
               const latest = group.latestConversation;
+              const groupAwaiting = group.conversations.some((c) => c.awaiting_agent);
 
               return (
                 <div key={group.contactId}>
                   {/* Contact row */}
                   <div className={cn(
                     "w-full text-left px-4 py-3.5 hover:bg-slate-50 transition-colors",
+                    groupAwaiting && "flash-attention border-r-2 border-amber-400",
                     selected && group.conversations.some((c) => c.id === selected.id) && !hasMultiple && "bg-whatsapp-teal/5 border-r-2 border-whatsapp-teal"
                   )}>
                     <div className="flex items-start gap-3">
@@ -263,9 +265,15 @@ export default function ConversationsPage() {
                             </span>
                           )}
                           {!hasMultiple && latest.status === "open" && (
-                            <span className="flex items-center gap-0.5 text-[10px] text-green-600 font-medium mt-0.5">
-                              <UserCheck className="w-2.5 h-2.5" /> Agent handling
-                            </span>
+                            latest.awaiting_agent ? (
+                              <span className="flex items-center gap-1 text-[10px] text-amber-600 font-semibold mt-0.5">
+                                <span className="flash-dot w-1.5 h-1.5 rounded-full bg-amber-500" /> Awaiting reply
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-0.5 text-[10px] text-green-600 font-medium mt-0.5">
+                                <UserCheck className="w-2.5 h-2.5" /> Agent handling
+                              </span>
+                            )
                           )}
                           {totalUnread > 0 && (
                             <span className="ml-2 w-5 h-5 bg-whatsapp-green rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">

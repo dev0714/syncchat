@@ -244,3 +244,19 @@ body {
     transform: rotate(45deg);
   }
 }
+
+/* Flashing highlight for conversations handed to a human, until an agent replies */
+@keyframes flash-attention {
+  0%, 100% { background-color: transparent; }
+  50%      { background-color: rgba(245, 158, 11, 0.18); }
+}
+.flash-attention {
+  animation: flash-attention 1.1s ease-in-out infinite;
+}
+@keyframes flash-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.35; transform: scale(0.7); }
+}
+.flash-dot {
+  animation: flash-dot 1.1s ease-in-out infinite;
+}

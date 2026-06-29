@@ -62,15 +62,14 @@ export async function GET(req: NextRequest) {
   ) as string[];
   const agentNames = new Map<string, { name?: string | null; email?: string | null }>();
   if (assignedIds.length > 0) {
-    const { data: members } = await supabase
-      .from("org_members")
-      .select("user_id, profile:profiles(full_name, email)")
-      .eq("org_id", orgId)
-      .in("user_id", assignedIds);
-    for (const m of members ?? []) {
-      const mm = m as Record<string, unknown>;
-      const profile = mm.profile as { full_name?: string; email?: string } | null;
-      agentNames.set(mm.user_id as string, { name: profile?.full_name ?? null, email: profile?.email ?? null });
+    // assigned_to == users.id (== org_members.user_id); names live in the users table.
+    const { data: users } = await supabase
+      .from("users")
+      .select("id, name, email")
+      .in("id", assignedIds);
+    for (const u of users ?? []) {
+      const uu = u as Record<string, unknown>;
+      agentNames.set(uu.id as string, { name: (uu.name as string) ?? null, email: (uu.email as string) ?? null });
     }
   }
 

@@ -39,7 +39,7 @@ export async function GET(_req: NextRequest) {
   const [{ data: members }, { data: openConvs }, { data: settings }] = await Promise.all([
     supabase
       .from("org_members")
-      .select("*, profile:profiles(*)")
+      .select("*")
       .eq("org_id", orgId)
       .eq("is_active", true)
       .in("role", AGENT_ROLES)
@@ -55,6 +55,17 @@ export async function GET(_req: NextRequest) {
     supabase.from("org_settings").select("holding_enabled, holding_message, holding_interval_minutes").eq("org_id", orgId).maybeSingle(),
   ]);
 
+  // Resolve agent display names from the users table (org_members.user_id == users.id).
+  const memberUserIds = (members ?? []).map((m: Record<string, unknown>) => m.user_id as string);
+  const userInfo = new Map<string, { name?: string | null; email?: string | null }>();
+  if (memberUserIds.length > 0) {
+    const { data: users } = await supabase.from("users").select("id, name, email").in("id", memberUserIds);
+    for (const u of users ?? []) {
+      const uu = u as Record<string, unknown>;
+      userInfo.set(uu.id as string, { name: (uu.name as string) ?? null, email: (uu.email as string) ?? null });
+    }
+  }
+
   // Count live open chats per assigned agent.
   const activeCounts = new Map<string, number>();
   for (const c of openConvs ?? []) {
@@ -63,15 +74,15 @@ export async function GET(_req: NextRequest) {
   }
 
   const agents = (members ?? []).map((m: Record<string, unknown>) => {
-    const profile = m.profile as { full_name?: string; email?: string } | null;
+    const info = userInfo.get(m.user_id as string);
     return {
       id: m.id,
       user_id: m.user_id,
       role: m.role,
       is_available: m.is_available ?? false,
       last_assigned_at: m.last_assigned_at ?? null,
-      name: profile?.full_name ?? profile?.email ?? "Agent",
-      email: profile?.email ?? null,
+      name: info?.name ?? info?.email ?? "Agent",
+      email: info?.email ?? null,
       active_chats: activeCounts.get(m.user_id as string) ?? 0,
     };
   });

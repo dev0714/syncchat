@@ -3,11 +3,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth/server";
 import { hasSuperAdminAccess } from "@/lib/auth/permissions";
 import { ultraMsg } from "@/lib/ultramsg";
+import { waha } from "@/lib/waha";
 
 type InstancePayload = {
   id?: string;
   orgId?: string;
   name?: string;
+  provider?: "ultramsg" | "waha";
+  base_url?: string | null;
   instance_id?: string;
   token?: string;
   phone_number?: string | null;
@@ -89,28 +92,40 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const provider = body.provider === "waha" ? "waha" : "ultramsg";
   const settings = normalizeSettings(body);
-  try {
-    await ultraMsg.updateInstanceSettings(body.instance_id, {
-      token: body.token,
-      ...settings,
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to apply UltraMsg instance settings." },
-      { status: 400 }
-    );
+
+  if (provider === "waha") {
+    if (!body.base_url) {
+      return NextResponse.json({ error: "WAHA base URL is required." }, { status: 400 });
+    }
+    // For WAHA: instance_id = session name, token = api_key, base_url = server URL.
+    await waha.startSession(body.base_url, body.token, body.instance_id, body.webhook_url || undefined);
+  } else {
+    try {
+      await ultraMsg.updateInstanceSettings(body.instance_id, {
+        token: body.token,
+        ...settings,
+      });
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Unable to apply UltraMsg instance settings." },
+        { status: 400 }
+      );
+    }
   }
 
   const supabase = createAdminClient();
   const { error } = await supabase.from("whatsapp_instances").insert({
     org_id: body.orgId,
     name: body.name,
+    provider,
+    base_url: provider === "waha" ? body.base_url : null,
     instance_id: body.instance_id,
     token: body.token,
     phone_number: body.phone_number || null,
-    webhook_url: settings.webhook_url || null,
-    ultramsg_settings: settings,
+    webhook_url: provider === "waha" ? (body.webhook_url || null) : (settings.webhook_url || null),
+    ultramsg_settings: provider === "waha" ? {} : settings,
     status: "disconnected",
     is_active: true,
   });
@@ -134,27 +149,38 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
+  const provider = body.provider === "waha" ? "waha" : "ultramsg";
   const settings = normalizeSettings(body);
-  try {
-    await ultraMsg.updateInstanceSettings(body.instance_id, {
-      token: body.token,
-      ...settings,
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to apply UltraMsg instance settings." },
-      { status: 400 }
-    );
+
+  if (provider === "waha") {
+    if (!body.base_url) {
+      return NextResponse.json({ error: "WAHA base URL is required." }, { status: 400 });
+    }
+    await waha.startSession(body.base_url, body.token, body.instance_id, body.webhook_url || undefined);
+  } else {
+    try {
+      await ultraMsg.updateInstanceSettings(body.instance_id, {
+        token: body.token,
+        ...settings,
+      });
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Unable to apply UltraMsg instance settings." },
+        { status: 400 }
+      );
+    }
   }
 
   const supabase = createAdminClient();
   const { error } = await supabase.from("whatsapp_instances").update({
     name: body.name,
+    provider,
+    base_url: provider === "waha" ? body.base_url : null,
     instance_id: body.instance_id,
     token: body.token,
     phone_number: body.phone_number || null,
-    webhook_url: settings.webhook_url || null,
-    ultramsg_settings: settings,
+    webhook_url: provider === "waha" ? (body.webhook_url || null) : (settings.webhook_url || null),
+    ultramsg_settings: provider === "waha" ? {} : settings,
     updated_at: new Date().toISOString(),
   }).eq("id", body.id);
 

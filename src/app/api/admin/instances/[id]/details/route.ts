@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hasSuperAdminAccess } from "@/lib/auth/permissions";
+import { waha } from "@/lib/waha";
 
 const BASE = "https://api.ultramsg.com";
 
@@ -19,6 +20,25 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     .eq("id", params.id)
     .single();
   if (!inst) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // WAHA provider: use the session status + QR endpoints instead of UltraMsg.
+  if (inst.provider === "waha") {
+    const normalized = (await waha.getSessionStatus(inst.base_url ?? "", inst.token, inst.instance_id)) ?? "disconnected";
+    let qrImage: string | null = null;
+    if (normalized === "qr_required") {
+      qrImage = await waha.getQrDataUrl(inst.base_url ?? "", inst.token, inst.instance_id);
+    }
+    await supabase.from("whatsapp_instances").update({ status: normalized, updated_at: new Date().toISOString() }).eq("id", params.id);
+    return NextResponse.json({
+      accountStatus: normalized,
+      normalizedStatus: normalized,
+      substatus: null,
+      qrImage,
+      phoneInfo: null,
+      statusError: null,
+      qrError: null,
+    });
+  }
 
   const normalizeStatus = (value: string | null) => {
     switch (value) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { ultraMsg } from "@/lib/ultramsg";
+import { sendText, sendGeneric } from "@/lib/messaging";
 import type { UltraMsgMessageFeature } from "@/lib/message-features";
 
 function getMessageContent(type: UltraMsgMessageFeature, values: Record<string, string>): string {
@@ -38,16 +38,8 @@ export async function POST(req: NextRequest) {
   try {
     const isGeneric = Boolean(type && values);
     const result = isGeneric && type && values
-      ? await ultraMsg.sendGenericMessage(inst.instance_id, {
-          token: inst.token,
-          type,
-          values,
-        })
-      : await ultraMsg.sendText(inst.instance_id, {
-          token: inst.token,
-          to: to ?? "",
-          body: message ?? "",
-        });
+      ? await sendGeneric(inst, { type, values, to: to ?? values.to ?? "" })
+      : await sendText(inst, { to: to ?? "", body: message ?? "" });
 
     // Save message to DB
     if (conversationId) {

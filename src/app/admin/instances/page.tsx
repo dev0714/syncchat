@@ -10,7 +10,8 @@ import { cn, STATUS_COLORS } from "@/lib/utils";
 import type { Organization, UltraMsgInstanceSettings, WhatsAppInstance } from "@/types";
 import PacmanLoader from "@/components/ui/PacmanLoader";
 
-const defaultForm = { name: "", instance_id: "", token: "", phone_number: "" };
+const defaultForm = { name: "", provider: "ultramsg", base_url: "", instance_id: "", token: "", phone_number: "" };
+const WAHA_DEFAULT_BASE = "http://138.68.79.143:3000";
 const defaultUltraMsgSettings: UltraMsgInstanceSettings = {
   sendDelay: 1,
   sendDelayMax: 15,
@@ -113,6 +114,8 @@ export default function AdminInstancesPage() {
   function openEdit(org: OrgWithInstances, inst: WhatsAppInstance) {
     setForm({
       name: inst.name,
+      provider: inst.provider ?? "ultramsg",
+      base_url: inst.base_url ?? "",
       instance_id: inst.instance_id,
       token: inst.token,
       phone_number: inst.phone_number ?? "",
@@ -132,32 +135,29 @@ export default function AdminInstancesPage() {
       setError("Name, Instance ID, and Token are required.");
       return;
     }
+    if (form.provider === "waha" && !form.base_url) {
+      setError("WAHA base URL is required.");
+      return;
+    }
     setSaving(true);
     setError("");
+
+    const common = {
+      name: form.name,
+      provider: form.provider,
+      base_url: form.provider === "waha" ? (form.base_url || null) : null,
+      instance_id: form.instance_id,
+      token: form.token,
+      phone_number: form.phone_number || null,
+      webhook_url: form.provider === "waha" ? null : (ultramsgSettings.webhook_url || null),
+      ultramsg_settings: form.provider === "waha" ? {} : ultramsgSettings,
+    };
 
     const response = await fetch("/api/admin/instances", {
       method: modal?.editing ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(
-        modal?.editing
-          ? {
-              id: modal.editing.id,
-              name: form.name,
-              instance_id: form.instance_id,
-              token: form.token,
-              phone_number: form.phone_number || null,
-              webhook_url: ultramsgSettings.webhook_url || null,
-              ultramsg_settings: ultramsgSettings,
-            }
-          : {
-              orgId: modal!.orgId,
-              name: form.name,
-              instance_id: form.instance_id,
-              token: form.token,
-              phone_number: form.phone_number || null,
-              webhook_url: ultramsgSettings.webhook_url || null,
-              ultramsg_settings: ultramsgSettings,
-            }
+        modal?.editing ? { id: modal.editing.id, ...common } : { orgId: modal!.orgId, ...common }
       ),
     });
 
@@ -467,19 +467,49 @@ export default function AdminInstancesPage() {
                 />
               </div>
               <div>
-                <label className="label">Instance ID *</label>
+                <label className="label">Provider *</label>
+                <select
+                  className="input"
+                  value={form.provider}
+                  onChange={(e) => {
+                    const provider = e.target.value;
+                    setForm((f) => ({
+                      ...f,
+                      provider,
+                      base_url: provider === "waha" ? (f.base_url || WAHA_DEFAULT_BASE) : "",
+                      instance_id: provider === "waha" && !f.instance_id ? "default" : f.instance_id,
+                    }));
+                  }}
+                >
+                  <option value="ultramsg">UltraMsg</option>
+                  <option value="waha">WAHA</option>
+                </select>
+              </div>
+              {form.provider === "waha" && (
+                <div>
+                  <label className="label">WAHA Base URL *</label>
+                  <input
+                    className="input font-mono"
+                    placeholder={WAHA_DEFAULT_BASE}
+                    value={form.base_url}
+                    onChange={(e) => setForm({ ...form, base_url: e.target.value })}
+                  />
+                </div>
+              )}
+              <div>
+                <label className="label">{form.provider === "waha" ? "Session name *" : "Instance ID *"}</label>
                 <input
                   className="input font-mono"
-                  placeholder="instance12345"
+                  placeholder={form.provider === "waha" ? "default" : "instance12345"}
                   value={form.instance_id}
                   onChange={(e) => setForm({ ...form, instance_id: e.target.value })}
                 />
               </div>
               <div>
-                <label className="label">Token *</label>
+                <label className="label">{form.provider === "waha" ? "API key *" : "Token *"}</label>
                 <input
                   className="input font-mono"
-                  placeholder="API token"
+                  placeholder={form.provider === "waha" ? "WAHA X-Api-Key" : "API token"}
                   value={form.token}
                   onChange={(e) => setForm({ ...form, token: e.target.value })}
                 />
@@ -494,6 +524,7 @@ export default function AdminInstancesPage() {
                 />
               </div>
 
+              {form.provider !== "waha" ? (
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-4">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">UltraMsg Instance Settings</p>
@@ -561,6 +592,11 @@ export default function AdminInstancesPage() {
                   ))}
                 </div>
               </div>
+              ) : (
+                <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-700">
+                  After saving, open this instance and refresh its status to get the QR code, then scan it in WhatsApp to link the number on WAHA.
+                </div>
+              )}
 
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">{error}</div>

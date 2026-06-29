@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { calculateNextRunAt, fillTemplate, type ScheduledBulkRecurrence, type ScheduledBulkRecipientSnapshot, type ScheduledBulkTemplateSnapshot } from "@/lib/scheduled-bulk";
-import { ultraMsg } from "@/lib/ultramsg";
+import { sendText } from "@/lib/messaging";
 
 function getScheduleMessageContent(template: ScheduledBulkTemplateSnapshot, recipient: ScheduledBulkRecipientSnapshot, defaults: Record<string, string>): string {
   return fillTemplate(template.content, recipient, defaults);
@@ -67,11 +67,7 @@ export async function POST(req: NextRequest) {
       const message = getScheduleMessageContent(template, recipient, defaults);
 
       try {
-        const result = await ultraMsg.sendText(instance.instance_id, {
-          token: instance.token,
-          to: recipient.phone,
-          body: message,
-        });
+        const result = await sendText(instance, { to: recipient.phone, body: message });
 
         const status = String(result.sent) === "true" ? "sent" : "failed";
         if (status === "sent") {

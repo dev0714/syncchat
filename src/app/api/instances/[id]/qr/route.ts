@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth/server";
+import { waha } from "@/lib/waha";
 
 const BASE = "https://api.ultramsg.com";
 
@@ -21,6 +22,11 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   if (!canAccess) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
+    if (inst.provider === "waha") {
+      const qrImage = await waha.getQrDataUrl(inst.base_url ?? "", inst.token, inst.instance_id);
+      return NextResponse.json({ qrImage });
+    }
+
     const res = await fetch(`${BASE}/${inst.instance_id}/instance/qr?token=${inst.token}`, { cache: "no-store" });
     const contentType = res.headers.get("content-type") ?? "image/png";
 

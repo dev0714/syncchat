@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getMessageFeature } from "@/lib/message-features";
 import type { UltraMsgMessageFeature } from "@/lib/message-features";
+import { sendText, sendGeneric } from "@/lib/messaging";
 
 const BASE = "https://api.ultramsg.com";
 
@@ -87,15 +88,27 @@ export async function POST(req: NextRequest) {
 
   for (const contact of contacts) {
     try {
-      const { endpoint, params } = buildRequest(inst.token, contact.phone, msgType, template, contact, variableDefaults);
+      let data: { sent: string | boolean; message?: string };
 
-      const res = await fetch(`${BASE}/${inst.instance_id}/${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: params.toString(),
-      });
-
-      const data = await res.json();
+      if (inst.provider === "waha") {
+        if (msgType === "text") {
+          data = await sendText(inst, { to: contact.phone, body: fillVars(template, contact, variableDefaults) });
+        } else {
+          let fields: Record<string, string> = {};
+          try { fields = JSON.parse(template); } catch { /* empty */ }
+          const values: Record<string, string> = {};
+          for (const [k, v] of Object.entries(fields)) values[k] = typeof v === "string" ? fillVars(v, contact, variableDefaults) : v;
+          data = await sendGeneric(inst, { type: msgType as UltraMsgMessageFeature, values, to: contact.phone });
+        }
+      } else {
+        const { endpoint, params } = buildRequest(inst.token, contact.phone, msgType, template, contact, variableDefaults);
+        const res = await fetch(`${BASE}/${inst.instance_id}/${endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: params.toString(),
+        });
+        data = await res.json();
+      }
 
       if (data.sent === "true" || data.sent === true) {
         results.sent++;

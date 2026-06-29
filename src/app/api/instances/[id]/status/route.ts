@@ -25,7 +25,14 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     let status: string;
 
     if (inst.provider === "waha") {
-      status = (await waha.getSessionStatus(inst.base_url ?? "", inst.token, inst.instance_id)) ?? "disconnected";
+      const s = await waha.getSessionStatus(inst.base_url ?? "", inst.token, inst.instance_id);
+      if (s === null || s === "disconnected") {
+        // FAILED/STOPPED/missing → restart so a fresh QR is generated; report loading.
+        await waha.restartSession(inst.base_url ?? "", inst.token, inst.instance_id);
+        status = "loading";
+      } else {
+        status = s;
+      }
     } else {
       const res = await fetch(`${BASE}/${inst.instance_id}/instance/status?token=${inst.token}`, { cache: "no-store" });
       const data = await res.json();

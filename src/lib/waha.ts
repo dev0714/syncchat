@@ -119,6 +119,18 @@ export const waha = {
     }
   },
 
+  /** Force-restart a session (regenerates the pairing QR). Use when it's FAILED/STOPPED. */
+  async restartSession(baseUrl: string, apiKey: string, session: string): Promise<void> {
+    try {
+      await fetch(`${trimBase(baseUrl)}/api/sessions/${encodeURIComponent(session)}/restart`, {
+        method: "POST",
+        headers: { "X-Api-Key": apiKey },
+      });
+    } catch {
+      // best-effort
+    }
+  },
+
   /** Returns our normalized status, or null if unreachable. */
   async getSessionStatus(baseUrl: string, apiKey: string, session: string): Promise<WahaSessionStatus | null> {
     try {

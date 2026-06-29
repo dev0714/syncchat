@@ -95,6 +95,22 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: true });
   }
 
+  if (type === "agents") {
+    const update = {
+      holding_enabled: fields.holding_enabled,
+      holding_message: fields.holding_message,
+      holding_interval_minutes: fields.holding_interval_minutes,
+      updated_at: new Date().toISOString(),
+    };
+    const { data: existing } = await supabase.from("org_settings").select("id").eq("org_id", orgId).maybeSingle();
+    if (existing) {
+      await supabase.from("org_settings").update(update).eq("org_id", orgId);
+    } else {
+      await supabase.from("org_settings").insert({ org_id: orgId, ...update });
+    }
+    return NextResponse.json({ success: true });
+  }
+
   if (type === "profile") {
     const update: Record<string, unknown> = { ...fields, updated_at: new Date().toISOString() };
     delete update.type;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { assignNextAvailableAgent } from "@/lib/agents";
 
 /**
  * Backend for the n8n agent's native action tools (escalate_human, etc.).
@@ -81,10 +82,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, message: error.message });
     }
 
+    // Round-robin assign to an available agent (best-effort; null if none free).
+    const assignedTo = await assignNextAvailableAgent(orgId, conversation.id);
+
     return NextResponse.json({
       ok: true,
       message: "A human agent has been notified and will take over this conversation shortly.",
       conversation_id: conversation.id,
+      assigned: Boolean(assignedTo),
       reason: typeof body.reason === "string" ? body.reason : null,
     });
   }

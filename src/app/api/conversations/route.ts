@@ -56,6 +56,24 @@ export async function GET(req: NextRequest) {
     (msgMatches ?? []).forEach((m: { conversation_id: string }) => matchingConvIds.add(m.conversation_id));
   }
 
+  // Map assigned_to (agent user id) -> display name for the "Assigned" chip.
+  const assignedIds = Array.from(
+    new Set((data ?? []).map((c: Record<string, unknown>) => c.assigned_to as string | null).filter(Boolean)),
+  ) as string[];
+  const agentNames = new Map<string, { name?: string | null; email?: string | null }>();
+  if (assignedIds.length > 0) {
+    const { data: members } = await supabase
+      .from("org_members")
+      .select("user_id, profile:profiles(full_name, email)")
+      .eq("org_id", orgId)
+      .in("user_id", assignedIds);
+    for (const m of members ?? []) {
+      const mm = m as Record<string, unknown>;
+      const profile = mm.profile as { full_name?: string; email?: string } | null;
+      agentNames.set(mm.user_id as string, { name: profile?.full_name ?? null, email: profile?.email ?? null });
+    }
+  }
+
   // Merge last_msg into last_message if null
   const conversations = (data ?? []).map((c: Record<string, unknown>) => {
     const lastMsg = Array.isArray(c.last_msg) ? c.last_msg[0] : c.last_msg;
@@ -64,11 +82,13 @@ export async function GET(req: NextRequest) {
     // (sent_by is only set by the dashboard send route, never by the AI/n8n).
     const repliedByAgent = !!(lastMsg && lastMsg.direction === "outbound" && lastMsg.sent_by);
     const awaiting_agent = c.status === "open" && !repliedByAgent;
+    const assigned_agent = c.assigned_to ? agentNames.get(c.assigned_to as string) ?? null : null;
     return {
       ...c,
       last_message: c.last_message ?? lastMsg?.content ?? null,
       last_message_at: c.last_message_at ?? lastMsg?.created_at ?? null,
       awaiting_agent,
+      assigned_agent,
       last_msg: undefined,
     };
   });

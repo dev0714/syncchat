@@ -417,7 +417,12 @@ export default function ConversationsPage() {
                   <div className="flex items-center gap-2">
                     <UserCheck className="w-4 h-4 text-green-600 flex-shrink-0" />
                     <div>
-                      <p className="text-xs font-semibold text-green-800">Human agent is handling this conversation</p>
+                      <p className="text-xs font-semibold text-green-800">
+                        Human agent is handling this conversation
+                        {selected.assigned_agent?.name && (
+                          <span className="ml-1 font-normal text-green-600">· assigned to {selected.assigned_agent.name}</span>
+                        )}
+                      </p>
                       <p className="text-xs text-green-500">AI is paused. Hand back to let the bot resume automatic replies.</p>
                     </div>
                   </div>

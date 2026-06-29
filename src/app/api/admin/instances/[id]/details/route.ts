@@ -23,7 +23,12 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   // WAHA provider: use the session status + QR endpoints instead of UltraMsg.
   if (inst.provider === "waha") {
-    const normalized = (await waha.getSessionStatus(inst.base_url ?? "", inst.token, inst.instance_id)) ?? "disconnected";
+    let normalized = (await waha.getSessionStatus(inst.base_url ?? "", inst.token, inst.instance_id)) ?? "disconnected";
+    if (normalized === "disconnected") {
+      // FAILED/STOPPED → restart so a fresh QR is generated; report loading.
+      await waha.restartSession(inst.base_url ?? "", inst.token, inst.instance_id);
+      normalized = "loading";
+    }
     let qrImage: string | null = null;
     if (normalized === "qr_required") {
       qrImage = await waha.getQrDataUrl(inst.base_url ?? "", inst.token, inst.instance_id);

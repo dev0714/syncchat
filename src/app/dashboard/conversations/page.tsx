@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import {
   MessageCircle, Search, Send, Phone, X,
-  CheckCheck, Check, Clock, ChevronDown, ChevronUp, Bot, UserCheck,
+  CheckCheck, Check, Clock, ChevronDown, ChevronUp, Bot, UserCheck, Mic,
 } from "lucide-react";
 import type { Conversation, Message } from "@/types";
 import { cn, formatRelativeTime } from "@/lib/utils";
@@ -417,7 +417,12 @@ export default function ConversationsPage() {
                   <div className="flex items-center gap-2">
                     <UserCheck className="w-4 h-4 text-green-600 flex-shrink-0" />
                     <div>
-                      <p className="text-xs font-semibold text-green-800">Human agent is handling this conversation</p>
+                      <p className="text-xs font-semibold text-green-800">
+                        Human agent is handling this conversation
+                        {selected.assigned_agent?.name && (
+                          <span className="ml-1 font-normal text-green-600">· assigned to {selected.assigned_agent.name}</span>
+                        )}
+                      </p>
                       <p className="text-xs text-green-500">AI is paused. Hand back to let the bot resume automatic replies.</p>
                     </div>
                   </div>
@@ -441,6 +446,12 @@ export default function ConversationsPage() {
                 messages.map((msg) => (
                   <div key={msg.id} className={cn("flex", msg.direction === "outbound" ? "justify-end" : "justify-start")}>
                     <div className={cn("max-w-xs lg:max-w-md", msg.direction === "outbound" ? "bubble-out" : "bubble-in")}>
+                      {(msg.type === "ptt" || msg.type === "audio") && (
+                        <div className="flex items-center gap-1 mb-1 text-xs font-medium text-whatsapp-teal">
+                          <Mic className="w-3 h-3" />
+                          <span>Voice message{msg.content ? " · transcript" : ""}</span>
+                        </div>
+                      )}
                       <p className="text-sm text-slate-800">{highlight(msg.content)}</p>
                       <div className={cn("flex items-center gap-1 mt-1", msg.direction === "outbound" ? "justify-end" : "justify-start")}>
                         <span className="text-xs text-slate-400">{formatRelativeTime(msg.created_at)}</span>

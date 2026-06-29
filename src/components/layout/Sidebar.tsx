@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   MessageSquare, LayoutDashboard, Smartphone, Users, MessageCircle,
-  FileText, Zap, Settings, Shield, LogOut, Building2, CreditCard, CalendarClock,
+  FileText, Zap, Settings, Shield, LogOut, Building2, CreditCard, CalendarClock, Headset,
 } from "lucide-react";
 import { cn, getInitials, ROLE_LABELS } from "@/lib/utils";
 import type { OrgMember } from "@/types";
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/instances", icon: Smartphone, label: "WhatsApp Instances" },
   { href: "/dashboard/contacts", icon: Users, label: "Contacts" },
   { href: "/dashboard/conversations", icon: MessageCircle, label: "Conversations" },
+  { href: "/dashboard/agents", icon: Headset, label: "Agents" },
   { href: "/dashboard/templates", icon: FileText, label: "Message Lab" },
   { href: "/dashboard/scheduled-bulk", icon: CalendarClock, label: "Scheduled Bulk" },
   { href: "/dashboard/flows", icon: Zap, label: "AI Flows" },

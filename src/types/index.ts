@@ -35,6 +35,9 @@ export interface OrgMember {
   user_id: string;
   role: UserRole;
   is_active: boolean;
+  // Agent availability + round-robin allocation state.
+  is_available?: boolean;
+  last_assigned_at?: string | null;
   created_at: string;
   profile?: Profile;
   organization?: Organization;
@@ -43,6 +46,8 @@ export interface OrgMember {
     email?: string;
     role?: UserRole | null;
   };
+  // Live count of open conversations assigned to this agent (computed by /api/agents).
+  active_chats?: number;
 }
 
 export interface WhatsAppInstance {
@@ -83,11 +88,14 @@ export interface Conversation {
   last_message_at?: string;
   unread_count: number;
   awaiting_agent?: boolean;
+  assigned_at?: string | null;
+  last_holding_at?: string | null;
+  holding_count?: number;
   created_at: string;
   updated_at: string;
   contact?: Contact;
   instance?: WhatsAppInstance;
-  assigned_agent?: Profile;
+  assigned_agent?: { name?: string | null; email?: string | null } | null;
 }
 
 export interface Message {
@@ -96,7 +104,7 @@ export interface Message {
   org_id: string;
   direction: "inbound" | "outbound";
   source: "direct" | "bulk" | "scheduled_bulk" | "system";
-  type: "text" | "image" | "video" | "audio" | "document" | "location" | "vcard" | "contact" | "reaction";
+  type: "text" | "image" | "video" | "audio" | "ptt" | "document" | "location" | "vcard" | "contact" | "reaction";
   content: string;
   media_url?: string;
   status: "sending" | "sent" | "delivered" | "read" | "failed";
@@ -232,6 +240,10 @@ export interface OrgSettings {
   away_message?: string;
   n8n_base_url?: string;
   n8n_api_key?: string;
+  // Holding-message settings (sent to a customer who is waiting for a human agent).
+  holding_enabled?: boolean;
+  holding_message?: string;
+  holding_interval_minutes?: number;
   // Registration profile fields (populated on sign-up)
   account_type?: "company" | "personal";
   phone?: string;

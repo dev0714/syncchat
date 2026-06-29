@@ -7,20 +7,10 @@ import {
   RefreshCw, QrCode,
 } from "lucide-react";
 import { cn, STATUS_COLORS } from "@/lib/utils";
-import type { Organization, UltraMsgInstanceSettings, WhatsAppInstance } from "@/types";
+import type { Organization, WhatsAppInstance } from "@/types";
 import PacmanLoader from "@/components/ui/PacmanLoader";
 
-const defaultForm = { name: "", provider: "ultramsg", base_url: "", instance_id: "", token: "", phone_number: "" };
-const WAHA_DEFAULT_BASE = "http://138.68.79.143:3000";
-const defaultUltraMsgSettings: UltraMsgInstanceSettings = {
-  sendDelay: 1,
-  sendDelayMax: 15,
-  webhook_url: "",
-  webhook_message_received: false,
-  webhook_message_create: false,
-  webhook_message_ack: false,
-  webhook_message_download_media: false,
-};
+const defaultForm = { name: "", provider: "ultramsg", phone_number: "" };
 
 type OrgWithInstances = Organization & { instances: WhatsAppInstance[] };
 
@@ -44,12 +34,55 @@ export default function AdminInstancesPage() {
   // Modal state
   const [modal, setModal] = useState<{ orgId: string; orgName: string; editing: WhatsAppInstance | null } | null>(null);
   const [form, setForm] = useState({ ...defaultForm });
-  const [ultramsgSettings, setUltraMsgSettings] = useState<UltraMsgInstanceSettings>({ ...defaultUltraMsgSettings });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => { loadData(); }, []);
+  // Platform provider settings (shared credentials)
+  const [providerSettings, setProviderSettings] = useState({
+    ultramsg_instance_id: "",
+    ultramsg_token: "",
+    waha_base_url: "",
+    waha_api_key: "",
+    waha_session: "default",
+  });
+  const [savingProviders, setSavingProviders] = useState(false);
+  const [providersSaved, setProvidersSaved] = useState(false);
+
+  useEffect(() => { loadData(); loadProviderSettings(); }, []);
+
+  async function loadProviderSettings() {
+    try {
+      const res = await fetch("/api/admin/provider-settings", { cache: "no-store" });
+      const data = await res.json();
+      const s = data.settings ?? {};
+      setProviderSettings({
+        ultramsg_instance_id: s.ultramsg_instance_id ?? "",
+        ultramsg_token: s.ultramsg_token ?? "",
+        waha_base_url: s.waha_base_url ?? "",
+        waha_api_key: s.waha_api_key ?? "",
+        waha_session: s.waha_session ?? "default",
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function saveProviderSettings() {
+    setSavingProviders(true);
+    setProvidersSaved(false);
+    try {
+      await fetch("/api/admin/provider-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(providerSettings),
+      });
+      setProvidersSaved(true);
+      setTimeout(() => setProvidersSaved(false), 1500);
+    } finally {
+      setSavingProviders(false);
+    }
+  }
 
   async function loadData() {
     setLoading(true);
@@ -105,7 +138,6 @@ export default function AdminInstancesPage() {
 
   function openAdd(org: OrgWithInstances) {
     setForm({ ...defaultForm });
-    setUltraMsgSettings({ ...defaultUltraMsgSettings });
     setError("");
     setSaved(false);
     setModal({ orgId: org.id, orgName: org.name, editing: null });
@@ -115,15 +147,7 @@ export default function AdminInstancesPage() {
     setForm({
       name: inst.name,
       provider: inst.provider ?? "ultramsg",
-      base_url: inst.base_url ?? "",
-      instance_id: inst.instance_id,
-      token: inst.token,
       phone_number: inst.phone_number ?? "",
-    });
-    setUltraMsgSettings({
-      ...defaultUltraMsgSettings,
-      ...(inst.ultramsg_settings ?? {}),
-      webhook_url: inst.webhook_url ?? inst.ultramsg_settings?.webhook_url ?? "",
     });
     setError("");
     setSaved(false);
@@ -131,12 +155,8 @@ export default function AdminInstancesPage() {
   }
 
   async function handleSave() {
-    if (!form.name || !form.instance_id || !form.token) {
-      setError("Name, Instance ID, and Token are required.");
-      return;
-    }
-    if (form.provider === "waha" && !form.base_url) {
-      setError("WAHA base URL is required.");
+    if (!form.name) {
+      setError("Instance name is required.");
       return;
     }
     setSaving(true);
@@ -145,12 +165,7 @@ export default function AdminInstancesPage() {
     const common = {
       name: form.name,
       provider: form.provider,
-      base_url: form.provider === "waha" ? (form.base_url || null) : null,
-      instance_id: form.instance_id,
-      token: form.token,
       phone_number: form.phone_number || null,
-      webhook_url: form.provider === "waha" ? null : (ultramsgSettings.webhook_url || null),
-      ultramsg_settings: form.provider === "waha" ? {} : ultramsgSettings,
     };
 
     const response = await fetch("/api/admin/instances", {
@@ -224,6 +239,55 @@ export default function AdminInstancesPage() {
           <p className="text-xs text-purple-700 mt-0.5">
             Assign WhatsApp instances to each organization. Org admins cannot add or modify instance credentials — only you can.
           </p>
+        </div>
+      </div>
+
+      {/* Provider settings — shared credentials used in the background when assigning */}
+      <div className="card p-5 space-y-4">
+        <div>
+          <h2 className="font-semibold text-slate-900">Provider Settings</h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Shared credentials applied automatically when you assign an instance. Set these once.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+            <p className="text-sm font-semibold text-slate-800">UltraMsg</p>
+            <div>
+              <label className="label">Instance ID</label>
+              <input className="input font-mono" placeholder="instance12345" value={providerSettings.ultramsg_instance_id}
+                onChange={(e) => setProviderSettings({ ...providerSettings, ultramsg_instance_id: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Token</label>
+              <input className="input font-mono" placeholder="UltraMsg token" value={providerSettings.ultramsg_token}
+                onChange={(e) => setProviderSettings({ ...providerSettings, ultramsg_token: e.target.value })} />
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+            <p className="text-sm font-semibold text-slate-800">WAHA</p>
+            <div>
+              <label className="label">Base URL</label>
+              <input className="input font-mono" placeholder="http://host:3000" value={providerSettings.waha_base_url}
+                onChange={(e) => setProviderSettings({ ...providerSettings, waha_base_url: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">API key</label>
+              <input className="input font-mono" placeholder="WAHA X-Api-Key" value={providerSettings.waha_api_key}
+                onChange={(e) => setProviderSettings({ ...providerSettings, waha_api_key: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Session name</label>
+              <input className="input font-mono" placeholder="default" value={providerSettings.waha_session}
+                onChange={(e) => setProviderSettings({ ...providerSettings, waha_session: e.target.value })} />
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <button onClick={saveProviderSettings} disabled={savingProviders} className="btn-primary flex items-center gap-2">
+            {savingProviders ? <PacmanLoader size={14} label="Saving" /> : "Save provider settings"}
+          </button>
+          {providersSaved && <span className="text-sm text-green-600">Saved</span>}
         </div>
       </div>
 
@@ -471,48 +535,11 @@ export default function AdminInstancesPage() {
                 <select
                   className="input"
                   value={form.provider}
-                  onChange={(e) => {
-                    const provider = e.target.value;
-                    setForm((f) => ({
-                      ...f,
-                      provider,
-                      base_url: provider === "waha" ? (f.base_url || WAHA_DEFAULT_BASE) : "",
-                      instance_id: provider === "waha" && !f.instance_id ? "default" : f.instance_id,
-                    }));
-                  }}
+                  onChange={(e) => setForm({ ...form, provider: e.target.value })}
                 >
                   <option value="ultramsg">UltraMsg</option>
                   <option value="waha">WAHA</option>
                 </select>
-              </div>
-              {form.provider === "waha" && (
-                <div>
-                  <label className="label">WAHA Base URL *</label>
-                  <input
-                    className="input font-mono"
-                    placeholder={WAHA_DEFAULT_BASE}
-                    value={form.base_url}
-                    onChange={(e) => setForm({ ...form, base_url: e.target.value })}
-                  />
-                </div>
-              )}
-              <div>
-                <label className="label">{form.provider === "waha" ? "Session name *" : "Instance ID *"}</label>
-                <input
-                  className="input font-mono"
-                  placeholder={form.provider === "waha" ? "default" : "instance12345"}
-                  value={form.instance_id}
-                  onChange={(e) => setForm({ ...form, instance_id: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="label">{form.provider === "waha" ? "API key *" : "Token *"}</label>
-                <input
-                  className="input font-mono"
-                  placeholder={form.provider === "waha" ? "WAHA X-Api-Key" : "API token"}
-                  value={form.token}
-                  onChange={(e) => setForm({ ...form, token: e.target.value })}
-                />
               </div>
               <div>
                 <label className="label">WhatsApp Phone Number</label>
@@ -524,79 +551,11 @@ export default function AdminInstancesPage() {
                 />
               </div>
 
-              {form.provider !== "waha" ? (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-4">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">UltraMsg Instance Settings</p>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    These are sent to <span className="font-mono">/instance/settings</span> and stored with the instance.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="label">Webhook URL</label>
-                    <input
-                      className="input font-mono"
-                      placeholder="https://your-domain.com/webhook/..."
-                      value={ultramsgSettings.webhook_url}
-                      onChange={(e) => setUltraMsgSettings({ ...ultramsgSettings, webhook_url: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="label">Send delay</label>
-                    <input
-                      className="input"
-                      type="number"
-                      min={1}
-                      value={ultramsgSettings.sendDelay}
-                      onChange={(e) => setUltraMsgSettings({ ...ultramsgSettings, sendDelay: Number(e.target.value) || 1 })}
-                    />
-                  </div>
-                  <div>
-                    <label className="label">Max queue delay</label>
-                    <input
-                      className="input"
-                      type="number"
-                      min={1}
-                      value={ultramsgSettings.sendDelayMax}
-                      onChange={(e) => setUltraMsgSettings({ ...ultramsgSettings, sendDelayMax: Number(e.target.value) || 15 })}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {[
-                    ["webhook_message_received", "Webhook on message received"],
-                    ["webhook_message_create", "Webhook on message create"],
-                    ["webhook_message_ack", "Webhook on delivery/read ack"],
-                    ["webhook_message_download_media", "Webhook download media"],
-                  ].map(([key, label]) => (
-                    <label
-                      key={key}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2"
-                    >
-                      <span className="text-sm text-slate-700">{label}</span>
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-slate-300 text-whatsapp-teal focus:ring-whatsapp-teal"
-                        checked={Boolean(ultramsgSettings[key as keyof UltraMsgInstanceSettings])}
-                        onChange={(e) =>
-                          setUltraMsgSettings({
-                            ...ultramsgSettings,
-                            [key]: e.target.checked,
-                          } as UltraMsgInstanceSettings)
-                        }
-                      />
-                    </label>
-                  ))}
-                </div>
+              <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-700">
+                {form.provider === "waha"
+                  ? "WAHA connection comes from Provider Settings — no credentials needed here. After saving, open this instance and refresh its status to get the QR code, then scan it in WhatsApp to link the number."
+                  : "UltraMsg connection comes from Provider Settings — credentials are applied automatically when you save."}
               </div>
-              ) : (
-                <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-700">
-                  After saving, open this instance and refresh its status to get the QR code, then scan it in WhatsApp to link the number on WAHA.
-                </div>
-              )}
 
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">{error}</div>

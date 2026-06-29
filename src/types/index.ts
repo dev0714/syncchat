@@ -54,8 +54,11 @@ export interface WhatsAppInstance {
   id: string;
   org_id: string;
   name: string;
-  instance_id: string; // UltraMsg instance ID
-  token: string; // UltraMsg token
+  // Provider selector. For 'waha': instance_id = session name, token = api_key, base_url = WAHA server URL.
+  provider?: "ultramsg" | "waha";
+  base_url?: string | null;
+  instance_id: string; // UltraMsg instance ID (or WAHA session name)
+  token: string; // UltraMsg token (or WAHA api_key)
   phone_number?: string;
   status: "connected" | "disconnected" | "qr_required" | "loading";
   webhook_url?: string;

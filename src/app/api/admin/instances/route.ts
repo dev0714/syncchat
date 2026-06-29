@@ -2,39 +2,37 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth/server";
 import { hasSuperAdminAccess } from "@/lib/auth/permissions";
-import { ultraMsg } from "@/lib/ultramsg";
+import { waha } from "@/lib/waha";
+import { getPlatformSettings } from "@/lib/platform-settings";
 
 type InstancePayload = {
   id?: string;
   orgId?: string;
   name?: string;
-  instance_id?: string;
-  token?: string;
+  provider?: "ultramsg" | "waha";
   phone_number?: string | null;
-  webhook_url?: string | null;
-  ultramsg_settings?: {
-    sendDelay?: number | string;
-    sendDelayMax?: number | string;
-    webhook_url?: string;
-    webhook_message_received?: boolean;
-    webhook_message_create?: boolean;
-    webhook_message_ack?: boolean;
-    webhook_message_download_media?: boolean;
-  };
 };
 
-function normalizeSettings(body: InstancePayload) {
-  const settings = body.ultramsg_settings ?? {};
-  const webhookUrl = settings.webhook_url ?? body.webhook_url ?? "";
-  return {
-    sendDelay: Number(settings.sendDelay ?? 1),
-    sendDelayMax: Number(settings.sendDelayMax ?? 15),
-    webhook_url: webhookUrl,
-    webhook_message_received: Boolean(settings.webhook_message_received),
-    webhook_message_create: Boolean(settings.webhook_message_create),
-    webhook_message_ack: Boolean(settings.webhook_message_ack),
-    webhook_message_download_media: Boolean(settings.webhook_message_download_media),
-  };
+/**
+ * Resolve provider credentials from the platform settings (super-admin "Provider
+ * Settings"). The assign form only picks a provider; everything else is background.
+ * Returns the instance-row creds (instance_id, token, base_url) for the provider.
+ */
+async function resolveProviderCreds(provider: "ultramsg" | "waha") {
+  const s = await getPlatformSettings();
+  if (provider === "waha") {
+    if (!s.waha_base_url || !s.waha_api_key) {
+      return { error: "WAHA is not configured. Set the WAHA server in Provider Settings first." };
+    }
+    const session = s.waha_session || "default";
+    // Best-effort: make sure the session exists/started on the WAHA server.
+    await waha.startSession(s.waha_base_url, s.waha_api_key, session);
+    return { creds: { instance_id: session, token: s.waha_api_key, base_url: s.waha_base_url } };
+  }
+  if (!s.ultramsg_instance_id || !s.ultramsg_token) {
+    return { error: "UltraMsg is not configured. Set the UltraMsg account in Provider Settings first." };
+  }
+  return { creds: { instance_id: s.ultramsg_instance_id, token: s.ultramsg_token, base_url: null as string | null } };
 }
 
 async function requireSuperAdmin() {
@@ -82,35 +80,25 @@ export async function POST(request: NextRequest) {
   if ("error" in auth) return auth.error;
 
   const body = (await request.json()) as InstancePayload;
-  if (!body.orgId || !body.name || !body.instance_id || !body.token) {
-    return NextResponse.json(
-      { error: "Organization, name, instance ID, and token are required." },
-      { status: 400 }
-    );
+  if (!body.orgId || !body.name) {
+    return NextResponse.json({ error: "Organization and name are required." }, { status: 400 });
   }
 
-  const settings = normalizeSettings(body);
-  try {
-    await ultraMsg.updateInstanceSettings(body.instance_id, {
-      token: body.token,
-      ...settings,
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to apply UltraMsg instance settings." },
-      { status: 400 }
-    );
-  }
+  const provider = body.provider === "waha" ? "waha" : "ultramsg";
+  const resolved = await resolveProviderCreds(provider);
+  if ("error" in resolved) return NextResponse.json({ error: resolved.error }, { status: 400 });
 
   const supabase = createAdminClient();
   const { error } = await supabase.from("whatsapp_instances").insert({
     org_id: body.orgId,
     name: body.name,
-    instance_id: body.instance_id,
-    token: body.token,
+    provider,
+    base_url: resolved.creds.base_url,
+    instance_id: resolved.creds.instance_id,
+    token: resolved.creds.token,
     phone_number: body.phone_number || null,
-    webhook_url: settings.webhook_url || null,
-    ultramsg_settings: settings,
+    webhook_url: null,
+    ultramsg_settings: {},
     status: "disconnected",
     is_active: true,
   });
@@ -127,34 +115,22 @@ export async function PATCH(request: NextRequest) {
   if ("error" in auth) return auth.error;
 
   const body = (await request.json()) as InstancePayload;
-  if (!body.id || !body.name || !body.instance_id || !body.token) {
-    return NextResponse.json(
-      { error: "Instance ID, name, token, and a target record are required." },
-      { status: 400 }
-    );
+  if (!body.id || !body.name) {
+    return NextResponse.json({ error: "A target record and name are required." }, { status: 400 });
   }
 
-  const settings = normalizeSettings(body);
-  try {
-    await ultraMsg.updateInstanceSettings(body.instance_id, {
-      token: body.token,
-      ...settings,
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to apply UltraMsg instance settings." },
-      { status: 400 }
-    );
-  }
+  const provider = body.provider === "waha" ? "waha" : "ultramsg";
+  const resolved = await resolveProviderCreds(provider);
+  if ("error" in resolved) return NextResponse.json({ error: resolved.error }, { status: 400 });
 
   const supabase = createAdminClient();
   const { error } = await supabase.from("whatsapp_instances").update({
     name: body.name,
-    instance_id: body.instance_id,
-    token: body.token,
+    provider,
+    base_url: resolved.creds.base_url,
+    instance_id: resolved.creds.instance_id,
+    token: resolved.creds.token,
     phone_number: body.phone_number || null,
-    webhook_url: settings.webhook_url || null,
-    ultramsg_settings: settings,
     updated_at: new Date().toISOString(),
   }).eq("id", body.id);
 

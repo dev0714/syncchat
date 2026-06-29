@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth/server";
+import { waha } from "@/lib/waha";
 
 const BASE = "https://api.ultramsg.com";
 
@@ -21,17 +22,22 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   if (!canAccess) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
-    const res = await fetch(`${BASE}/${inst.instance_id}/instance/status?token=${inst.token}`, { cache: "no-store" });
-    const data = await res.json();
-
-    // Response shape: { status: { accountStatus: { status: "qr"|"authenticated"|..., substatus: "..." } } }
-    const rawStatus = data?.status?.accountStatus?.status ?? data?.accountStatus ?? data?.status;
-
     let status: string;
-    if (rawStatus === "authenticated") status = "connected";
-    else if (rawStatus === "qr") status = "qr_required";
-    else if (rawStatus === "loading") status = "loading";
-    else status = "disconnected";
+
+    if (inst.provider === "waha") {
+      status = (await waha.getSessionStatus(inst.base_url ?? "", inst.token, inst.instance_id)) ?? "disconnected";
+    } else {
+      const res = await fetch(`${BASE}/${inst.instance_id}/instance/status?token=${inst.token}`, { cache: "no-store" });
+      const data = await res.json();
+
+      // Response shape: { status: { accountStatus: { status: "qr"|"authenticated"|..., substatus: "..." } } }
+      const rawStatus = data?.status?.accountStatus?.status ?? data?.accountStatus ?? data?.status;
+
+      if (rawStatus === "authenticated") status = "connected";
+      else if (rawStatus === "qr") status = "qr_required";
+      else if (rawStatus === "loading") status = "loading";
+      else status = "disconnected";
+    }
 
     await supabase.from("whatsapp_instances").update({
       status,

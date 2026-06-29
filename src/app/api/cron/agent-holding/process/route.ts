@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { ultraMsg } from "@/lib/ultramsg";
+import { sendText } from "@/lib/messaging";
 
 /**
  * Sends a "please hold" message to customers waiting for a human agent.
@@ -70,17 +70,13 @@ export async function POST(req: NextRequest) {
 
       const { data: instance } = await supabase
         .from("whatsapp_instances")
-        .select("instance_id, token")
+        .select("instance_id, token, provider, base_url")
         .eq("id", conv.instance_id)
         .maybeSingle();
       if (!instance) continue;
 
       try {
-        const result = await ultraMsg.sendText(instance.instance_id, {
-          token: instance.token,
-          to: phone,
-          body: message,
-        });
+        const result = await sendText(instance, { to: phone, body: message });
         const status = String(result.sent) === "true" ? "sent" : "failed";
         const nowIso = new Date().toISOString();
 

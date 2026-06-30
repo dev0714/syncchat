@@ -26,6 +26,46 @@ export default function InstancesPage() {
     loadData();
   }, []);
 
+  // WAHA/WhatsApp rotates the pairing QR roughly every 20s. Keep any instance
+  // that's awaiting a scan refreshed: re-check status (auto-recovers a FAILED
+  // session) and pull a fresh QR every 15s, until it connects. A stale QR is the
+  // usual cause of WhatsApp's "couldn't link device" error.
+  const qrKey = instances.filter((i) => i.status === "qr_required").map((i) => i.id).join(",");
+  useEffect(() => {
+    if (!qrKey) return;
+    const ids = qrKey.split(",");
+    let cancelled = false;
+
+    const tick = async () => {
+      for (const id of ids) {
+        try {
+          const res = await fetch(`/api/instances/${id}/status`, { cache: "no-store" });
+          const data = await res.json();
+          if (cancelled) return;
+          if (data.status === "qr_required") {
+            const qrRes = await fetch(`/api/instances/${id}/qr`, { cache: "no-store" });
+            const qrData = await qrRes.json();
+            if (!cancelled && qrData.qrImage) {
+              setQrImages((prev) => ({ ...prev, [id]: qrData.qrImage }));
+            }
+          } else if (data.status === "connected") {
+            await loadData();
+            return;
+          }
+        } catch {
+          // keep polling; transient errors are fine
+        }
+      }
+    };
+
+    tick(); // fetch a fresh QR immediately, don't wait a full interval
+    const t = setInterval(tick, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [qrKey]);
+
   async function loadData() {
     setLoading(true);
     setError("");
@@ -217,11 +257,16 @@ export default function InstancesPage() {
                       <QrCode className="w-3.5 h-3.5" /> Scan QR Code to connect WhatsApp
                     </p>
                     {qrImage ? (
-                      <img
-                        src={qrImage}
-                        alt="WhatsApp QR"
-                        className="w-44 h-44 rounded-lg border border-yellow-200"
-                      />
+                      <>
+                        <img
+                          src={qrImage}
+                          alt="WhatsApp QR"
+                          className="w-44 h-44 rounded-lg border border-yellow-200"
+                        />
+                        <p className="text-[11px] text-yellow-700/80">
+                          Refreshing automatically — open WhatsApp → Linked devices → Link a device and scan now.
+                        </p>
+                      </>
                     ) : (
                       <button
                         onClick={() => fetchQr(inst.id)}

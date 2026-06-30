@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Smartphone,
   RefreshCw,
@@ -26,31 +26,44 @@ export default function InstancesPage() {
     loadData();
   }, []);
 
-  // WAHA/WhatsApp rotates the pairing QR roughly every 20s. Keep any instance
-  // that's awaiting a scan refreshed: re-check status (auto-recovers a FAILED
-  // session) and pull a fresh QR every 15s, until it connects. A stale QR is the
-  // usual cause of WhatsApp's "couldn't link device" error.
-  const qrKey = instances.filter((i) => i.status === "qr_required").map((i) => i.id).join(",");
-  useEffect(() => {
-    if (!qrKey) return;
-    const ids = qrKey.split(",");
-    let cancelled = false;
+  // Keep a live ref to the instances so the pairing poller below can read the
+  // latest state without re-creating its interval on every change.
+  const instancesRef = useRef<WhatsAppInstance[]>(instances);
+  useEffect(() => { instancesRef.current = instances; }, [instances]);
 
+  // Pairing self-heal loop. WhatsApp rotates the QR every ~20s and the WAHA
+  // (WEBJS) session drops to FAILED if it isn't scanned in time — which the
+  // status route reports as "loading" while it auto-restarts. So we poll every
+  // 8s for any instance that's qr_required OR loading: pull a fresh QR when one
+  // is available, surface the live status, and stop once it connects. This is
+  // what prevents the stale-QR "couldn't link device" error and the blank QR.
+  useEffect(() => {
     const tick = async () => {
-      for (const id of ids) {
+      const pending = instancesRef.current.filter(
+        (i) => i.status === "qr_required" || i.status === "loading",
+      );
+      if (pending.length === 0) return;
+
+      for (const inst of pending) {
         try {
-          const res = await fetch(`/api/instances/${id}/status`, { cache: "no-store" });
+          const res = await fetch(`/api/instances/${inst.id}/status`, { cache: "no-store" });
           const data = await res.json();
-          if (cancelled) return;
-          if (data.status === "qr_required") {
-            const qrRes = await fetch(`/api/instances/${id}/qr`, { cache: "no-store" });
-            const qrData = await qrRes.json();
-            if (!cancelled && qrData.qrImage) {
-              setQrImages((prev) => ({ ...prev, [id]: qrData.qrImage }));
-            }
-          } else if (data.status === "connected") {
+          const status = data.status as string | undefined;
+
+          if (status === "connected") {
             await loadData();
-            return;
+            continue;
+          }
+          if (status === "qr_required") {
+            const qrRes = await fetch(`/api/instances/${inst.id}/qr`, { cache: "no-store" });
+            const qrData = await qrRes.json();
+            if (qrData.qrImage) {
+              setQrImages((prev) => ({ ...prev, [inst.id]: qrData.qrImage }));
+            }
+          }
+          // Reflect the live status on the badge without a full reload.
+          if (status && status !== inst.status) {
+            setInstances((prev) => prev.map((p) => (p.id === inst.id ? { ...p, status } : p)));
           }
         } catch {
           // keep polling; transient errors are fine
@@ -58,13 +71,9 @@ export default function InstancesPage() {
       }
     };
 
-    tick(); // fetch a fresh QR immediately, don't wait a full interval
-    const t = setInterval(tick, 15000);
-    return () => {
-      cancelled = true;
-      clearInterval(t);
-    };
-  }, [qrKey]);
+    const t = setInterval(tick, 8000);
+    return () => clearInterval(t);
+  }, []);
 
   async function loadData() {
     setLoading(true);

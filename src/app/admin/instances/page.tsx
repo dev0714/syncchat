@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import {
   Shield, Smartphone, Building2, Plus, Pencil, Trash2,
   X, Check, Wifi, WifiOff, ChevronDown, ChevronRight,
-  RefreshCw, QrCode,
+  RefreshCw, QrCode, Power,
 } from "lucide-react";
 import { cn, STATUS_COLORS } from "@/lib/utils";
 import type { Organization, WhatsAppInstance } from "@/types";
@@ -30,6 +30,7 @@ export default function AdminInstancesPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [details, setDetails] = useState<Record<string, InstanceDetails>>({});
   const [fetching, setFetching] = useState<Set<string>>(new Set());
+  const [disconnecting, setDisconnecting] = useState<string | null>(null);
 
   // Modal state
   const [modal, setModal] = useState<{ orgId: string; orgName: string; editing: WhatsAppInstance | null } | null>(null);
@@ -191,6 +192,24 @@ export default function AdminInstancesPage() {
       loadData();
       setExpanded((prev) => new Set([...prev, modal!.orgId]));
     }, 800);
+  }
+
+  async function handleDisconnect(inst: WhatsAppInstance) {
+    if (!confirm(`Disconnect "${inst.name}" (${inst.phone_number ?? "no number"})?\n\nThis logs the number out of WhatsApp. The instance is kept — scan the QR again to reconnect.`)) {
+      return;
+    }
+    setDisconnecting(inst.id);
+    try {
+      const response = await fetch(`/api/instances/${inst.id}/disconnect`, { method: "POST" });
+      const data = await response.json();
+      if (!response.ok || data.error) {
+        setError(data.error || "Unable to disconnect instance");
+        return;
+      }
+      loadData();
+    } finally {
+      setDisconnecting(null);
+    }
   }
 
   async function handleDelete(inst: WhatsAppInstance) {
@@ -394,10 +413,20 @@ export default function AdminInstancesPage() {
                                   <RefreshCw className={cn("w-3.5 h-3.5", isFetching && "animate-spin")} />
                                   {isFetching ? "Fetching..." : "Fetch Live Data"}
                                 </button>
+                                {inst.status !== "disconnected" && (
+                                  <button
+                                    onClick={() => handleDisconnect(inst)}
+                                    disabled={disconnecting === inst.id}
+                                    title="Disconnect (log the number out, keep the instance)"
+                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                  >
+                                    <Power className={cn("w-3.5 h-3.5", disconnecting === inst.id && "animate-pulse")} />
+                                  </button>
+                                )}
                                 <button onClick={() => openEdit(org, inst)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
                                   <Pencil className="w-3.5 h-3.5" />
                                 </button>
-                                <button onClick={() => handleDelete(inst)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                <button onClick={() => handleDelete(inst)} title="Delete instance" className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>

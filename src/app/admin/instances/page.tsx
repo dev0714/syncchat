@@ -10,7 +10,7 @@ import { cn, STATUS_COLORS } from "@/lib/utils";
 import type { Organization, WhatsAppInstance } from "@/types";
 import PacmanLoader from "@/components/ui/PacmanLoader";
 
-const defaultForm = { name: "", provider: "ultramsg", phone_number: "" };
+const defaultForm = { name: "", provider: "ultramsg", phone_number: "", waha_session: "" };
 
 type OrgWithInstances = Organization & { instances: WhatsAppInstance[] };
 
@@ -149,6 +149,7 @@ export default function AdminInstancesPage() {
       name: inst.name,
       provider: inst.provider ?? "ultramsg",
       phone_number: inst.phone_number ?? "",
+      waha_session: inst.provider === "waha" ? (inst.instance_id ?? "") : "",
     });
     setError("");
     setSaved(false);
@@ -167,6 +168,7 @@ export default function AdminInstancesPage() {
       name: form.name,
       provider: form.provider,
       phone_number: form.phone_number || null,
+      ...(form.provider === "waha" ? { waha_session: form.waha_session || null } : {}),
     };
 
     const response = await fetch("/api/admin/instances", {
@@ -580,9 +582,27 @@ export default function AdminInstancesPage() {
                 />
               </div>
 
+              {form.provider === "waha" && (
+                <div>
+                  <label className="label">WAHA Session Name</label>
+                  <input
+                    className="input"
+                    placeholder="auto from instance name (e.g. leadsync)"
+                    value={form.waha_session}
+                    disabled={!!modal.editing}
+                    onChange={(e) => setForm({ ...form, waha_session: e.target.value })}
+                  />
+                  <p className="text-xs text-slate-400 mt-1">
+                    {modal.editing
+                      ? "The session can't be renamed after linking — create a new instance for a different number."
+                      : "Each WAHA number is its own session. Leave blank to auto-generate from the name; it must be unique."}
+                  </p>
+                </div>
+              )}
+
               <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-700">
                 {form.provider === "waha"
-                  ? "WAHA connection comes from Provider Settings — no credentials needed here. After saving, open this instance and refresh its status to get the QR code, then scan it in WhatsApp to link the number."
+                  ? "WAHA connection comes from Provider Settings — no credentials needed here. Each instance gets its own WAHA session, so you can link multiple numbers. After saving, open this instance and refresh its status to get the QR code, then scan it in WhatsApp to link the number."
                   : "UltraMsg connection comes from Provider Settings — credentials are applied automatically when you save."}
               </div>
 

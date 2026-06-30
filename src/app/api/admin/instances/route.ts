@@ -11,20 +11,62 @@ type InstancePayload = {
   name?: string;
   provider?: "ultramsg" | "waha";
   phone_number?: string | null;
+  /** Optional WAHA session name. Blank → auto-derived from the instance name. */
+  waha_session?: string | null;
 };
+
+/** Turn arbitrary text into a valid WAHA session name (a-z, 0-9, dashes). */
+function slugifySession(input: string): string {
+  const base = String(input || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+  return base || "session";
+}
+
+/**
+ * Each WAHA number is a separate WAHA session. Derive a unique session name from
+ * the requested name (or instance name), appending -2, -3… if it collides with an
+ * existing WAHA instance.
+ */
+async function uniqueWahaSession(
+  supabase: ReturnType<typeof createAdminClient>,
+  desired: string,
+): Promise<string> {
+  const base = slugifySession(desired);
+  let candidate = base;
+  let n = 1;
+  // Bounded loop; in practice resolves in 1–2 iterations.
+  while (n < 100) {
+    const { data } = await supabase
+      .from("whatsapp_instances")
+      .select("id")
+      .eq("provider", "waha")
+      .eq("instance_id", candidate)
+      .maybeSingle();
+    if (!data) return candidate;
+    n += 1;
+    candidate = `${base}-${n}`;
+  }
+  return `${base}-${Date.now()}`;
+}
 
 /**
  * Resolve provider credentials from the platform settings (super-admin "Provider
  * Settings"). The assign form only picks a provider; everything else is background.
  * Returns the instance-row creds (instance_id, token, base_url) for the provider.
  */
-async function resolveProviderCreds(provider: "ultramsg" | "waha") {
+async function resolveProviderCreds(provider: "ultramsg" | "waha", sessionName?: string) {
   const s = await getPlatformSettings();
   if (provider === "waha") {
     if (!s.waha_base_url || !s.waha_api_key) {
       return { error: "WAHA is not configured. Set the WAHA server in Provider Settings first." };
     }
-    const session = s.waha_session || "default";
+    // Per-instance session name (each WAHA number = its own session). Falls back
+    // to the platform default only when no name is supplied (legacy single-number).
+    const session = (sessionName && sessionName.trim()) || s.waha_session || "default";
     // Best-effort: make sure the session exists/started on the WAHA server,
     // wired to the inbound AI webhook so messages reach the flow.
     await waha.startSession(s.waha_base_url, s.waha_api_key, session, WAHA_INBOUND_WEBHOOK);
@@ -86,10 +128,17 @@ export async function POST(request: NextRequest) {
   }
 
   const provider = body.provider === "waha" ? "waha" : "ultramsg";
-  const resolved = await resolveProviderCreds(provider);
+  const supabase = createAdminClient();
+
+  // For WAHA, give every new instance its own unique session name.
+  let sessionName: string | undefined;
+  if (provider === "waha") {
+    sessionName = await uniqueWahaSession(supabase, body.waha_session || body.name);
+  }
+
+  const resolved = await resolveProviderCreds(provider, sessionName);
   if ("error" in resolved) return NextResponse.json({ error: resolved.error }, { status: 400 });
 
-  const supabase = createAdminClient();
   const { error } = await supabase.from("whatsapp_instances").insert({
     org_id: body.orgId,
     name: body.name,
@@ -121,10 +170,28 @@ export async function PATCH(request: NextRequest) {
   }
 
   const provider = body.provider === "waha" ? "waha" : "ultramsg";
-  const resolved = await resolveProviderCreds(provider);
+  const supabase = createAdminClient();
+
+  // Preserve the existing WAHA session on edit — re-resolving would reset it to
+  // the shared default and orphan the linked number. Only mint a new session when
+  // switching an instance INTO waha from another provider.
+  const { data: existing } = await supabase
+    .from("whatsapp_instances")
+    .select("provider, instance_id")
+    .eq("id", body.id)
+    .maybeSingle();
+
+  let sessionName: string | undefined;
+  if (provider === "waha") {
+    sessionName =
+      existing?.provider === "waha" && existing.instance_id
+        ? existing.instance_id
+        : await uniqueWahaSession(supabase, body.waha_session || body.name);
+  }
+
+  const resolved = await resolveProviderCreds(provider, sessionName);
   if ("error" in resolved) return NextResponse.json({ error: resolved.error }, { status: 400 });
 
-  const supabase = createAdminClient();
   const { error } = await supabase.from("whatsapp_instances").update({
     name: body.name,
     provider,

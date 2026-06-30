@@ -7,6 +7,7 @@ import {
   WifiOff,
   QrCode,
   Check,
+  Power,
 } from "lucide-react";
 import type { WhatsAppInstance } from "@/types";
 import { cn, STATUS_COLORS, formatDateTime } from "@/lib/utils";
@@ -19,6 +20,7 @@ export default function InstancesPage() {
   const [refreshing, setRefreshing] = useState<string | null>(null);
   const [qrImages, setQrImages] = useState<Record<string, string>>({});
   const [fetchingQr, setFetchingQr] = useState<string | null>(null);
+  const [disconnecting, setDisconnecting] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -57,6 +59,31 @@ export default function InstancesPage() {
       // keep the UI resilient and allow a retry
     } finally {
       setFetchingQr(null);
+    }
+  }
+
+  async function disconnect(inst: WhatsAppInstance) {
+    if (!confirm(`Disconnect "${inst.name}" (${inst.phone_number ?? "no number"})?\n\nThis logs the number out of WhatsApp. The instance stays here — scan the QR again to reconnect.`)) {
+      return;
+    }
+    setDisconnecting(inst.id);
+    try {
+      const res = await fetch(`/api/instances/${inst.id}/disconnect`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Unable to disconnect.");
+        return;
+      }
+      setQrImages((prev) => {
+        const next = { ...prev };
+        delete next[inst.id];
+        return next;
+      });
+      await loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to disconnect.");
+    } finally {
+      setDisconnecting(null);
     }
   }
 
@@ -236,11 +263,21 @@ export default function InstancesPage() {
                   <button
                     onClick={() => refreshStatus(inst)}
                     disabled={refreshing === inst.id}
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors"
                   >
                     <RefreshCw className={cn("w-3.5 h-3.5", refreshing === inst.id && "animate-spin")} />
                     Refresh
                   </button>
+                  {inst.status !== "disconnected" && (
+                    <button
+                      onClick={() => disconnect(inst)}
+                      disabled={disconnecting === inst.id}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      <Power className={cn("w-3.5 h-3.5", disconnecting === inst.id && "animate-pulse")} />
+                      {disconnecting === inst.id ? "Disconnecting…" : "Disconnect"}
+                    </button>
+                  )}
                 </div>
                 <p className="text-xs text-slate-300 text-right -mt-1">Updated {formatDateTime(inst.updated_at)}</p>
               </div>

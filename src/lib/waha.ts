@@ -131,6 +131,23 @@ export const waha = {
     }
   },
 
+  /**
+   * Log the linked WhatsApp account out of a session (unlink the number) while
+   * keeping the session itself, so it can be re-paired later by showing a new QR.
+   * Returns true if WAHA accepted the logout.
+   */
+  async logoutSession(baseUrl: string, apiKey: string, session: string): Promise<boolean> {
+    try {
+      const res = await fetch(`${trimBase(baseUrl)}/api/sessions/${encodeURIComponent(session)}/logout`, {
+        method: "POST",
+        headers: { "X-Api-Key": apiKey },
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  },
+
   /** Returns our normalized status, or null if unreachable. */
   async getSessionStatus(baseUrl: string, apiKey: string, session: string): Promise<WahaSessionStatus | null> {
     try {

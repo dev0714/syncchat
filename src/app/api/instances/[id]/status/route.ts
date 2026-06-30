@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth/server";
-import { waha } from "@/lib/waha";
+import { waha, WAHA_INBOUND_WEBHOOK } from "@/lib/waha";
 
 const BASE = "https://api.ultramsg.com";
 
@@ -26,8 +26,13 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
     if (inst.provider === "waha") {
       const s = await waha.getSessionStatus(inst.base_url ?? "", inst.token, inst.instance_id);
-      if (s === null || s === "disconnected") {
-        // FAILED/STOPPED/missing → restart so a fresh QR is generated; report loading.
+      if (s === null) {
+        // Session missing on the server (deleted/unreachable) → (re)create it with
+        // the inbound webhook so a fresh QR is generated; report loading.
+        await waha.startSession(inst.base_url ?? "", inst.token, inst.instance_id, WAHA_INBOUND_WEBHOOK);
+        status = "loading";
+      } else if (s === "disconnected") {
+        // Session exists but FAILED/STOPPED → restart to regenerate the QR.
         await waha.restartSession(inst.base_url ?? "", inst.token, inst.instance_id);
         status = "loading";
       } else {

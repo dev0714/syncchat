@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hasSuperAdminAccess } from "@/lib/auth/permissions";
-import { waha } from "@/lib/waha";
+import { waha, WAHA_INBOUND_WEBHOOK } from "@/lib/waha";
 
 const BASE = "https://api.ultramsg.com";
 
@@ -23,8 +23,13 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   // WAHA provider: use the session status + QR endpoints instead of UltraMsg.
   if (inst.provider === "waha") {
-    let normalized = (await waha.getSessionStatus(inst.base_url ?? "", inst.token, inst.instance_id)) ?? "disconnected";
-    if (normalized === "disconnected") {
+    const sessionStatus = await waha.getSessionStatus(inst.base_url ?? "", inst.token, inst.instance_id);
+    let normalized = sessionStatus ?? "disconnected";
+    if (sessionStatus === null) {
+      // Session missing on the server → (re)create it with the inbound webhook.
+      await waha.startSession(inst.base_url ?? "", inst.token, inst.instance_id, WAHA_INBOUND_WEBHOOK);
+      normalized = "loading";
+    } else if (normalized === "disconnected") {
       // FAILED/STOPPED → restart so a fresh QR is generated; report loading.
       await waha.restartSession(inst.base_url ?? "", inst.token, inst.instance_id);
       normalized = "loading";

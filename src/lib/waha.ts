@@ -16,6 +16,13 @@ export interface WahaResponse {
   message?: string;
 }
 
+/**
+ * The n8n webhook that the WAHA inbound AI flow (SyncChat_WAHA) listens on.
+ * Every WAHA session we create/recreate must point here so inbound messages
+ * reach the AI flow. Kept as a single source of truth for create + self-heal.
+ */
+export const WAHA_INBOUND_WEBHOOK = "https://n8n.leadsync.co.za/webhook/waha-syncchat-inbound";
+
 export type WahaSessionStatus = "connected" | "disconnected" | "qr_required" | "loading";
 
 function trimBase(baseUrl: string): string {

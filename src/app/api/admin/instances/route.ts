@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth/server";
 import { hasSuperAdminAccess } from "@/lib/auth/permissions";
-import { waha } from "@/lib/waha";
+import { waha, WAHA_INBOUND_WEBHOOK } from "@/lib/waha";
 import { getPlatformSettings } from "@/lib/platform-settings";
 
 type InstancePayload = {
@@ -25,8 +25,9 @@ async function resolveProviderCreds(provider: "ultramsg" | "waha") {
       return { error: "WAHA is not configured. Set the WAHA server in Provider Settings first." };
     }
     const session = s.waha_session || "default";
-    // Best-effort: make sure the session exists/started on the WAHA server.
-    await waha.startSession(s.waha_base_url, s.waha_api_key, session);
+    // Best-effort: make sure the session exists/started on the WAHA server,
+    // wired to the inbound AI webhook so messages reach the flow.
+    await waha.startSession(s.waha_base_url, s.waha_api_key, session, WAHA_INBOUND_WEBHOOK);
     return { creds: { instance_id: session, token: s.waha_api_key, base_url: s.waha_base_url } };
   }
   if (!s.ultramsg_instance_id || !s.ultramsg_token) {

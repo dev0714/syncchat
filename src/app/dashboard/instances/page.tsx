@@ -48,7 +48,7 @@ export default function InstancesPage() {
         try {
           const res = await fetch(`/api/instances/${inst.id}/status`, { cache: "no-store" });
           const data = await res.json();
-          const status = data.status as string | undefined;
+          const status = data.status as WhatsAppInstance["status"] | undefined;
 
           if (status === "connected") {
             await loadData();

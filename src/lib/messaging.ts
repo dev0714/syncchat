@@ -63,9 +63,25 @@ export async function sendGeneric(
     return waha.sendMedia(base, inst.token, { session, to, url: v.audio ?? "", kind: "voice" });
   }
   if (payload.type === "video") {
-    return waha.sendMedia(base, inst.token, { session, to, url: v.video ?? "", caption: v.caption, kind: "file" });
+    return waha.sendMedia(base, inst.token, { session, to, url: v.video ?? "", caption: v.caption, kind: "video" });
   }
-  // location / vcard / contact / reaction aren't wired for WAHA yet — best effort text.
+  if (payload.type === "location") {
+    return waha.sendLocation(base, inst.token, { session, to, latitude: v.lat ?? "", longitude: v.lng ?? "", title: v.address });
+  }
+  if (payload.type === "vcard") {
+    return waha.sendContactVcard(base, inst.token, { session, to, vcards: [v.vcard ?? ""] });
+  }
+  if (payload.type === "contact") {
+    // UltraMsg "contact" is comma-separated contact IDs (phones). Build a minimal
+    // vCard per number so WAHA can send them as contact cards.
+    const vcards = String(v.contact ?? "")
+      .split(",")
+      .map((id) => id.replace(/@c\.us$/i, "").replace(/[^\d]/g, ""))
+      .filter(Boolean)
+      .map((num) => `BEGIN:VCARD\nVERSION:3.0\nFN:${num}\nTEL;type=CELL;waid=${num}:+${num}\nEND:VCARD`);
+    if (vcards.length) return waha.sendContactVcard(base, inst.token, { session, to, vcards });
+  }
+  // reaction (needs a target message id) isn't meaningful for broadcast — best-effort text.
   const fallback = v.body ?? v.caption ?? v.address ?? "";
   if (fallback) return waha.sendText(base, inst.token, { session, to, body: fallback });
   return { sent: "false", message: `WAHA does not support sending "${payload.type}" yet.` };

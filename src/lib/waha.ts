@@ -89,13 +89,17 @@ export const waha = {
     });
   },
 
-  /** kind: image -> sendImage, voice -> sendVoice, anything else -> sendFile */
+  /** kind: image -> sendImage, voice -> sendVoice, video -> sendVideo, anything else -> sendFile */
   async sendMedia(
     baseUrl: string,
     apiKey: string,
-    payload: { session: string; to: string; url: string; mimetype?: string; filename?: string; caption?: string; kind?: "image" | "voice" | "file" },
+    payload: { session: string; to: string; url: string; mimetype?: string; filename?: string; caption?: string; kind?: "image" | "voice" | "video" | "file" },
   ): Promise<WahaResponse> {
-    const endpoint = payload.kind === "image" ? "sendImage" : payload.kind === "voice" ? "sendVoice" : "sendFile";
+    const endpoint =
+      payload.kind === "image" ? "sendImage"
+      : payload.kind === "voice" ? "sendVoice"
+      : payload.kind === "video" ? "sendVideo"
+      : "sendFile";
     const body: Record<string, unknown> = {
       session: payload.session,
       chatId: wahaChatId(payload.to),
@@ -103,6 +107,34 @@ export const waha = {
     };
     if (payload.caption && endpoint !== "sendVoice") body.caption = payload.caption;
     return post(baseUrl, apiKey, `/api/${endpoint}`, body);
+  },
+
+  /** Share a location pin. */
+  async sendLocation(
+    baseUrl: string,
+    apiKey: string,
+    payload: { session: string; to: string; latitude: number | string; longitude: number | string; title?: string },
+  ): Promise<WahaResponse> {
+    return post(baseUrl, apiKey, "/api/sendLocation", {
+      session: payload.session,
+      chatId: wahaChatId(payload.to),
+      latitude: Number(payload.latitude),
+      longitude: Number(payload.longitude),
+      title: payload.title ?? "",
+    });
+  },
+
+  /** Send one or more contact cards (vCard 3.0 strings). */
+  async sendContactVcard(
+    baseUrl: string,
+    apiKey: string,
+    payload: { session: string; to: string; vcards: string[] },
+  ): Promise<WahaResponse> {
+    return post(baseUrl, apiKey, "/api/sendContactVcard", {
+      session: payload.session,
+      chatId: wahaChatId(payload.to),
+      contacts: payload.vcards.filter(Boolean).map((vcard) => ({ vcard })),
+    });
   },
 
   /** Create + start a session (idempotent-ish: ignores "already exists"). */

@@ -24,7 +24,11 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   try {
     let status: string;
 
-    if (inst.provider === "waha") {
+    if (inst.provider === "meta") {
+      const { meta } = await import("@/lib/meta");
+      const check = await meta.verifyNumber(inst.instance_id, inst.token);
+      status = check.ok ? "connected" : "disconnected";
+    } else if (inst.provider === "waha") {
       const s = await waha.getSessionStatus(inst.base_url ?? "", inst.token, inst.instance_id);
       if (s === null) {
         // Session missing on the server (deleted/unreachable) → (re)create it with

@@ -22,6 +22,10 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   if (!canAccess) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
+    if (inst.provider === "meta") {
+      // Cloud API has no QR pairing.
+      return NextResponse.json({ qrImage: null });
+    }
     if (inst.provider === "waha") {
       const qrImage = await waha.getQrDataUrl(inst.base_url ?? "", inst.token, inst.instance_id);
       return NextResponse.json({ qrImage });

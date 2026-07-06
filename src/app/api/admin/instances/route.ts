@@ -3,17 +3,46 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth/server";
 import { hasSuperAdminAccess } from "@/lib/auth/permissions";
 import { waha, WAHA_INBOUND_WEBHOOK } from "@/lib/waha";
+import { meta } from "@/lib/meta";
 import { getPlatformSettings } from "@/lib/platform-settings";
 
 type InstancePayload = {
   id?: string;
   orgId?: string;
   name?: string;
-  provider?: "ultramsg" | "waha";
+  provider?: "ultramsg" | "waha" | "meta";
   phone_number?: string | null;
   /** Optional WAHA session name. Blank → auto-derived from the instance name. */
   waha_session?: string | null;
+  /** Meta Cloud API per-instance credentials. */
+  meta_phone_number_id?: string | null;
+  meta_access_token?: string | null;
 };
+
+function normalizeProvider(value?: string): "ultramsg" | "waha" | "meta" {
+  return value === "waha" ? "waha" : value === "meta" ? "meta" : "ultramsg";
+}
+
+/**
+ * Validate Meta Cloud API creds against the Graph API and return the instance-row
+ * creds (instance_id = phone_number_id, token = access token). Errors are surfaced
+ * to the admin so bad tokens are caught at save time.
+ */
+async function resolveMetaCreds(phoneNumberId?: string | null, accessToken?: string | null) {
+  const id = String(phoneNumberId ?? "").trim();
+  const token = String(accessToken ?? "").trim();
+  if (!id || !token) {
+    return { error: "Meta Cloud API needs both a Phone Number ID and an Access Token." };
+  }
+  const check = await meta.verifyNumber(id, token);
+  if (!check.ok) {
+    return { error: `Meta rejected the credentials: ${check.error}` };
+  }
+  return {
+    creds: { instance_id: id, token, base_url: null as string | null },
+    displayPhoneNumber: check.displayPhoneNumber ?? null,
+  };
+}
 
 /** Turn arbitrary text into a valid WAHA session name (a-z, 0-9, dashes). */
 function slugifySession(input: string): string {
@@ -127,29 +156,41 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Organization and name are required." }, { status: 400 });
   }
 
-  const provider = body.provider === "waha" ? "waha" : "ultramsg";
+  const provider = normalizeProvider(body.provider);
   const supabase = createAdminClient();
 
-  // For WAHA, give every new instance its own unique session name.
-  let sessionName: string | undefined;
-  if (provider === "waha") {
-    sessionName = await uniqueWahaSession(supabase, body.waha_session || body.name);
-  }
+  let creds: { instance_id: string; token: string; base_url: string | null };
+  let phoneNumber = body.phone_number || null;
+  let status = "disconnected";
 
-  const resolved = await resolveProviderCreds(provider, sessionName);
-  if ("error" in resolved) return NextResponse.json({ error: resolved.error }, { status: 400 });
+  if (provider === "meta") {
+    const resolved = await resolveMetaCreds(body.meta_phone_number_id, body.meta_access_token);
+    if ("error" in resolved) return NextResponse.json({ error: resolved.error }, { status: 400 });
+    creds = resolved.creds;
+    phoneNumber = phoneNumber || (resolved.displayPhoneNumber ? `+${resolved.displayPhoneNumber.replace(/[^\d]/g, "")}` : null);
+    status = "connected"; // Cloud API has no QR pairing; valid creds = live.
+  } else {
+    // For WAHA, give every new instance its own unique session name.
+    let sessionName: string | undefined;
+    if (provider === "waha") {
+      sessionName = await uniqueWahaSession(supabase, body.waha_session || body.name);
+    }
+    const resolved = await resolveProviderCreds(provider, sessionName);
+    if ("error" in resolved) return NextResponse.json({ error: resolved.error }, { status: 400 });
+    creds = resolved.creds;
+  }
 
   const { error } = await supabase.from("whatsapp_instances").insert({
     org_id: body.orgId,
     name: body.name,
     provider,
-    base_url: resolved.creds.base_url,
-    instance_id: resolved.creds.instance_id,
-    token: resolved.creds.token,
-    phone_number: body.phone_number || null,
+    base_url: creds.base_url,
+    instance_id: creds.instance_id,
+    token: creds.token,
+    phone_number: phoneNumber,
     webhook_url: null,
     ultramsg_settings: {},
-    status: "disconnected",
+    status,
     is_active: true,
   });
 
@@ -169,7 +210,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "A target record and name are required." }, { status: 400 });
   }
 
-  const provider = body.provider === "waha" ? "waha" : "ultramsg";
+  const provider = normalizeProvider(body.provider);
   const supabase = createAdminClient();
 
   // Preserve the existing WAHA session on edit — re-resolving would reset it to
@@ -177,27 +218,41 @@ export async function PATCH(request: NextRequest) {
   // switching an instance INTO waha from another provider.
   const { data: existing } = await supabase
     .from("whatsapp_instances")
-    .select("provider, instance_id")
+    .select("provider, instance_id, token")
     .eq("id", body.id)
     .maybeSingle();
 
-  let sessionName: string | undefined;
-  if (provider === "waha") {
-    sessionName =
-      existing?.provider === "waha" && existing.instance_id
-        ? existing.instance_id
-        : await uniqueWahaSession(supabase, body.waha_session || body.name);
-  }
+  let creds: { instance_id: string; token: string; base_url: string | null };
 
-  const resolved = await resolveProviderCreds(provider, sessionName);
-  if ("error" in resolved) return NextResponse.json({ error: resolved.error }, { status: 400 });
+  if (provider === "meta") {
+    // Blank token on edit keeps the stored one (so admins can update other fields
+    // without re-pasting the secret).
+    const keepToken = existing?.provider === "meta" && !String(body.meta_access_token ?? "").trim();
+    const resolved = await resolveMetaCreds(
+      body.meta_phone_number_id || (existing?.provider === "meta" ? existing.instance_id : null),
+      keepToken ? existing?.token : body.meta_access_token,
+    );
+    if ("error" in resolved) return NextResponse.json({ error: resolved.error }, { status: 400 });
+    creds = resolved.creds;
+  } else {
+    let sessionName: string | undefined;
+    if (provider === "waha") {
+      sessionName =
+        existing?.provider === "waha" && existing.instance_id
+          ? existing.instance_id
+          : await uniqueWahaSession(supabase, body.waha_session || body.name);
+    }
+    const resolved = await resolveProviderCreds(provider, sessionName);
+    if ("error" in resolved) return NextResponse.json({ error: resolved.error }, { status: 400 });
+    creds = resolved.creds;
+  }
 
   const { error } = await supabase.from("whatsapp_instances").update({
     name: body.name,
     provider,
-    base_url: resolved.creds.base_url,
-    instance_id: resolved.creds.instance_id,
-    token: resolved.creds.token,
+    base_url: creds.base_url,
+    instance_id: creds.instance_id,
+    token: creds.token,
     phone_number: body.phone_number || null,
     updated_at: new Date().toISOString(),
   }).eq("id", body.id);

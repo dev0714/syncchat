@@ -28,6 +28,8 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
   try {
     if (inst.provider === "waha") {
       await waha.logoutSession(inst.base_url ?? "", inst.token, inst.instance_id);
+    } else if (inst.provider === "meta") {
+      // Cloud API has no session to log out — just mark it disconnected here.
     } else {
       await ultraMsg.logout(inst.instance_id, inst.token);
     }

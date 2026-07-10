@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Smartphone,
   RefreshCw,
@@ -7,6 +7,7 @@ import {
   WifiOff,
   QrCode,
   Check,
+  Power,
 } from "lucide-react";
 import type { WhatsAppInstance } from "@/types";
 import { cn, STATUS_COLORS, formatDateTime } from "@/lib/utils";
@@ -19,9 +20,59 @@ export default function InstancesPage() {
   const [refreshing, setRefreshing] = useState<string | null>(null);
   const [qrImages, setQrImages] = useState<Record<string, string>>({});
   const [fetchingQr, setFetchingQr] = useState<string | null>(null);
+  const [disconnecting, setDisconnecting] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  // Keep a live ref to the instances so the pairing poller below can read the
+  // latest state without re-creating its interval on every change.
+  const instancesRef = useRef<WhatsAppInstance[]>(instances);
+  useEffect(() => { instancesRef.current = instances; }, [instances]);
+
+  // Pairing self-heal loop. WhatsApp rotates the QR every ~20s and the WAHA
+  // (WEBJS) session drops to FAILED if it isn't scanned in time — which the
+  // status route reports as "loading" while it auto-restarts. So we poll every
+  // 8s for any instance that's qr_required OR loading: pull a fresh QR when one
+  // is available, surface the live status, and stop once it connects. This is
+  // what prevents the stale-QR "couldn't link device" error and the blank QR.
+  useEffect(() => {
+    const tick = async () => {
+      const pending = instancesRef.current.filter(
+        (i) => i.status === "qr_required" || i.status === "loading",
+      );
+      if (pending.length === 0) return;
+
+      for (const inst of pending) {
+        try {
+          const res = await fetch(`/api/instances/${inst.id}/status`, { cache: "no-store" });
+          const data = await res.json();
+          const status = data.status as WhatsAppInstance["status"] | undefined;
+
+          if (status === "connected") {
+            await loadData();
+            continue;
+          }
+          if (status === "qr_required") {
+            const qrRes = await fetch(`/api/instances/${inst.id}/qr`, { cache: "no-store" });
+            const qrData = await qrRes.json();
+            if (qrData.qrImage) {
+              setQrImages((prev) => ({ ...prev, [inst.id]: qrData.qrImage }));
+            }
+          }
+          // Reflect the live status on the badge without a full reload.
+          if (status && status !== inst.status) {
+            setInstances((prev) => prev.map((p) => (p.id === inst.id ? { ...p, status } : p)));
+          }
+        } catch {
+          // keep polling; transient errors are fine
+        }
+      }
+    };
+
+    const t = setInterval(tick, 8000);
+    return () => clearInterval(t);
   }, []);
 
   async function loadData() {
@@ -57,6 +108,31 @@ export default function InstancesPage() {
       // keep the UI resilient and allow a retry
     } finally {
       setFetchingQr(null);
+    }
+  }
+
+  async function disconnect(inst: WhatsAppInstance) {
+    if (!confirm(`Disconnect "${inst.name}" (${inst.phone_number ?? "no number"})?\n\nThis logs the number out of WhatsApp. The instance stays here — scan the QR again to reconnect.`)) {
+      return;
+    }
+    setDisconnecting(inst.id);
+    try {
+      const res = await fetch(`/api/instances/${inst.id}/disconnect`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Unable to disconnect.");
+        return;
+      }
+      setQrImages((prev) => {
+        const next = { ...prev };
+        delete next[inst.id];
+        return next;
+      });
+      await loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to disconnect.");
+    } finally {
+      setDisconnecting(null);
     }
   }
 
@@ -190,11 +266,16 @@ export default function InstancesPage() {
                       <QrCode className="w-3.5 h-3.5" /> Scan QR Code to connect WhatsApp
                     </p>
                     {qrImage ? (
-                      <img
-                        src={qrImage}
-                        alt="WhatsApp QR"
-                        className="w-44 h-44 rounded-lg border border-yellow-200"
-                      />
+                      <>
+                        <img
+                          src={qrImage}
+                          alt="WhatsApp QR"
+                          className="w-44 h-44 rounded-lg border border-yellow-200"
+                        />
+                        <p className="text-[11px] text-yellow-700/80">
+                          Refreshing automatically — open WhatsApp → Linked devices → Link a device and scan now.
+                        </p>
+                      </>
                     ) : (
                       <button
                         onClick={() => fetchQr(inst.id)}
@@ -236,11 +317,21 @@ export default function InstancesPage() {
                   <button
                     onClick={() => refreshStatus(inst)}
                     disabled={refreshing === inst.id}
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors"
                   >
                     <RefreshCw className={cn("w-3.5 h-3.5", refreshing === inst.id && "animate-spin")} />
                     Refresh
                   </button>
+                  {inst.status !== "disconnected" && (
+                    <button
+                      onClick={() => disconnect(inst)}
+                      disabled={disconnecting === inst.id}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      <Power className={cn("w-3.5 h-3.5", disconnecting === inst.id && "animate-pulse")} />
+                      {disconnecting === inst.id ? "Disconnecting…" : "Disconnect"}
+                    </button>
+                  )}
                 </div>
                 <p className="text-xs text-slate-300 text-right -mt-1">Updated {formatDateTime(inst.updated_at)}</p>
               </div>

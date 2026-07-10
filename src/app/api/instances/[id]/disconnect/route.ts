@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth/server";
 import { waha } from "@/lib/waha";
+import { ultraMsg } from "@/lib/ultramsg";
 
-const BASE = "https://api.ultramsg.com";
-
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+/**
+ * Disconnect (unlink) a WhatsApp instance: log the number out of the provider
+ * while keeping the SyncChat instance row, so it can be re-paired by scanning a
+ * fresh QR. WAHA -> session logout; UltraMsg -> instance/logout.
+ */
+export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
   const currentUser = await getCurrentUser();
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -22,25 +26,20 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   if (!canAccess) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
-    if (inst.provider === "meta") {
-      // Cloud API has no QR pairing.
-      return NextResponse.json({ qrImage: null });
-    }
     if (inst.provider === "waha") {
-      const qrImage = await waha.getQrDataUrl(inst.base_url ?? "", inst.token, inst.instance_id);
-      return NextResponse.json({ qrImage });
+      await waha.logoutSession(inst.base_url ?? "", inst.token, inst.instance_id);
+    } else if (inst.provider === "meta") {
+      // Cloud API has no session to log out — just mark it disconnected here.
+    } else {
+      await ultraMsg.logout(inst.instance_id, inst.token);
     }
 
-    const res = await fetch(`${BASE}/${inst.instance_id}/instance/qr?token=${inst.token}`, { cache: "no-store" });
-    const contentType = res.headers.get("content-type") ?? "image/png";
+    await supabase
+      .from("whatsapp_instances")
+      .update({ status: "disconnected", updated_at: new Date().toISOString() })
+      .eq("id", params.id);
 
-    if (contentType.includes("image")) {
-      const buffer = await res.arrayBuffer();
-      const base64 = Buffer.from(buffer).toString("base64");
-      return NextResponse.json({ qrImage: `data:${contentType};base64,${base64}` });
-    }
-
-    return NextResponse.json({ qrImage: null });
+    return NextResponse.json({ status: "disconnected" });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }

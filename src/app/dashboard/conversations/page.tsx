@@ -32,7 +32,7 @@ function groupByContact(conversations: Conversation[]): ContactGroup[] {
     const latest = sorted[0];
     groups.push({
       contactId,
-      contactName: latest.contact?.name ?? latest.contact?.phone ?? "Unknown",
+      contactName: latest.contact?.name || latest.contact?.phone || "Unknown",
       contactPhone: latest.contact?.phone ?? "",
       conversations: sorted,
       latestConversation: latest,
@@ -235,7 +235,7 @@ export default function ConversationsPage() {
                   )}>
                     <div className="flex items-start gap-3">
                       <div className="w-9 h-9 bg-whatsapp-teal/10 rounded-full flex items-center justify-center text-whatsapp-teal font-semibold text-sm flex-shrink-0">
-                        {group.contactName[0].toUpperCase()}
+                        {(group.contactName || "?").charAt(0).toUpperCase()}
                       </div>
                       <button className="flex-1 min-w-0 text-left" onClick={() => hasMultiple ? toggleExpand(group.contactId) : selectConversation(latest)}>
                         <div className="flex items-center justify-between">
@@ -358,7 +358,7 @@ export default function ConversationsPage() {
               <div className="px-5 py-3.5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 bg-whatsapp-teal/10 rounded-full flex items-center justify-center text-whatsapp-teal font-semibold text-sm">
-                    {(selected.contact?.name ?? selected.contact?.phone ?? "?")[0].toUpperCase()}
+                    {(selected.contact?.name || selected.contact?.phone || "?").charAt(0).toUpperCase()}
                   </div>
                   <div>
                     <p className="font-semibold text-slate-900 text-sm">

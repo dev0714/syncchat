@@ -55,7 +55,7 @@ export interface WhatsAppInstance {
   org_id: string;
   name: string;
   // Provider selector. For 'waha': instance_id = session name, token = api_key, base_url = WAHA server URL.
-  provider?: "ultramsg" | "waha";
+  provider?: "ultramsg" | "waha" | "meta";
   base_url?: string | null;
   instance_id: string; // UltraMsg instance ID (or WAHA session name)
   token: string; // UltraMsg token (or WAHA api_key)

@@ -94,6 +94,38 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  if (tool === "save_contact_name") {
+    const name = String(body.name ?? "").trim();
+    if (!orgId || phones.length === 0) {
+      return NextResponse.json({ ok: false, message: "Missing organization or phone number." });
+    }
+    if (!name) {
+      return NextResponse.json({ ok: false, message: "No name provided." });
+    }
+
+    const { data: contact } = await supabase
+      .from("contacts")
+      .select("id")
+      .eq("org_id", orgId)
+      .in("phone", phones)
+      .maybeSingle();
+
+    if (!contact) {
+      return NextResponse.json({ ok: false, message: "No matching contact was found." });
+    }
+
+    const { error } = await supabase
+      .from("contacts")
+      .update({ name, updated_at: new Date().toISOString() })
+      .eq("id", contact.id);
+
+    if (error) {
+      return NextResponse.json({ ok: false, message: error.message });
+    }
+
+    return NextResponse.json({ ok: true, message: `Saved the customer's name as ${name}.` });
+  }
+
   // send_template / send_media and any other native tools are not wired to a
   // backend yet — respond gracefully (never 404) so the agent can recover.
   return NextResponse.json({

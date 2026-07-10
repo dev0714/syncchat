@@ -16,6 +16,13 @@ export interface WahaResponse {
   message?: string;
 }
 
+/**
+ * The n8n webhook that the WAHA inbound AI flow (SyncChat_WAHA) listens on.
+ * Every WAHA session we create/recreate must point here so inbound messages
+ * reach the AI flow. Kept as a single source of truth for create + self-heal.
+ */
+export const WAHA_INBOUND_WEBHOOK = "https://n8n.leadsync.co.za/webhook/waha-syncchat-inbound";
+
 export type WahaSessionStatus = "connected" | "disconnected" | "qr_required" | "loading";
 
 function trimBase(baseUrl: string): string {
@@ -82,13 +89,17 @@ export const waha = {
     });
   },
 
-  /** kind: image -> sendImage, voice -> sendVoice, anything else -> sendFile */
+  /** kind: image -> sendImage, voice -> sendVoice, video -> sendVideo, anything else -> sendFile */
   async sendMedia(
     baseUrl: string,
     apiKey: string,
-    payload: { session: string; to: string; url: string; mimetype?: string; filename?: string; caption?: string; kind?: "image" | "voice" | "file" },
+    payload: { session: string; to: string; url: string; mimetype?: string; filename?: string; caption?: string; kind?: "image" | "voice" | "video" | "file" },
   ): Promise<WahaResponse> {
-    const endpoint = payload.kind === "image" ? "sendImage" : payload.kind === "voice" ? "sendVoice" : "sendFile";
+    const endpoint =
+      payload.kind === "image" ? "sendImage"
+      : payload.kind === "voice" ? "sendVoice"
+      : payload.kind === "video" ? "sendVideo"
+      : "sendFile";
     const body: Record<string, unknown> = {
       session: payload.session,
       chatId: wahaChatId(payload.to),
@@ -98,14 +109,45 @@ export const waha = {
     return post(baseUrl, apiKey, `/api/${endpoint}`, body);
   },
 
+  /** Share a location pin. */
+  async sendLocation(
+    baseUrl: string,
+    apiKey: string,
+    payload: { session: string; to: string; latitude: number | string; longitude: number | string; title?: string },
+  ): Promise<WahaResponse> {
+    return post(baseUrl, apiKey, "/api/sendLocation", {
+      session: payload.session,
+      chatId: wahaChatId(payload.to),
+      latitude: Number(payload.latitude),
+      longitude: Number(payload.longitude),
+      title: payload.title ?? "",
+    });
+  },
+
+  /** Send one or more contact cards (vCard 3.0 strings). */
+  async sendContactVcard(
+    baseUrl: string,
+    apiKey: string,
+    payload: { session: string; to: string; vcards: string[] },
+  ): Promise<WahaResponse> {
+    return post(baseUrl, apiKey, "/api/sendContactVcard", {
+      session: payload.session,
+      chatId: wahaChatId(payload.to),
+      contacts: payload.vcards.filter(Boolean).map((vcard) => ({ vcard })),
+    });
+  },
+
   /** Create + start a session (idempotent-ish: ignores "already exists"). */
   async startSession(baseUrl: string, apiKey: string, session: string, webhookUrl?: string): Promise<void> {
-    const webhooks = webhookUrl ? [{ url: webhookUrl, events: ["message", "session.status"] }] : [];
+    const webhooks = webhookUrl ? [{ url: webhookUrl, events: ["message"] }] : [];
+    // The NOWEB engine needs its store enabled for @lid → phone resolution and
+    // contact/chat data; harmless on other engines. full_sync backfills history.
+    const config = { webhooks, noweb: { store: { enabled: true, fullSync: true } } };
     try {
       const res = await fetch(`${trimBase(baseUrl)}/api/sessions`, {
         method: "POST",
         headers: { "X-Api-Key": apiKey, "Content-Type": "application/json" },
-        body: JSON.stringify({ name: session, start: true, config: { webhooks } }),
+        body: JSON.stringify({ name: session, start: true, config }),
       });
       // 201 created, or 4xx if it already exists — then just (re)start it.
       if (!res.ok) {
@@ -128,6 +170,23 @@ export const waha = {
       });
     } catch {
       // best-effort
+    }
+  },
+
+  /**
+   * Log the linked WhatsApp account out of a session (unlink the number) while
+   * keeping the session itself, so it can be re-paired later by showing a new QR.
+   * Returns true if WAHA accepted the logout.
+   */
+  async logoutSession(baseUrl: string, apiKey: string, session: string): Promise<boolean> {
+    try {
+      const res = await fetch(`${trimBase(baseUrl)}/api/sessions/${encodeURIComponent(session)}/logout`, {
+        method: "POST",
+        headers: { "X-Api-Key": apiKey },
+      });
+      return res.ok;
+    } catch {
+      return false;
     }
   },
 

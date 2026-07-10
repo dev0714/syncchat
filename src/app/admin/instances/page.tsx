@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import {
   Shield, Smartphone, Building2, Plus, Pencil, Trash2,
   X, Check, Wifi, WifiOff, ChevronDown, ChevronRight,
-  RefreshCw, QrCode,
+  RefreshCw, QrCode, Power,
 } from "lucide-react";
 import { cn, STATUS_COLORS } from "@/lib/utils";
 import type { Organization, WhatsAppInstance } from "@/types";
 import PacmanLoader from "@/components/ui/PacmanLoader";
 
-const defaultForm = { name: "", provider: "ultramsg", phone_number: "" };
+const defaultForm = { name: "", provider: "ultramsg", phone_number: "", waha_session: "", meta_phone_number_id: "", meta_access_token: "" };
 
 type OrgWithInstances = Organization & { instances: WhatsAppInstance[] };
 
@@ -30,6 +30,7 @@ export default function AdminInstancesPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [details, setDetails] = useState<Record<string, InstanceDetails>>({});
   const [fetching, setFetching] = useState<Set<string>>(new Set());
+  const [disconnecting, setDisconnecting] = useState<string | null>(null);
 
   // Modal state
   const [modal, setModal] = useState<{ orgId: string; orgName: string; editing: WhatsAppInstance | null } | null>(null);
@@ -148,6 +149,9 @@ export default function AdminInstancesPage() {
       name: inst.name,
       provider: inst.provider ?? "ultramsg",
       phone_number: inst.phone_number ?? "",
+      waha_session: inst.provider === "waha" ? (inst.instance_id ?? "") : "",
+      meta_phone_number_id: inst.provider === "meta" ? (inst.instance_id ?? "") : "",
+      meta_access_token: "",
     });
     setError("");
     setSaved(false);
@@ -166,6 +170,10 @@ export default function AdminInstancesPage() {
       name: form.name,
       provider: form.provider,
       phone_number: form.phone_number || null,
+      ...(form.provider === "waha" ? { waha_session: form.waha_session || null } : {}),
+      ...(form.provider === "meta"
+        ? { meta_phone_number_id: form.meta_phone_number_id || null, meta_access_token: form.meta_access_token || null }
+        : {}),
     };
 
     const response = await fetch("/api/admin/instances", {
@@ -191,6 +199,24 @@ export default function AdminInstancesPage() {
       loadData();
       setExpanded((prev) => new Set([...prev, modal!.orgId]));
     }, 800);
+  }
+
+  async function handleDisconnect(inst: WhatsAppInstance) {
+    if (!confirm(`Disconnect "${inst.name}" (${inst.phone_number ?? "no number"})?\n\nThis logs the number out of WhatsApp. The instance is kept — scan the QR again to reconnect.`)) {
+      return;
+    }
+    setDisconnecting(inst.id);
+    try {
+      const response = await fetch(`/api/instances/${inst.id}/disconnect`, { method: "POST" });
+      const data = await response.json();
+      if (!response.ok || data.error) {
+        setError(data.error || "Unable to disconnect instance");
+        return;
+      }
+      loadData();
+    } finally {
+      setDisconnecting(null);
+    }
   }
 
   async function handleDelete(inst: WhatsAppInstance) {
@@ -394,10 +420,20 @@ export default function AdminInstancesPage() {
                                   <RefreshCw className={cn("w-3.5 h-3.5", isFetching && "animate-spin")} />
                                   {isFetching ? "Fetching..." : "Fetch Live Data"}
                                 </button>
+                                {inst.status !== "disconnected" && (
+                                  <button
+                                    onClick={() => handleDisconnect(inst)}
+                                    disabled={disconnecting === inst.id}
+                                    title="Disconnect (log the number out, keep the instance)"
+                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                  >
+                                    <Power className={cn("w-3.5 h-3.5", disconnecting === inst.id && "animate-pulse")} />
+                                  </button>
+                                )}
                                 <button onClick={() => openEdit(org, inst)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
                                   <Pencil className="w-3.5 h-3.5" />
                                 </button>
-                                <button onClick={() => handleDelete(inst)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                <button onClick={() => handleDelete(inst)} title="Delete instance" className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
@@ -539,6 +575,7 @@ export default function AdminInstancesPage() {
                 >
                   <option value="ultramsg">UltraMsg</option>
                   <option value="waha">WAHA</option>
+                  <option value="meta">WhatsApp Cloud API (Meta — official)</option>
                 </select>
               </div>
               <div>
@@ -551,9 +588,69 @@ export default function AdminInstancesPage() {
                 />
               </div>
 
+              {form.provider === "waha" && (
+                <div>
+                  <label className="label">WAHA Session Name</label>
+                  <input
+                    className="input"
+                    placeholder="auto from instance name (e.g. leadsync)"
+                    value={form.waha_session}
+                    disabled={!!modal.editing}
+                    onChange={(e) => setForm({ ...form, waha_session: e.target.value })}
+                  />
+                  <p className="text-xs text-slate-400 mt-1">
+                    {modal.editing
+                      ? "The session can't be renamed after linking — create a new instance for a different number."
+                      : "Each WAHA number is its own session. Leave blank to auto-generate from the name; it must be unique."}
+                  </p>
+                </div>
+              )}
+
+              {form.provider === "meta" && (
+                <>
+                  <div>
+                    <label className="label">Meta Phone Number ID *</label>
+                    <input
+                      className="input"
+                      placeholder="e.g. 123456789012345"
+                      value={form.meta_phone_number_id}
+                      onChange={(e) => setForm({ ...form, meta_phone_number_id: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Meta Access Token *</label>
+                    <input
+                      className="input"
+                      type="password"
+                      placeholder={modal.editing ? "Leave blank to keep the current token" : "Permanent system-user token"}
+                      value={form.meta_access_token}
+                      onChange={(e) => setForm({ ...form, meta_access_token: e.target.value })}
+                    />
+                    <p className="text-xs text-slate-400 mt-1">
+                      Credentials are verified against Meta when you save.
+                    </p>
+                  </div>
+                  <details className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600">
+                    <summary className="font-semibold text-slate-700 cursor-pointer">How to get these from Meta (step by step)</summary>
+                    <ol className="list-decimal ml-4 mt-2 space-y-1.5">
+                      <li>Go to <span className="font-mono">business.facebook.com</span> and create/verify a Meta Business portfolio.</li>
+                      <li>Go to <span className="font-mono">developers.facebook.com</span> → Create App → type <strong>Business</strong>.</li>
+                      <li>In the app, click <strong>Add product → WhatsApp</strong>. This creates a WhatsApp Business Account (WABA) with a free test number.</li>
+                      <li>Under <strong>WhatsApp → API Setup</strong>, click <strong>Add phone number</strong> and verify the client&apos;s number by SMS/call. ⚠️ The number must NOT be registered on the normal WhatsApp app — delete that account first.</li>
+                      <li>Copy the <strong>Phone number ID</strong> shown under the number (not the WABA ID) into the field above.</li>
+                      <li>Create a permanent token: Business Settings → Users → <strong>System users</strong> → Add (role Admin) → Assign assets (your app + the WABA, full control) → <strong>Generate new token</strong> with permissions <span className="font-mono">whatsapp_business_messaging</span> + <span className="font-mono">whatsapp_business_management</span>, expiry <strong>Never</strong>. Paste it above.</li>
+                      <li>Wire the webhook: App → WhatsApp → <strong>Configuration</strong> → Callback URL <span className="font-mono">https://n8n.leadsync.co.za/webhook/meta-syncchat-inbound</span>, Verify token <span className="font-mono">syncchat-meta-verify</span> → Verify and save → subscribe to the <strong>messages</strong> field.</li>
+                      <li>Save this form — the AI replies immediately (no QR needed). Note: free-form messages only deliver within 24h of the customer&apos;s last message; bulk outside that window needs approved template messages.</li>
+                    </ol>
+                  </details>
+                </>
+              )}
+
               <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-700">
                 {form.provider === "waha"
-                  ? "WAHA connection comes from Provider Settings — no credentials needed here. After saving, open this instance and refresh its status to get the QR code, then scan it in WhatsApp to link the number."
+                  ? "WAHA connection comes from Provider Settings — no credentials needed here. Each instance gets its own WAHA session, so you can link multiple numbers. After saving, open this instance and refresh its status to get the QR code, then scan it in WhatsApp to link the number."
+                  : form.provider === "meta"
+                  ? "Official Meta Cloud API — no QR pairing and no ban risk. Enter the client's own Phone Number ID and permanent access token (see the guide above), and make sure the webhook is configured in the Meta app so inbound messages reach the AI."
                   : "UltraMsg connection comes from Provider Settings — credentials are applied automatically when you save."}
               </div>
 

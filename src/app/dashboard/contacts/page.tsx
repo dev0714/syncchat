@@ -241,7 +241,7 @@ export default function ContactsPage() {
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-whatsapp-teal/10 rounded-full flex items-center justify-center text-whatsapp-teal text-xs font-bold flex-shrink-0">
-                        {(c.name ?? c.phone)[0].toUpperCase()}
+                        {(c.name || c.phone || "?").charAt(0).toUpperCase()}
                       </div>
                       <span className="text-sm font-medium text-slate-800">{c.name ?? "—"}</span>
                     </div>

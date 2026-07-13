@@ -48,9 +48,16 @@ export default function Sidebar({ member }: SidebarProps) {
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
 
+  // Super admin can hide the Billing section per-org (organizations.settings.billing_enabled === false).
+  const billingHidden =
+    (member.organization?.settings as { billing_enabled?: boolean } | undefined)?.billing_enabled === false;
+  const navItems = billingHidden
+    ? NAV_ITEMS.filter((item) => item.href !== "/dashboard/billing")
+    : NAV_ITEMS;
+
   useEffect(() => {
     const updateIndicator = () => {
-      const activeEntry = NAV_ITEMS.find(({ href }) => isActive(href));
+      const activeEntry = navItems.find(({ href }) => isActive(href));
       const activeEl = activeEntry ? itemRefs.current[activeEntry.href] : null;
       const asideEl = asideRef.current;
       const navEl = navRef.current;
@@ -114,7 +121,7 @@ export default function Sidebar({ member }: SidebarProps) {
       />
 
       <nav ref={navRef} className="relative flex-1 p-3 space-y-0.5">
-        {NAV_ITEMS.map(({ href, icon: Icon, label }) => (
+        {navItems.map(({ href, icon: Icon, label }) => (
           <Link
             key={href}
             href={href}

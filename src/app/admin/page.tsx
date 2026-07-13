@@ -97,9 +97,11 @@ export default async function SuperAdminPage() {
               {(orgs ?? []).map((org) => {
                 const o = org as Organization & {
                   trial_ends_at: string | null;
+                  settings: Record<string, unknown> | null;
                   org_members: { count: number }[];
                   whatsapp_instances: { count: number }[];
                 };
+                const billingDisabled = (o.settings as { billing_enabled?: boolean } | null)?.billing_enabled === false;
                 const now = new Date();
                 const trialEnd = o.trial_ends_at ? new Date(o.trial_ends_at) : null;
                 const trialDaysLeft = trialEnd ? Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
@@ -150,6 +152,7 @@ export default async function SuperAdminPage() {
                       <div className="flex items-center gap-2">
                         <AdminOrgActions orgId={o.id} isActive={o.is_active} />
                         {o.plan === "free" && <TrialActions orgId={o.id} trialDisabled={trialEnd === null} />}
+                        <BillingActions orgId={o.id} billingDisabled={billingDisabled} />
                       </div>
                     </td>
                   </tr>
@@ -191,6 +194,27 @@ function TrialActions({ orgId, trialDisabled }: { orgId: string; trialDisabled: 
       <input type="hidden" name="action" value="disable" />
       <button type="submit" className="text-xs px-3 py-1.5 rounded-lg font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
         Disable trial
+      </button>
+    </form>
+  );
+}
+
+function BillingActions({ orgId, billingDisabled }: { orgId: string; billingDisabled: boolean }) {
+  if (billingDisabled) {
+    return (
+      <form action={`/api/admin/orgs/${orgId}/billing`} method="POST">
+        <input type="hidden" name="action" value="enable" />
+        <button type="submit" className="text-xs px-3 py-1.5 rounded-lg font-medium bg-green-50 text-green-600 hover:bg-green-100 transition-colors">
+          Enable billing
+        </button>
+      </form>
+    );
+  }
+  return (
+    <form action={`/api/admin/orgs/${orgId}/billing`} method="POST">
+      <input type="hidden" name="action" value="disable" />
+      <button type="submit" className="text-xs px-3 py-1.5 rounded-lg font-medium bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors">
+        Disable billing
       </button>
     </form>
   );

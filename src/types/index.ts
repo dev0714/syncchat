@@ -19,6 +19,10 @@ export interface UltraMsgInstanceSettings {
   webhook_message_create: boolean;
   webhook_message_ack: boolean;
   webhook_message_download_media: boolean;
+  // Master AI switch for this instance. When false, the inbound n8n flow does
+  // not generate an AI reply for any conversation on this instance. Absent or
+  // true = AI responds (default). Stored here to avoid a schema change.
+  ai_enabled?: boolean;
 }
 
 export interface Profile {

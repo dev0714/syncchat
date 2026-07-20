@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Settings, Users, Building2, Save, Plus,
-  Mail, Shield, X, Check, UserCircle,
+  Mail, Shield, X, Check, UserCircle, Bot, Smartphone,
 } from "lucide-react";
-import type { OrgMember, OrgSettings, CompanyRegistrationData, PersonalRegistrationData, SAAddress } from "@/types";
+import type { OrgMember, OrgSettings, CompanyRegistrationData, PersonalRegistrationData, SAAddress, WhatsAppInstance } from "@/types";
 import { shouldShowSettingsOnboarding } from "@/lib/onboarding";
 import { ROLE_LABELS, ROLE_COLORS, cn } from "@/lib/utils";
 import PacmanLoader from "@/components/ui/PacmanLoader";
@@ -65,6 +65,8 @@ export default function SettingsPage() {
   const [orgName, setOrgName] = useState("");
   const [hasMember, setHasMember] = useState(false);
   const [members, setMembers] = useState<OrgMember[]>([]);
+  const [instances, setInstances] = useState<WhatsAppInstance[]>([]);
+  const [aiSaving, setAiSaving] = useState<string | null>(null);
   const [settings, setSettings] = useState<Partial<OrgSettings>>({
     auto_reply_enabled: false,
     auto_reply_message: "",
@@ -101,7 +103,44 @@ export default function SettingsPage() {
       setProfilePersonal(settingsToPersonal(data.settings));
     }
 
+    // WhatsApp instances (for the per-instance master AI switch).
+    try {
+      const instRes = await fetch("/api/instances");
+      if (instRes.ok) {
+        const instData = await instRes.json();
+        setInstances((instData.instances as WhatsAppInstance[]) ?? []);
+      }
+    } catch { /* non-fatal */ }
+
     setLoading(false);
+  }
+
+  async function toggleInstanceAi(instanceId: string, enabled: boolean) {
+    setAiSaving(instanceId);
+    // Optimistic update.
+    setInstances((prev) =>
+      prev.map((i) =>
+        i.id === instanceId
+          ? { ...i, ultramsg_settings: { ...(i.ultramsg_settings ?? {}), ai_enabled: enabled } as WhatsAppInstance["ultramsg_settings"] }
+          : i,
+      ),
+    );
+    const res = await fetch(`/api/instances/${instanceId}/ai`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled }),
+    });
+    if (!res.ok) {
+      // Revert on failure.
+      setInstances((prev) =>
+        prev.map((i) =>
+          i.id === instanceId
+            ? { ...i, ultramsg_settings: { ...(i.ultramsg_settings ?? {}), ai_enabled: !enabled } as WhatsAppInstance["ultramsg_settings"] }
+            : i,
+        ),
+      );
+    }
+    setAiSaving(null);
   }
 
   async function createOrganization() {
@@ -342,6 +381,57 @@ export default function SettingsPage() {
                   onChange={(e) => setSettings({ ...settings, auto_reply_message: e.target.value })}
                   disabled={!isAdmin}
                 />
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-slate-100 pt-5">
+            <div className="flex items-center gap-2 mb-1">
+              <Bot className="w-4 h-4 text-whatsapp-teal" />
+              <h3 className="font-medium text-slate-800">AI Auto-Response</h3>
+            </div>
+            <p className="text-sm text-slate-500 mb-4">
+              Master switch per WhatsApp number. When turned off, the AI will not reply to any
+              incoming messages on that number — messages are still received and logged, and you
+              can reply manually.
+            </p>
+            {instances.length === 0 ? (
+              <p className="text-sm text-slate-400">No WhatsApp numbers connected yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {instances.map((inst) => {
+                  const aiOn = inst.ultramsg_settings?.ai_enabled !== false; // default on
+                  return (
+                    <div key={inst.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-whatsapp-teal/10 flex items-center justify-center flex-shrink-0">
+                          <Smartphone className="w-4 h-4 text-whatsapp-teal" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-800 truncate">{inst.name}</p>
+                          <p className="text-xs text-slate-400 truncate">
+                            {inst.phone_number || inst.instance_id}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <span className={cn("text-xs font-medium", aiOn ? "text-green-600" : "text-slate-400")}>
+                          {aiOn ? "AI on" : "AI off"}
+                        </span>
+                        <div
+                          onClick={() => isAdmin && aiSaving !== inst.id && toggleInstanceAi(inst.id, !aiOn)}
+                          className={cn(
+                            "w-11 h-6 rounded-full transition-colors relative",
+                            isAdmin ? "cursor-pointer" : "cursor-not-allowed opacity-60",
+                            aiOn ? "bg-whatsapp-teal" : "bg-slate-300",
+                          )}
+                        >
+                          <div className={cn("w-4 h-4 bg-white rounded-full absolute top-1 transition-transform", aiOn ? "translate-x-6" : "translate-x-1")} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

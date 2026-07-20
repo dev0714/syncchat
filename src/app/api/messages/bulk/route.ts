@@ -26,6 +26,19 @@ function fillVars(text: string, contact: BulkContact, defaults: Record<string, s
   });
 }
 
+/**
+ * Image templates may carry multiple images (fields.images = JSON array), with
+ * fields.image mirroring the first for backward-compatibility. Returns the full
+ * ordered list of image URLs / data URIs (never empty if a single image exists).
+ */
+function parseImages(fields: Record<string, string>): string[] {
+  try {
+    const arr = JSON.parse(fields.images || "[]");
+    if (Array.isArray(arr) && arr.length) return arr.filter((s) => typeof s === "string" && s) as string[];
+  } catch { /* ignore */ }
+  return fields.image ? [fields.image] : [];
+}
+
 function buildRequest(
   token: string,
   to: string,
@@ -90,7 +103,8 @@ export async function POST(req: NextRequest) {
     try {
       let data: { sent: string | boolean; message?: string };
 
-      if (inst.provider === "waha") {
+      // Provider-aware path (WAHA + Meta) goes through the messaging layer.
+      if (inst.provider === "waha" || inst.provider === "meta") {
         if (msgType === "text") {
           data = await sendText(inst, { to: contact.phone, body: fillVars(template, contact, variableDefaults) });
         } else {
@@ -98,8 +112,45 @@ export async function POST(req: NextRequest) {
           try { fields = JSON.parse(template); } catch { /* empty */ }
           const values: Record<string, string> = {};
           for (const [k, v] of Object.entries(fields)) values[k] = typeof v === "string" ? fillVars(v, contact, variableDefaults) : v;
-          data = await sendGeneric(inst, { type: msgType as UltraMsgMessageFeature, values, to: contact.phone });
+
+          if (msgType === "image") {
+            // Send each image as its own message; caption only on the first.
+            const images = parseImages(fields);
+            let ok = images.length > 0;
+            let lastMsg: string | undefined;
+            for (let idx = 0; idx < images.length; idx++) {
+              const r = await sendGeneric(inst, {
+                type: "image",
+                values: { image: images[idx], caption: idx === 0 ? (values.caption ?? "") : "" },
+                to: contact.phone,
+              });
+              if (!(r.sent === "true" || r.sent === true)) { ok = false; lastMsg = r.message; }
+            }
+            data = { sent: ok ? "true" : "false", message: lastMsg };
+          } else {
+            data = await sendGeneric(inst, { type: msgType as UltraMsgMessageFeature, values, to: contact.phone });
+          }
         }
+      } else if (msgType === "image") {
+        // UltraMsg HTTP path — loop images, caption on the first only.
+        let fields: Record<string, string> = {};
+        try { fields = JSON.parse(template); } catch { /* empty */ }
+        const images = parseImages(fields);
+        const caption = fields.caption ? fillVars(fields.caption, contact, variableDefaults) : "";
+        let ok = images.length > 0;
+        let lastMsg: string | undefined;
+        for (let idx = 0; idx < images.length; idx++) {
+          const params = new URLSearchParams({ token: inst.token, to: contact.phone, image: images[idx] });
+          if (idx === 0 && caption) params.set("caption", caption);
+          const res = await fetch(`${BASE}/${inst.instance_id}/messages/image`, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: params.toString(),
+          });
+          const r = await res.json().catch(() => ({}));
+          if (!(r.sent === "true" || r.sent === true)) { ok = false; lastMsg = r.message ?? JSON.stringify(r); }
+        }
+        data = { sent: ok ? "true" : "false", message: lastMsg };
       } else {
         const { endpoint, params } = buildRequest(inst.token, contact.phone, msgType, template, contact, variableDefaults);
         const res = await fetch(`${BASE}/${inst.instance_id}/${endpoint}`, {

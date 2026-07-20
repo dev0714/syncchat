@@ -88,19 +88,32 @@ function MessagePreview({ template, contact, defaults }: {
   const caption = fields.caption ? fillText(fields.caption, contact, defaults) : null;
 
   if (type === "image") {
-    const src = fields.image ?? "";
+    let imgs: string[] = [];
+    try {
+      const arr = JSON.parse(fields.images || "[]");
+      if (Array.isArray(arr) && arr.length) imgs = arr as string[];
+    } catch { /* ignore */ }
+    if (!imgs.length && fields.image) imgs = [fields.image];
+    const src = imgs[0] ?? "";
     return (
       <div className="bg-whatsapp-light/30 rounded-xl overflow-hidden">
-        {src ? (
-          src.startsWith("data:") || src.startsWith("http") ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={src} alt="preview" className="w-full max-h-48 object-cover" />
+        <div className="relative">
+          {src ? (
+            src.startsWith("data:") || src.startsWith("http") ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={src} alt="preview" className="w-full max-h-48 object-cover" />
+            ) : (
+              <div className="flex items-center justify-center h-24 bg-slate-100 text-slate-400 text-sm">🖼️ Image URL set</div>
+            )
           ) : (
-            <div className="flex items-center justify-center h-24 bg-slate-100 text-slate-400 text-sm">🖼️ Image URL set</div>
-          )
-        ) : (
-          <div className="flex items-center justify-center h-24 bg-slate-100 text-slate-400 text-sm">No image</div>
-        )}
+            <div className="flex items-center justify-center h-24 bg-slate-100 text-slate-400 text-sm">No image</div>
+          )}
+          {imgs.length > 1 && (
+            <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/60 text-white text-xs font-medium">
+              +{imgs.length - 1} more
+            </span>
+          )}
+        </div>
         {caption && <p className="px-3 py-2 text-sm text-slate-700">{caption}</p>}
       </div>
     );
@@ -454,6 +467,33 @@ export default function TemplatesPage() {
   const labFields = currentFeature.fields.filter((f) => f.key !== "to");
   const allLabVars = extractAllVars(fieldValues);
 
+  // Multi-image support for the Image type. Images are stored as a JSON array in
+  // fieldValues.images; fieldValues.image mirrors the first entry for
+  // backward-compatibility with single-image templates and previews.
+  const imageList: string[] = (() => {
+    try {
+      const arr = JSON.parse(fieldValues.images || "[]");
+      if (Array.isArray(arr) && arr.length) return arr as string[];
+    } catch { /* ignore */ }
+    return fieldValues.image ? [fieldValues.image] : [];
+  })();
+  function setImageList(arr: string[]) {
+    setFieldValues((prev) => ({ ...prev, images: JSON.stringify(arr), image: arr[0] ?? "" }));
+  }
+  function addImageFiles(files: FileList) {
+    const readers = Array.from(files).map(
+      (f) => new Promise<string>((resolve) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result as string);
+        r.readAsDataURL(f);
+      }),
+    );
+    Promise.all(readers).then((urls) => setImageList([...imageList, ...urls.filter(Boolean)]));
+  }
+  function removeImage(idx: number) {
+    setImageList(imageList.filter((_, i) => i !== idx));
+  }
+
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6 page-reveal">
       <div>
@@ -540,10 +580,53 @@ export default function TemplatesPage() {
             {labFields.map((field) => {
               const isMediaField = field.key in MEDIA_FIELD_ACCEPT;
               const accept = MEDIA_FIELD_ACCEPT[field.key];
+              const isMultiImage = field.key === "image" && msgType === "image";
               return (
-                <div key={field.key} className={field.type === "textarea" ? "md:col-span-2" : ""}>
-                  <label className="label">{field.label}{field.required ? " *" : ""}</label>
-                  {isMediaField ? (
+                <div key={field.key} className={field.type === "textarea" || isMultiImage ? "md:col-span-2" : ""}>
+                  <label className="label">
+                    {isMultiImage ? "Images" : field.label}{field.required ? " *" : ""}
+                    {isMultiImage && imageList.length > 0 && (
+                      <span className="ml-2 text-xs font-normal text-slate-400">{imageList.length} added</span>
+                    )}
+                  </label>
+                  {isMultiImage ? (
+                    <div className="space-y-2">
+                      {imageList.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {imageList.map((src, idx) => (
+                            <div key={idx} className="relative group w-20 h-20 rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={src} alt={`image ${idx + 1}`} className="w-full h-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={() => removeImage(idx)}
+                                className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="Remove image"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                              {idx === 0 && (
+                                <span className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[9px] text-center py-0.5">Caption goes here</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="input text-sm text-slate-600 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-whatsapp-teal/10 file:text-whatsapp-teal hover:file:bg-whatsapp-teal/20 cursor-pointer"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files.length) addImageFiles(e.target.files);
+                          e.target.value = ""; // allow re-selecting the same file / adding more
+                        }}
+                      />
+                      <p className="text-xs text-slate-400">
+                        Add one or more images. They send as separate WhatsApp messages; the caption is attached to the first.
+                      </p>
+                    </div>
+                  ) : isMediaField ? (
                     <input
                       type="file"
                       accept={accept}

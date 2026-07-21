@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import SyncChatMark from '@/components/brand/SyncChatMark';
 
 export default function Footer() {
   return (
@@ -11,17 +12,11 @@ export default function Footer() {
         }} className="footer-top-grid">
           {/* Brand */}
           <div>
-            <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:18}}>
-              <div style={{
-                width:34, height:34, borderRadius:9, background:'var(--teal-deep)',
-                border:'1px solid rgba(37,211,102,.2)',
-                display:'flex', alignItems:'center', justifyContent:'center',
-              }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#25D366" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-                </svg>
-              </div>
-              <span style={{fontFamily:"'Bricolage Grotesque', system-ui, sans-serif", fontWeight:700, fontSize:17, color:'#fff', letterSpacing:'-0.015em'}}>syncchat</span>
+            <div style={{display:'flex', alignItems:'center', gap:9, marginBottom:18}}>
+              <SyncChatMark className="w-8 h-8" />
+              <span style={{fontFamily:"'Bricolage Grotesque', system-ui, sans-serif", fontWeight:700, fontSize:17, color:'#fff', letterSpacing:'-0.015em'}}>
+                Sync<span style={{color:'#3EE07E'}}>Chat</span>
+              </span>
             </div>
             <p style={{fontSize:14, lineHeight:1.7, maxWidth:280, color:'rgba(255,255,255,.6)', marginBottom:20}}>
               Your WhatsApp Business number, on autopilot — powered by an AI agent that reads, thinks, and replies in your tone.

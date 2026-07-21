@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { MessageSquare } from "lucide-react";
+import SyncChatMark from "@/components/brand/SyncChatMark";
 import PacmanLoader from "@/components/ui/PacmanLoader";
 import CompanyFields from "./CompanyFields";
 import PersonalFields from "./PersonalFields";
@@ -180,10 +180,10 @@ export default function RegisterPage() {
         </Link>
 
         <div className={styles.brand}>
-          <div className={styles.brandIcon}>
-            <MessageSquare className="w-8 h-8 text-white" />
+          <div className={styles.brandIcon} style={{ background: "#fff", border: "1px solid #E5E7EB" }}>
+            <SyncChatMark className="w-10 h-10" />
           </div>
-          <h1 className={styles.brandTitle}>SyncChat</h1>
+          <h1 className={styles.brandTitle}>Sync<span style={{ color: "#12A150" }}>Chat</span></h1>
           <p className={styles.brandSubtitle}>Create your account</p>
         </div>
 

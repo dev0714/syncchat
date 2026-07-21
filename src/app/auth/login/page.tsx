@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import PacmanLoader from "@/components/ui/PacmanLoader";
+import SyncChatMark from "@/components/brand/SyncChatMark";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -70,19 +71,11 @@ export default function LoginPage() {
         <Link href="/" style={{
           display: "flex", alignItems: "center", gap: 10, textDecoration: "none",
         }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: 9,
-            background: "var(--ink)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#25D366" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-            </svg>
-          </div>
+          <SyncChatMark className="w-8 h-8" />
           <span style={{
             fontFamily: "'Bricolage Grotesque', system-ui, sans-serif",
             fontWeight: 700, fontSize: 18, letterSpacing: "-0.015em", color: "var(--ink)",
-          }}>syncchat</span>
+          }}>Sync<span style={{ color: "#12A150" }}>Chat</span></span>
         </Link>
 
         {/* Form */}

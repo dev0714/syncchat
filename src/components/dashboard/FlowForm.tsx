@@ -127,6 +127,7 @@ const NATIVE_TOOLS: NativeDef[] = [
 ];
 
 interface WhatsAppInstance { id: string; name: string; instance_id: string; phone_number?: string | null; }
+interface TemplateOption { id: string; name: string; msg_type?: string; is_active?: boolean; }
 
 function genId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -208,6 +209,7 @@ export default function FlowForm({ editing }: { editing?: N8nFlow | null }) {
 
   const [connections, setConnections] = useState<FlowTool[]>(() => initConnections(editing?.prompt_tools));
   const [nativeTools, setNativeTools] = useState<FlowTool[]>(() => initNative(editing?.prompt_tools));
+  const [templates, setTemplates] = useState<TemplateOption[]>([]);
 
   useEffect(() => {
     fetchJsonWithTimeout("/api/flows").then(({ response, body }) => {
@@ -216,6 +218,10 @@ export default function FlowForm({ editing }: { editing?: N8nFlow | null }) {
         setInstances((body.instances ?? []) as WhatsAppInstance[]);
       }
     }).finally(() => setLoading(false));
+    // Saved templates (Message Lab) — for the Send Template action's picker.
+    fetchJsonWithTimeout("/api/templates").then(({ response, body }) => {
+      if (response.ok) setTemplates((body.templates ?? []) as TemplateOption[]);
+    }).catch(() => {});
   }, []);
 
   function goToStep2() {
@@ -241,6 +247,9 @@ export default function FlowForm({ editing }: { editing?: N8nFlow | null }) {
   function toggleNative(id: string) {
     setNativeTools(prev => prev.map(t => t.id === id ? { ...t, enabled: !t.enabled } : t));
   }
+  function updateNativeConfig(id: string, key: string, value: string) {
+    setNativeTools(prev => prev.map(t => t.id === id ? { ...t, config: { ...t.config, [key]: value } } : t));
+  }
 
   async function handleSave() {
     if (!form.prompt_role.trim()) { setError("Agent role is required — fill in the Role tab."); return; }
@@ -263,7 +272,22 @@ export default function FlowForm({ editing }: { editing?: N8nFlow | null }) {
           enabled: c.enabled,
           config: c.config ?? {},
         })),
-        ...nativeTools,
+        ...nativeTools.map(t => {
+          // For Send Template, fold the chosen template + trigger into the tool
+          // description so n8n injects it into the agent's system prompt (this is
+          // what tells the AI which template to send and when).
+          if (t.id === "send_template" && (t.config?.template_name || t.config?.trigger)) {
+            const tmpl = (t.config?.template_name ?? "").trim();
+            const when = (t.config?.trigger ?? "").trim();
+            const desc = [
+              tmpl ? `Send the "${tmpl}" template` : "Send a saved message template",
+              when ? ` when ${when}` : "",
+              tmpl ? `. Call send_template with template_name: "${tmpl}".` : ".",
+            ].join("");
+            return { ...t, description: desc };
+          }
+          return t;
+        }),
       ];
       const { response, body } = await fetchJsonWithTimeout("/api/flows", {
         method: editing ? "PATCH" : "POST",
@@ -541,17 +565,56 @@ export default function FlowForm({ editing }: { editing?: N8nFlow | null }) {
                     {NATIVE_TOOLS.map(def => {
                       const tool = nativeTools.find(t => t.id === def.id)!;
                       return (
-                        <div key={def.id} className="flex items-start gap-3 p-4">
-                          <span className="text-lg leading-none mt-0.5">{def.emoji}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-slate-800">{def.label}</p>
-                            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{def.description}</p>
+                        <div key={def.id} className="p-4">
+                          <div className="flex items-start gap-3">
+                            <span className="text-lg leading-none mt-0.5">{def.emoji}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-slate-800">{def.label}</p>
+                              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{def.description}</p>
+                            </div>
+                            <button onClick={() => toggleNative(def.id)} className="flex-shrink-0 mt-0.5">
+                              {tool.enabled
+                                ? <ToggleRight className="w-6 h-6 text-purple-600" />
+                                : <ToggleLeft className="w-6 h-6 text-slate-300" />}
+                            </button>
                           </div>
-                          <button onClick={() => toggleNative(def.id)} className="flex-shrink-0 mt-0.5">
-                            {tool.enabled
-                              ? <ToggleRight className="w-6 h-6 text-purple-600" />
-                              : <ToggleLeft className="w-6 h-6 text-slate-300" />}
-                          </button>
+
+                          {/* Send Template config: which template + when to send it */}
+                          {def.id === "send_template" && tool.enabled && (
+                            <div className="mt-3 ml-8 space-y-3 rounded-lg bg-slate-50 border border-slate-200 p-3">
+                              <div>
+                                <label className="text-xs font-semibold text-slate-700">Template to send</label>
+                                {templates.length === 0 ? (
+                                  <p className="text-xs text-slate-400 mt-1">
+                                    No templates yet — create one in Message Lab first.
+                                  </p>
+                                ) : (
+                                  <select
+                                    className="input mt-1 text-sm"
+                                    value={tool.config?.template_name ?? ""}
+                                    onChange={e => updateNativeConfig(def.id, "template_name", e.target.value)}
+                                  >
+                                    <option value="">Select a template…</option>
+                                    {templates.map(t => (
+                                      <option key={t.id} value={t.name}>{t.name}</option>
+                                    ))}
+                                  </select>
+                                )}
+                              </div>
+                              <div>
+                                <label className="text-xs font-semibold text-slate-700">When should the AI send it?</label>
+                                <textarea
+                                  className="input mt-1 text-sm min-h-[64px] resize-y"
+                                  placeholder="e.g. when the customer asks to make a booking or requests the booking form"
+                                  value={tool.config?.trigger ?? ""}
+                                  onChange={e => updateNativeConfig(def.id, "trigger", e.target.value)}
+                                />
+                                <p className="text-xs text-slate-400 mt-1">
+                                  Describe what the customer might say. The AI watches for this and sends the template automatically.
+                                </p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}

@@ -222,6 +222,9 @@ export async function POST(req: NextRequest) {
       try { fields = JSON.parse(tmpl.content); } catch { /* ignore */ }
       const values: Record<string, string> = {};
       for (const [k, v] of Object.entries(fields)) values[k] = typeof v === "string" ? fillTemplateVars(v, contactVals, vars) : v;
+      // UltraMsg's generic send reads the recipient from values.to (WAHA/Meta use
+      // the separate `to` arg and ignore this), so always include it.
+      values.to = to;
 
       if (msgType === "image") {
         // Send each image; caption on the first only.
@@ -229,7 +232,7 @@ export async function POST(req: NextRequest) {
         let ok = images.length > 0;
         let lastMsg: string | undefined;
         for (let idx = 0; idx < images.length; idx++) {
-          const r = await sendGeneric(sendable, { type: "image", values: { image: images[idx], caption: idx === 0 ? (values.caption ?? "") : "" }, to });
+          const r = await sendGeneric(sendable, { type: "image", values: { image: images[idx], caption: idx === 0 ? (values.caption ?? "") : "", to }, to });
           if (r.sent !== "true") { ok = false; lastMsg = r.message; }
         }
         result = { sent: ok ? "true" : "false", message: lastMsg };

@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth/server";
 import { hasSuperAdminAccess } from "@/lib/auth/permissions";
 import Sidebar from "@/components/layout/Sidebar";
 import DashboardTransition from "@/components/layout/DashboardTransition";
+import Tutorial from "@/components/onboarding/Tutorial";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const currentUser = await getCurrentUser();
@@ -61,6 +62,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           {children}
         </DashboardTransition>
       </main>
+      <Tutorial />
     </div>
   );
 }

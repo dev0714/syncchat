@@ -4,8 +4,10 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   MessageSquare, LayoutDashboard, Smartphone, Users, MessageCircle,
   FileText, Zap, Settings, Shield, LogOut, Building2, CreditCard, CalendarClock, Headset,
+  GraduationCap,
 } from "lucide-react";
 import { cn, getInitials, ROLE_LABELS } from "@/lib/utils";
+import { START_TUTORIAL_EVENT } from "@/components/onboarding/Tutorial";
 import type { OrgMember } from "@/types";
 import { useEffect, useRef, useState } from "react";
 
@@ -146,6 +148,17 @@ export default function Sidebar({ member }: SidebarProps) {
           </Link>
         )}
       </nav>
+
+      {/* Tutorial launcher */}
+      <div className="px-3 pb-1">
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent(START_TUTORIAL_EVENT))}
+          className="w-full flex items-center gap-2 rounded-xl border border-whatsapp-teal/20 bg-whatsapp-teal/5 px-3 py-2 text-xs font-medium text-whatsapp-teal hover:bg-whatsapp-teal/10 transition-colors"
+        >
+          <GraduationCap className="w-4 h-4 flex-shrink-0" />
+          <span>Tutorial</span>
+        </button>
+      </div>
 
       {/* User footer */}
       <div className="p-3 border-t border-slate-100">

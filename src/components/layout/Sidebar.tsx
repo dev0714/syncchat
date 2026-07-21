@@ -2,12 +2,13 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  MessageSquare, LayoutDashboard, Smartphone, Users, MessageCircle,
+  LayoutDashboard, Smartphone, Users, MessageCircle,
   FileText, Zap, Settings, Shield, LogOut, Building2, CreditCard, CalendarClock, Headset,
   GraduationCap,
 } from "lucide-react";
 import { cn, getInitials, ROLE_LABELS } from "@/lib/utils";
 import { START_TUTORIAL_EVENT } from "@/components/onboarding/Tutorial";
+import SyncChatMark from "@/components/brand/SyncChatMark";
 import type { OrgMember } from "@/types";
 import { useEffect, useRef, useState } from "react";
 
@@ -85,12 +86,12 @@ export default function Sidebar({ member }: SidebarProps) {
     <aside ref={asideRef} className="relative z-20 w-64 shrink-0 min-h-screen bg-white border-r border-slate-200 flex flex-col pointer-events-auto">
       {/* Logo */}
       <div className="p-5 border-b border-slate-100">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-whatsapp-teal rounded-xl flex items-center justify-center">
-            <MessageSquare className="w-5 h-5 text-white" />
-          </div>
+        <div className="flex items-center gap-2.5">
+          <SyncChatMark className="w-9 h-9 flex-shrink-0" />
           <div>
-            <p className="font-bold text-slate-900 text-sm">SyncChat</p>
+            <p className="font-bold text-slate-900 text-sm">
+              Sync<span className="text-whatsapp-green">Chat</span>
+            </p>
             <p className="text-xs text-slate-400">WhatsApp Platform</p>
           </div>
         </div>

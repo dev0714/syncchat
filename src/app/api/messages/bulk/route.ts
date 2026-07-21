@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
                 values: { image: images[idx], caption: idx === 0 ? (values.caption ?? "") : "" },
                 to: contact.phone,
               });
-              if (!(r.sent === "true" || r.sent === true)) { ok = false; lastMsg = r.message; }
+              if (r.sent !== "true") { ok = false; lastMsg = r.message; }
             }
             data = { sent: ok ? "true" : "false", message: lastMsg };
           } else {

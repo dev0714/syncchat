@@ -230,7 +230,7 @@ export async function POST(req: NextRequest) {
         let lastMsg: string | undefined;
         for (let idx = 0; idx < images.length; idx++) {
           const r = await sendGeneric(sendable, { type: "image", values: { image: images[idx], caption: idx === 0 ? (values.caption ?? "") : "" }, to });
-          if (!(r.sent === "true" || r.sent === true)) { ok = false; lastMsg = r.message; }
+          if (r.sent !== "true") { ok = false; lastMsg = r.message; }
         }
         result = { sent: ok ? "true" : "false", message: lastMsg };
       } else {

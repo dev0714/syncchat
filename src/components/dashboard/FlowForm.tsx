@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, ArrowRight, Bot, Shield, Palette, BookOpen, Wrench, Check,
-  ToggleLeft, ToggleRight, Plus, Trash2,
+  ToggleLeft, ToggleRight, Plus, Trash2, X,
 } from "lucide-react";
 import type { N8nFlow, FlowTool } from "@/types";
 import { cn } from "@/lib/utils";
@@ -129,6 +129,22 @@ const NATIVE_TOOLS: NativeDef[] = [
 interface WhatsAppInstance { id: string; name: string; instance_id: string; phone_number?: string | null; }
 interface TemplateOption { id: string; name: string; msg_type?: string; is_active?: boolean; }
 
+/* Send Template supports several template+trigger rules, stored as JSON in
+   config.rules. Migrates the old single {template_name, trigger} shape. */
+interface TemplateRule { template_name: string; trigger: string }
+function parseTemplateRules(config?: Record<string, string>): TemplateRule[] {
+  try {
+    const arr = JSON.parse(config?.rules || "[]");
+    if (Array.isArray(arr) && arr.length) {
+      return arr.map((r) => ({ template_name: String(r?.template_name ?? ""), trigger: String(r?.trigger ?? "") }));
+    }
+  } catch { /* ignore */ }
+  if (config?.template_name || config?.trigger) {
+    return [{ template_name: config?.template_name ?? "", trigger: config?.trigger ?? "" }];
+  }
+  return [{ template_name: "", trigger: "" }];
+}
+
 function genId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
   return "tool_" + Math.random().toString(36).slice(2, 10);
@@ -247,8 +263,8 @@ export default function FlowForm({ editing }: { editing?: N8nFlow | null }) {
   function toggleNative(id: string) {
     setNativeTools(prev => prev.map(t => t.id === id ? { ...t, enabled: !t.enabled } : t));
   }
-  function updateNativeConfig(id: string, key: string, value: string) {
-    setNativeTools(prev => prev.map(t => t.id === id ? { ...t, config: { ...t.config, [key]: value } } : t));
+  function setTemplateRules(rules: TemplateRule[]) {
+    setNativeTools(prev => prev.map(t => t.id === "send_template" ? { ...t, config: { ...t.config, rules: JSON.stringify(rules) } } : t));
   }
 
   async function handleSave() {
@@ -273,18 +289,16 @@ export default function FlowForm({ editing }: { editing?: N8nFlow | null }) {
           config: c.config ?? {},
         })),
         ...nativeTools.map(t => {
-          // For Send Template, fold the chosen template + trigger into the tool
+          // For Send Template, fold every template+trigger rule into the tool
           // description so n8n injects it into the agent's system prompt (this is
           // what tells the AI which template to send and when).
-          if (t.id === "send_template" && (t.config?.template_name || t.config?.trigger)) {
-            const tmpl = (t.config?.template_name ?? "").trim();
-            const when = (t.config?.trigger ?? "").trim();
-            const desc = [
-              tmpl ? `Send the "${tmpl}" template` : "Send a saved message template",
-              when ? ` when ${when}` : "",
-              tmpl ? `. Call send_template with template_name: "${tmpl}".` : ".",
-            ].join("");
-            return { ...t, description: desc };
+          if (t.id === "send_template") {
+            const rules = parseTemplateRules(t.config).filter(r => r.template_name.trim());
+            if (rules.length) {
+              const lines = rules.map(r => `send the "${r.template_name.trim()}" template${r.trigger.trim() ? ` when ${r.trigger.trim()}` : ""}`);
+              const desc = `Send a saved WhatsApp template to the customer. Pick the one that fits and call send_template with template_name set to the EXACT template name. Rules: ${lines.join("; ")}. Only send a template when the situation clearly matches one of these.`;
+              return { ...t, description: desc, config: { ...t.config, rules: JSON.stringify(rules) } };
+            }
           }
           return t;
         }),
@@ -579,42 +593,63 @@ export default function FlowForm({ editing }: { editing?: N8nFlow | null }) {
                             </button>
                           </div>
 
-                          {/* Send Template config: which template + when to send it */}
-                          {def.id === "send_template" && tool.enabled && (
-                            <div className="mt-3 ml-8 space-y-3 rounded-lg bg-slate-50 border border-slate-200 p-3">
-                              <div>
-                                <label className="text-xs font-semibold text-slate-700">Template to send</label>
-                                {templates.length === 0 ? (
-                                  <p className="text-xs text-slate-400 mt-1">
-                                    No templates yet — create one in Message Lab first.
-                                  </p>
-                                ) : (
-                                  <select
-                                    className="input mt-1 text-sm"
-                                    value={tool.config?.template_name ?? ""}
-                                    onChange={e => updateNativeConfig(def.id, "template_name", e.target.value)}
-                                  >
-                                    <option value="">Select a template…</option>
-                                    {templates.map(t => (
-                                      <option key={t.id} value={t.name}>{t.name}</option>
-                                    ))}
-                                  </select>
+                          {/* Send Template config: one or more template + trigger rules */}
+                          {def.id === "send_template" && tool.enabled && (() => {
+                            const rules = parseTemplateRules(tool.config);
+                            return (
+                              <div className="mt-3 ml-8 space-y-3 rounded-lg bg-slate-50 border border-slate-200 p-3">
+                                {templates.length === 0 && (
+                                  <p className="text-xs text-slate-400">No templates yet — create one in Message Lab first, then pick it here.</p>
                                 )}
-                              </div>
-                              <div>
-                                <label className="text-xs font-semibold text-slate-700">When should the AI send it?</label>
-                                <textarea
-                                  className="input mt-1 text-sm min-h-[64px] resize-y"
-                                  placeholder="e.g. when the customer asks to make a booking or requests the booking form"
-                                  value={tool.config?.trigger ?? ""}
-                                  onChange={e => updateNativeConfig(def.id, "trigger", e.target.value)}
-                                />
-                                <p className="text-xs text-slate-400 mt-1">
-                                  Describe what the customer might say. The AI watches for this and sends the template automatically.
+                                {rules.map((rule, idx) => (
+                                  <div key={idx} className="rounded-lg border border-slate-200 bg-white p-3 space-y-2 relative">
+                                    {rules.length > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setTemplateRules(rules.filter((_, i) => i !== idx))}
+                                        className="absolute top-2 right-2 text-slate-300 hover:text-red-500"
+                                        title="Remove rule"
+                                      >
+                                        <X className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                    <div>
+                                      <label className="text-xs font-semibold text-slate-700">Template to send</label>
+                                      <select
+                                        className="input mt-1 text-sm"
+                                        value={rule.template_name}
+                                        onChange={e => setTemplateRules(rules.map((r, i) => i === idx ? { ...r, template_name: e.target.value } : r))}
+                                      >
+                                        <option value="">Select a template…</option>
+                                        {templates.map(t => (
+                                          <option key={t.id} value={t.name}>{t.name}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <label className="text-xs font-semibold text-slate-700">When should the AI send it?</label>
+                                      <textarea
+                                        className="input mt-1 text-sm min-h-[56px] resize-y"
+                                        placeholder="e.g. right after confirming a booking, or when the customer asks for the rules"
+                                        value={rule.trigger}
+                                        onChange={e => setTemplateRules(rules.map((r, i) => i === idx ? { ...r, trigger: e.target.value } : r))}
+                                      />
+                                    </div>
+                                  </div>
+                                ))}
+                                <button
+                                  type="button"
+                                  onClick={() => setTemplateRules([...rules, { template_name: "", trigger: "" }])}
+                                  className="text-xs font-medium text-whatsapp-teal hover:underline inline-flex items-center gap-1"
+                                >
+                                  <Plus className="w-3.5 h-3.5" /> Add another template
+                                </button>
+                                <p className="text-xs text-slate-400">
+                                  Describe what the customer might say (or the situation). The AI picks the matching template and sends it automatically.
                                 </p>
                               </div>
-                            </div>
-                          )}
+                            );
+                          })()}
                         </div>
                       );
                     })}

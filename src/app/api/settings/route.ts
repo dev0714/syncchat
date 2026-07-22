@@ -108,6 +108,19 @@ export async function PATCH(req: NextRequest) {
     } else {
       await supabase.from("org_settings").insert({ org_id: orgId, ...update });
     }
+
+    // Auto-return-to-AI settings live on organizations.settings (JSONB, no schema change).
+    if (fields.holding_return_minutes !== undefined || fields.holding_return_message !== undefined) {
+      const { data: org } = await supabase.from("organizations").select("settings").eq("id", orgId).maybeSingle();
+      const settingsJson = (org?.settings as Record<string, unknown> | null) ?? {};
+      await supabase.from("organizations").update({
+        settings: {
+          ...settingsJson,
+          holding_return_minutes: Math.max(0, Number(fields.holding_return_minutes) || 0),
+          holding_return_message: typeof fields.holding_return_message === "string" ? fields.holding_return_message : "",
+        },
+      }).eq("id", orgId);
+    }
     return NextResponse.json({ success: true });
   }
 

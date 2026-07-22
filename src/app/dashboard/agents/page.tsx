@@ -31,9 +31,12 @@ interface HoldingSettings {
   holding_enabled?: boolean;
   holding_message?: string;
   holding_interval_minutes?: number;
+  holding_return_minutes?: number;
+  holding_return_message?: string;
 }
 
 const DEFAULT_HOLDING = "Thanks for your patience! 🐾 One of our team members will be with you shortly.";
+const DEFAULT_RETURN = "Thanks for waiting! 🐾 I'll pick this up again — how can I help?";
 
 export default function AgentsPage() {
   const [agents, setAgents] = useState<AgentRow[]>([]);
@@ -48,8 +51,13 @@ export default function AgentsPage() {
   const [holdEnabled, setHoldEnabled] = useState(true);
   const [holdMessage, setHoldMessage] = useState("");
   const [holdInterval, setHoldInterval] = useState(5);
+  const [returnEnabled, setReturnEnabled] = useState(false);
+  const [returnMinutes, setReturnMinutes] = useState(30);
+  const [returnMessage, setReturnMessage] = useState("");
   const [savingHold, setSavingHold] = useState(false);
   const [holdSaved, setHoldSaved] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [runResult, setRunResult] = useState("");
 
   const isAdmin = myRole === "org_admin" || myRole === "super_admin";
 
@@ -75,6 +83,10 @@ export default function AgentsPage() {
       setHoldEnabled(s.holding_enabled !== false);
       setHoldMessage(s.holding_message ?? "");
       setHoldInterval(s.holding_interval_minutes ?? 5);
+      const rm = Number(s.holding_return_minutes) || 0;
+      setReturnEnabled(rm > 0);
+      setReturnMinutes(rm > 0 ? rm : 30);
+      setReturnMessage(s.holding_return_message ?? "");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load agents");
     } finally {
@@ -103,6 +115,29 @@ export default function AgentsPage() {
     }
   }
 
+  async function runHoldingNow() {
+    setRunning(true);
+    setRunResult("");
+    try {
+      const res = await fetch("/api/cron/agent-holding/process", { method: "POST" });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error ?? "Failed to run");
+      const items: Array<{ action?: string }> = Array.isArray(body?.processed) ? body.processed : [];
+      const held = items.filter((i) => i.action === "held").length;
+      const returned = items.filter((i) => i.action === "returned_to_ai").length;
+      setRunResult(
+        items.length === 0
+          ? "No waiting chats were due right now."
+          : `Done — ${held} holding message${held === 1 ? "" : "s"} sent, ${returned} chat${returned === 1 ? "" : "s"} returned to AI.`,
+      );
+      await loadData();
+    } catch (err) {
+      setRunResult(err instanceof Error ? err.message : "Failed to run");
+    } finally {
+      setRunning(false);
+    }
+  }
+
   async function saveHolding() {
     setSavingHold(true);
     setHoldSaved(false);
@@ -116,6 +151,8 @@ export default function AgentsPage() {
           holding_enabled: holdEnabled,
           holding_message: holdMessage.trim() || null,
           holding_interval_minutes: Math.max(1, Number(holdInterval) || 5),
+          holding_return_minutes: returnEnabled ? Math.max(1, Number(returnMinutes) || 30) : 0,
+          holding_return_message: returnMessage.trim() || null,
         }),
       });
       if (!res.ok) {
@@ -317,12 +354,60 @@ export default function AgentsPage() {
                 />
               </div>
 
-              <div className="flex items-center gap-3">
+              {/* Auto-return to AI */}
+              <div className="border-t border-slate-100 pt-4 space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-700">Return to AI automatically</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    If no agent replies within this time, hand the chat back to the AI and send a takeover message.
+                  </p>
+                </div>
+
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input type="checkbox" checked={returnEnabled} onChange={(e) => setReturnEnabled(e.target.checked)} />
+                  Let the AI take over if the customer waits too long
+                </label>
+
+                {returnEnabled && (
+                  <>
+                    <div className="max-w-[220px]">
+                      <label className="label">Take over after (minutes)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        className="input"
+                        value={returnMinutes}
+                        onChange={(e) => setReturnMinutes(Number(e.target.value))}
+                      />
+                      <p className="text-xs text-slate-400 mt-1">Measured from the customer&apos;s last message.</p>
+                    </div>
+
+                    <div>
+                      <label className="label">AI takeover message</label>
+                      <textarea
+                        className="input min-h-[70px]"
+                        value={returnMessage}
+                        placeholder={DEFAULT_RETURN}
+                        onChange={(e) => setReturnMessage(e.target.value)}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 flex-wrap">
                 <button onClick={saveHolding} disabled={savingHold} className="btn-primary flex items-center gap-2">
                   {savingHold ? <PacmanLoader size={14} label="Saving" /> : <><Save className="w-4 h-4" /> Save</>}
                 </button>
+                <button onClick={runHoldingNow} disabled={running} className="btn-secondary flex items-center gap-2">
+                  {running ? <PacmanLoader size={14} label="Running" /> : <><Clock className="w-4 h-4" /> Run now</>}
+                </button>
                 {holdSaved && <span className="text-sm text-green-600">Saved</span>}
+                {runResult && <span className="text-sm text-slate-500">{runResult}</span>}
               </div>
+              <p className="text-xs text-slate-400">
+                “Run now” processes waiting chats once (for testing). In production this runs automatically on a schedule.
+              </p>
             </div>
           )}
         </>

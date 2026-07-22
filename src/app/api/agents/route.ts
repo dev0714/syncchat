@@ -36,7 +36,7 @@ export async function GET(_req: NextRequest) {
     .maybeSingle();
   const myRole = user.role === "super_admin" ? "super_admin" : (me?.role ?? "");
 
-  const [{ data: members }, { data: openConvs }, { data: settings }] = await Promise.all([
+  const [{ data: members }, { data: openConvs }, { data: settings }, { data: orgRowResult }] = await Promise.all([
     supabase
       .from("org_members")
       .select("*")
@@ -53,7 +53,10 @@ export async function GET(_req: NextRequest) {
       .order("created_at", { ascending: false, referencedTable: "last_msg" })
       .limit(1, { referencedTable: "last_msg" }),
     supabase.from("org_settings").select("holding_enabled, holding_message, holding_interval_minutes").eq("org_id", orgId).maybeSingle(),
+    supabase.from("organizations").select("settings").eq("id", orgId).maybeSingle(),
   ]);
+  // Auto-return-to-AI settings live on organizations.settings (JSONB, no schema change).
+  const orgSettingsJson = (orgRowResult?.settings || {}) as Record<string, unknown>;
 
   // Resolve agent display names from the users table (org_members.user_id == users.id).
   const memberUserIds = (members ?? []).map((m: Record<string, unknown>) => m.user_id as string);
@@ -108,7 +111,13 @@ export async function GET(_req: NextRequest) {
     })
     .filter((c: { awaiting: boolean }) => c.awaiting);
 
-  return NextResponse.json({ agents, queue, myRole, myUserId: user.userId, settings: settings ?? {}, orgId });
+  const mergedSettings = {
+    ...(settings ?? {}),
+    holding_return_minutes: Number(orgSettingsJson.holding_return_minutes) || 0,
+    holding_return_message: typeof orgSettingsJson.holding_return_message === "string" ? orgSettingsJson.holding_return_message : "",
+  };
+
+  return NextResponse.json({ agents, queue, myRole, myUserId: user.userId, settings: mergedSettings, orgId });
 }
 
 export async function PATCH(req: NextRequest) {

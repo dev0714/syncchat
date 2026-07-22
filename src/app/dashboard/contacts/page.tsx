@@ -2,7 +2,23 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Users, Plus, Trash2, Pencil, Search, X, Phone, Mail, Tag, Upload, FileText, CheckCircle2, AlertCircle,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
+
+const PAGE_SIZE = 15;
+
+/** Compact page-number list with ellipsis for long ranges. */
+function pageWindow(current: number, total: number): (number | "…")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const out: (number | "…")[] = [1];
+  const from = Math.max(2, current - 1);
+  const to = Math.min(total - 1, current + 1);
+  if (from > 2) out.push("…");
+  for (let i = from; i <= to; i++) out.push(i);
+  if (to < total - 1) out.push("…");
+  out.push(total);
+  return out;
+}
 import type { Contact } from "@/types";
 import { formatDate, cn } from "@/lib/utils";
 import PacmanLoader from "@/components/ui/PacmanLoader";
@@ -33,6 +49,7 @@ export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   // Single contact modal
   const [showModal, setShowModal] = useState(false);
@@ -72,6 +89,15 @@ export default function ContactsPage() {
   const filtered = contacts.filter((c) =>
     [c.name, c.phone, c.email].some((v) => v?.toLowerCase().includes(search.toLowerCase()))
   );
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  // Reset to the first page whenever the search changes.
+  useEffect(() => { setPage(1); }, [search]);
+  // Keep the page in range when the list shrinks (e.g. after a delete).
+  useEffect(() => { if (page > pageCount) setPage(pageCount); }, [page, pageCount]);
+
+  const pageStart = (page - 1) * PAGE_SIZE;
+  const paged = filtered.slice(pageStart, pageStart + PAGE_SIZE);
 
   function openAdd() { setEditing(null); setForm({ ...defaultForm }); setError(""); setShowModal(true); }
   function openEdit(c: Contact) {
@@ -236,7 +262,7 @@ export default function ContactsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {filtered.map((c) => (
+              {paged.map((c) => (
                 <tr key={c.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
@@ -276,6 +302,52 @@ export default function ContactsPage() {
               ))}
             </tbody>
           </table>
+        )}
+
+        {/* Pagination */}
+        {!loading && filtered.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3 border-t border-slate-100">
+            <p className="text-xs text-slate-500">
+              Showing <span className="font-medium text-slate-700">{pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, filtered.length)}</span> of{" "}
+              <span className="font-medium text-slate-700">{filtered.length}</span>
+            </p>
+            {pageCount > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                {pageWindow(page, pageCount).map((p, i) =>
+                  p === "…" ? (
+                    <span key={`e${i}`} className="px-2 text-slate-400 text-sm select-none">…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={cn(
+                        "min-w-8 h-8 px-2 rounded-lg text-sm font-medium transition-colors",
+                        p === page ? "bg-whatsapp-teal text-white" : "text-slate-600 hover:bg-slate-100",
+                      )}
+                    >
+                      {p}
+                    </button>
+                  ),
+                )}
+                <button
+                  onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                  disabled={page === pageCount}
+                  className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

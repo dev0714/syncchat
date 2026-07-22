@@ -21,16 +21,11 @@ const HOLDING_CAP = 12; // ~ interval * 12 max messages, to avoid endless pings
 export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
 
-  // Two ways in: the scheduled cron (x-cron-secret, processes every org) OR an
-  // authenticated org admin triggering a test run scoped to their own org.
-  const expectedSecret = process.env.CRON_SECRET;
-  const providedSecret = req.headers.get("x-cron-secret");
-  const isCron = !!expectedSecret && providedSecret === expectedSecret;
-
-  let orgFilter: string | null = null;
-  if (!isCron) {
+  // Resolve the caller's org if they're a signed-in admin (used for the
+  // scoped "Run now" test). Returns "forbidden" for a non-admin signed-in user.
+  async function adminOrgId(): Promise<string | "forbidden" | null> {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return null;
     const { data: member } = await supabase
       .from("org_members")
       .select("org_id, role")
@@ -41,8 +36,38 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
     const orgId = member?.org_id ?? user.orgId ?? null;
     const isAdmin = user.role === "super_admin" || member?.role === "org_admin" || member?.role === "super_admin";
-    if (!orgId || !isAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    orgFilter = orgId as string;
+    if (!orgId || !isAdmin) return "forbidden";
+    return orgId as string;
+  }
+
+  // Authorization. Three ways in:
+  //  1. The scheduled cron with x-cron-secret === CRON_SECRET (all orgs).
+  //  2. The n8n scheduler, authorized like /api/n8n/tools: x-syncchat-secret
+  //     === SYNCCHAT_N8N_SHARED_SECRET, or open when that env var is unset.
+  //  3. A signed-in org admin (the "Run now" button) — scoped to their org.
+  const cronOk = !!process.env.CRON_SECRET && req.headers.get("x-cron-secret") === process.env.CRON_SECRET;
+  const sharedExpected = process.env.SYNCCHAT_N8N_SHARED_SECRET?.trim();
+  const sharedOk = !sharedExpected || req.headers.get("x-syncchat-secret")?.trim() === sharedExpected;
+
+  let orgFilter: string | null = null;
+  if (cronOk) {
+    orgFilter = null; // scheduled cron → every org
+  } else if (sharedExpected) {
+    // A shared secret is configured — require it for the scheduler path.
+    if (sharedOk) {
+      orgFilter = null;
+    } else {
+      const a = await adminOrgId();
+      if (a === null) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      if (a === "forbidden") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      orgFilter = a;
+    }
+  } else {
+    // No shared secret configured: allow the (unauthenticated) scheduler as a
+    // full run, or a signed-in admin as a scoped run.
+    const a = await adminOrgId();
+    if (a === "forbidden") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    orgFilter = a; // string (admin org) or null (scheduler → all orgs)
   }
 
   const now = Date.now();

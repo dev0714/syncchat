@@ -6,6 +6,8 @@ import { hasSuperAdminAccess } from "@/lib/auth/permissions";
 import MobileShell from "@/components/layout/MobileShell";
 import DashboardTransition from "@/components/layout/DashboardTransition";
 import Tutorial from "@/components/onboarding/Tutorial";
+import TrialOnboarding from "@/components/onboarding/TrialOnboarding";
+import TrialUsageBanner from "@/components/dashboard/TrialUsageBanner";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const currentUser = await getCurrentUser();
@@ -63,6 +65,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </DashboardTransition>
       </MobileShell>
       <Tutorial />
+      <TrialOnboarding />
+      <TrialUsageBanner />
     </>
   );
 }

@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { assignNextAvailableAgent } from "@/lib/agents";
 import { sendText, sendGeneric } from "@/lib/messaging";
 import type { UltraMsgMessageFeature } from "@/lib/message-features";
+import { getTrialUsage, TRIAL_LIMIT_MESSAGE } from "@/lib/trial";
 
 /** Fill {{name}}/{{phone}}/{{email}} and custom vars in a template string. */
 function fillTemplateVars(
@@ -159,6 +160,12 @@ export async function POST(req: NextRequest) {
     }
     if (!templateName) {
       return NextResponse.json({ ok: false, message: "No template name provided." });
+    }
+
+    // Trial hard cap: don't let the AI send templates past the org's limit.
+    const tmplUsage = await getTrialUsage(orgId);
+    if (tmplUsage.reached) {
+      return NextResponse.json({ ok: false, message: TRIAL_LIMIT_MESSAGE });
     }
 
     // Parse the AI-supplied variables (may arrive as an object or JSON string).

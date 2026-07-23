@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendText } from "@/lib/messaging";
 import { getCurrentUser } from "@/lib/auth/server";
+import { getTrialUsage, syncTrialAiForOrg } from "@/lib/trial";
 
 /**
  * Sends a "please hold" message to customers waiting for a human agent.
@@ -72,6 +73,23 @@ export async function POST(req: NextRequest) {
 
   const now = Date.now();
 
+  // --- Trial cap sweep: for every free-plan org, keep the AI kill switch in
+  // sync with usage. Over the 100-message cap -> silence the AI (n8n flow stops
+  // within a minute); back under (e.g. upgraded) -> restore it. This is what
+  // hard-stops the AI, which sends via n8n and never touches the send routes. ---
+  const cappedOrgs = new Set<string>();
+  {
+    let freeOrgQuery = supabase.from("organizations").select("id").eq("plan", "free");
+    if (orgFilter) freeOrgQuery = freeOrgQuery.eq("id", orgFilter);
+    const { data: freeOrgs } = await freeOrgQuery;
+    for (const o of freeOrgs ?? []) {
+      const id = (o as { id: string }).id;
+      const usage = await getTrialUsage(id);
+      if (usage.reached) cappedOrgs.add(id);
+      await syncTrialAiForOrg(id, usage);
+    }
+  }
+
   // Per-org holding config (org_settings) + auto-return config
   // (organizations.settings JSONB: holding_return_minutes, holding_return_message).
   let settingsQuery = supabase
@@ -104,6 +122,9 @@ export async function POST(req: NextRequest) {
 
     // Nothing enabled for this org.
     if (!holdingEnabled && returnMs === 0) continue;
+
+    // Over the trial cap — don't send any more app-side messages for this org.
+    if (cappedOrgs.has(orgId)) continue;
 
     const { data: convs } = await supabase
       .from("conversations")

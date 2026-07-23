@@ -51,8 +51,14 @@ export async function getTrialUsage(orgId: string): Promise<TrialUsage> {
 
   const plan = (org?.plan as string) ?? "free";
   const settings = ((org?.settings as Record<string, unknown> | null) ?? {}) as Record<string, unknown>;
-  const isTrial = plan === "free";
-  const limit = planLimit(plan, settings);
+
+  // A free-plan org is only a *capped trial* if it's a genuine self-serve trial.
+  // Managed/comped clients (super admin disabled their billing) and any org
+  // explicitly marked exempt are NOT trials and have no message cap.
+  const billingDisabled = settings.billing_enabled === false;
+  const exempt = settings.trial_exempt === true || billingDisabled;
+  const isTrial = plan === "free" && !exempt;
+  const limit = isTrial ? planLimit(plan, settings) : Infinity;
 
   let used = 0;
   if (isTrial) {

@@ -116,8 +116,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const usedConversations = periodConversations ?? 0;
 
-  // Trial (free-plan) message usage — the 100-message cap acts as the plan limit.
-  const trialUsage = (org?.plan ?? "free") === "free" ? await getTrialUsage(orgId) : null;
+  // Trial message usage — only for genuine self-serve trials (getTrialUsage
+  // excludes managed/billing-disabled orgs). The 100-message cap acts as the limit.
+  const usageInfo = (org?.plan ?? "free") === "free" ? await getTrialUsage(orgId) : null;
+  const trialUsage = usageInfo?.isTrial ? usageInfo : null;
 
   const endDate = parseDateInput(searchParams?.end, new Date());
   const startDate = parseDateInput(searchParams?.start, subDays(endDate, 13));

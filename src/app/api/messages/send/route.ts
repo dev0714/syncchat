@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendText, sendGeneric } from "@/lib/messaging";
 import type { UltraMsgMessageFeature } from "@/lib/message-features";
+import { getTrialUsage, TRIAL_LIMIT_MESSAGE } from "@/lib/trial";
 
 function getMessageContent(type: UltraMsgMessageFeature, values: Record<string, string>): string {
   if (type === "text") return values.body ?? "";
@@ -34,6 +35,12 @@ export async function POST(req: NextRequest) {
 
   const { data: inst } = await supabase.from("whatsapp_instances").select("*").eq("id", instanceId).single();
   if (!inst) return NextResponse.json({ error: "Instance not found" }, { status: 404 });
+
+  // Trial hard cap: block outbound sends once the org has hit its message limit.
+  const usage = await getTrialUsage(inst.org_id);
+  if (usage.reached) {
+    return NextResponse.json({ error: TRIAL_LIMIT_MESSAGE, code: "trial_limit_reached", usage }, { status: 402 });
+  }
 
   try {
     const isGeneric = Boolean(type && values);

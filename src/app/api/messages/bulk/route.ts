@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getMessageFeature } from "@/lib/message-features";
 import type { UltraMsgMessageFeature } from "@/lib/message-features";
 import { sendText, sendGeneric } from "@/lib/messaging";
+import { getTrialUsage, TRIAL_LIMIT_MESSAGE } from "@/lib/trial";
 
 const BASE = "https://api.ultramsg.com";
 
@@ -97,9 +98,22 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
   const orgId = member?.org_id ?? currentUser.orgId;
 
+  // Trial hard cap: block if already at the limit, and never let a batch push
+  // the org past it — stop once the remaining allowance is spent.
+  const usage = orgId ? await getTrialUsage(orgId) : null;
+  if (usage?.reached) {
+    return NextResponse.json({ error: TRIAL_LIMIT_MESSAGE, code: "trial_limit_reached", usage }, { status: 402 });
+  }
+  let remaining = usage && Number.isFinite(usage.remaining) ? usage.remaining : Infinity;
+
   const results = { sent: 0, failed: 0, errors: [] as string[] };
 
   for (const contact of contacts) {
+    if (remaining <= 0) {
+      results.failed += 1;
+      results.errors.push(`${contact.phone}: trial message limit reached`);
+      continue;
+    }
     try {
       let data: { sent: string | boolean; message?: string };
 
@@ -163,6 +177,7 @@ export async function POST(req: NextRequest) {
 
       if (data.sent === "true" || data.sent === true) {
         results.sent++;
+        remaining -= 1;
 
         if (orgId) {
           let convId: string | undefined;

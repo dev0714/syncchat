@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth/server";
 import { hasSuperAdminAccess } from "@/lib/auth/permissions";
-import Sidebar from "@/components/layout/Sidebar";
+import MobileShell from "@/components/layout/MobileShell";
 import DashboardTransition from "@/components/layout/DashboardTransition";
 import Tutorial from "@/components/onboarding/Tutorial";
 
@@ -53,16 +53,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="relative min-h-screen bg-slate-50">
-      <div className="fixed inset-y-0 left-0 z-50 w-64">
-        <Sidebar member={member} />
-      </div>
-      <main className="relative z-0 h-screen min-w-0 ml-64 w-[calc(100%-16rem)] flex flex-col">
+    <>
+      <MobileShell
+        member={member}
+        mainClassName="relative z-0 flex min-w-0 flex-col mt-14 h-[calc(100vh-3.5rem)] md:mt-0 md:ml-64 md:h-screen md:w-[calc(100%-16rem)]"
+      >
         <DashboardTransition>
           {children}
         </DashboardTransition>
-      </main>
+      </MobileShell>
       <Tutorial />
-    </div>
+    </>
   );
 }

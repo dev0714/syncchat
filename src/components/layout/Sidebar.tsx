@@ -9,6 +9,7 @@ import {
 import { cn, getInitials, ROLE_LABELS } from "@/lib/utils";
 import { START_TUTORIAL_EVENT } from "@/components/onboarding/Tutorial";
 import SyncChatMark from "@/components/brand/SyncChatMark";
+import InstallPWA from "@/components/pwa/InstallPWA";
 import type { OrgMember } from "@/types";
 import { useEffect, useRef, useState } from "react";
 
@@ -27,9 +28,11 @@ const NAV_ITEMS = [
 
 interface SidebarProps {
   member: OrgMember;
+  /** Called when a nav item is tapped — used to close the mobile drawer. */
+  onNavigate?: () => void;
 }
 
-export default function Sidebar({ member }: SidebarProps) {
+export default function Sidebar({ member, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -43,6 +46,7 @@ export default function Sidebar({ member }: SidebarProps) {
   });
 
   async function handleLogout() {
+    onNavigate?.();
     await fetch("/api/auth/logout", { method: "POST" });
     router.replace("/auth/login");
     router.refresh();
@@ -131,6 +135,7 @@ export default function Sidebar({ member }: SidebarProps) {
             ref={(node) => {
               itemRefs.current[href] = node;
             }}
+            onClick={() => onNavigate?.()}
             className={cn("sidebar-item relative z-10", isActive(href) ? "sidebar-item-active" : "sidebar-item-inactive")}
           >
             <Icon className="w-4 h-4 flex-shrink-0 transition-transform duration-300 ease-out" />
@@ -142,6 +147,7 @@ export default function Sidebar({ member }: SidebarProps) {
         {(member.role === "super_admin" || member.user?.role === "super_admin") && (
           <Link
             href="/admin"
+            onClick={() => onNavigate?.()}
             className={cn("sidebar-item relative z-10 mt-2", isActive("/admin") ? "sidebar-item-active" : "sidebar-item-inactive")}
           >
             <Shield className="w-4 h-4 flex-shrink-0" />
@@ -150,8 +156,9 @@ export default function Sidebar({ member }: SidebarProps) {
         )}
       </nav>
 
-      {/* Tutorial launcher */}
-      <div className="px-3 pb-1">
+      {/* Install app + Tutorial launcher */}
+      <div className="px-3 pb-1 space-y-1.5">
+        <InstallPWA />
         <button
           onClick={() => window.dispatchEvent(new CustomEvent(START_TUTORIAL_EVENT))}
           className="w-full flex items-center gap-2 rounded-xl border border-whatsapp-teal/20 bg-whatsapp-teal/5 px-3 py-2 text-xs font-medium text-whatsapp-teal hover:bg-whatsapp-teal/10 transition-colors"

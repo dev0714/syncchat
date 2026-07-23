@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import {
   MessageCircle, Search, Send, Phone, X,
-  CheckCheck, Check, Clock, ChevronDown, ChevronUp, Bot, UserCheck, Mic,
+  CheckCheck, Check, Clock, ChevronDown, ChevronUp, ChevronLeft, Bot, UserCheck, Mic,
 } from "lucide-react";
 import type { Conversation, Message } from "@/types";
 import { cn, formatRelativeTime } from "@/lib/utils";
@@ -192,9 +192,13 @@ export default function ConversationsPage() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Sidebar */}
-      <div className="w-80 border-r border-slate-200 bg-white flex flex-col">
+    <div className="flex h-[calc(100vh-3.5rem)] md:h-screen overflow-hidden">
+      {/* Conversation list — full width on mobile, fixed rail on desktop.
+          Hidden on mobile once a conversation is open (single-pane view). */}
+      <div className={cn(
+        "w-full md:w-80 border-r border-slate-200 bg-white flex-col",
+        selected ? "hidden md:flex" : "flex"
+      )}>
         <div className="p-4 border-b border-slate-100 space-y-3">
           <h1 className="font-bold text-slate-900">Conversations</h1>
           <div className="relative">
@@ -341,8 +345,8 @@ export default function ConversationsPage() {
         </div>
       </div>
 
-      {/* Chat area */}
-      <div className="flex-1 flex flex-col bg-slate-50">
+      {/* Chat area — hidden on mobile until a conversation is selected. */}
+      <div className={cn("flex-1 flex-col bg-slate-50", selected ? "flex" : "hidden md:flex")}>
         {!selected ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center text-slate-400">
@@ -357,6 +361,13 @@ export default function ConversationsPage() {
             <div className="bg-white border-b border-slate-200">
               <div className="px-5 py-3.5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setSelected(null)}
+                    aria-label="Back to conversations"
+                    className="md:hidden -ml-1 p-1 text-slate-500 hover:text-slate-900"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
                   <div className="w-9 h-9 bg-whatsapp-teal/10 rounded-full flex items-center justify-center text-whatsapp-teal font-semibold text-sm">
                     {(selected.contact?.name || selected.contact?.phone || "?").charAt(0).toUpperCase()}
                   </div>

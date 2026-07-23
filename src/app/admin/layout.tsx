@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hasSuperAdminAccess } from "@/lib/auth/permissions";
-import Sidebar from "@/components/layout/Sidebar";
+import MobileShell from "@/components/layout/MobileShell";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const currentUser = await getCurrentUser();
@@ -36,19 +36,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
-      <Sidebar
-        member={{
-          ...sidebarMember,
-          role: isSuperAdmin ? "super_admin" : sidebarMember.role,
-          user: {
-            name: currentUser.name ?? undefined,
-            email: currentUser.email,
-            role: currentUser.role,
-          },
-        }}
-      />
-      <main className="flex-1 overflow-y-auto">{children}</main>
-    </div>
+    <MobileShell
+      member={{
+        ...sidebarMember,
+        role: isSuperAdmin ? "super_admin" : sidebarMember.role,
+        user: {
+          name: currentUser.name ?? undefined,
+          email: currentUser.email,
+          role: currentUser.role,
+        },
+      }}
+      mainClassName="mt-14 h-[calc(100vh-3.5rem)] overflow-y-auto md:mt-0 md:ml-64 md:h-screen"
+    >
+      {children}
+    </MobileShell>
   );
 }

@@ -5,6 +5,7 @@ import { format, subDays, startOfMonth } from "date-fns";
 import { MessageCircle, Users, Zap, CalendarClock, CreditCard } from "lucide-react";
 import TrendChart, { type DashboardTrendPoint } from "@/components/dashboard/TrendChart";
 import { cn } from "@/lib/utils";
+import { getTrialUsage } from "@/lib/trial";
 
 interface DashboardPageProps {
   searchParams?: {
@@ -114,6 +115,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     .gte("created_at", billingPeriodStart.toISOString());
 
   const usedConversations = periodConversations ?? 0;
+
+  // Trial (free-plan) message usage — the 100-message cap acts as the plan limit.
+  const trialUsage = (org?.plan ?? "free") === "free" ? await getTrialUsage(orgId) : null;
 
   const endDate = parseDateInput(searchParams?.end, new Date());
   const startDate = parseDateInput(searchParams?.start, subDays(endDate, 13));
@@ -255,37 +259,64 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               <h2 className="font-semibold text-slate-900">Plan Usage</h2>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs text-slate-500 capitalize">{org?.plan ?? "free"} plan · this month</span>
-                <span className="text-xs font-semibold text-slate-700">
-                  {usedConversations.toLocaleString()}
-                  {tierLimit ? ` / ${tierLimit.toLocaleString()}` : ""}
-                </span>
-              </div>
-              {tierLimit ? (
-                <>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={cn(
-                        "h-full rounded-full transition-all",
-                        usedConversations / tierLimit >= 0.9 ? "bg-red-500" :
-                        usedConversations / tierLimit >= 0.7 ? "bg-amber-400" :
-                        "bg-whatsapp-teal"
-                      )}
-                      style={{ width: `${Math.min(100, (usedConversations / tierLimit) * 100).toFixed(1)}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1.5">
-                    {Math.max(0, tierLimit - usedConversations).toLocaleString()} conversations remaining
-                  </p>
-                </>
-              ) : (
-                <p className="text-xs text-slate-400 mt-1">
-                  No active subscription — <a href="/dashboard/billing" className="text-whatsapp-teal hover:underline">upgrade to set a limit</a>
+            {tierLimit ? (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs text-slate-500 capitalize">{org?.plan ?? "free"} plan · this month</span>
+                  <span className="text-xs font-semibold text-slate-700">
+                    {usedConversations.toLocaleString()} / {tierLimit.toLocaleString()}
+                  </span>
+                </div>
+                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all",
+                      usedConversations / tierLimit >= 0.9 ? "bg-red-500" :
+                      usedConversations / tierLimit >= 0.7 ? "bg-amber-400" :
+                      "bg-whatsapp-teal"
+                    )}
+                    style={{ width: `${Math.min(100, (usedConversations / tierLimit) * 100).toFixed(1)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-slate-400 mt-1.5">
+                  {Math.max(0, tierLimit - usedConversations).toLocaleString()} conversations remaining
                 </p>
-              )}
-            </div>
+              </div>
+            ) : trialUsage ? (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs text-slate-500">Free trial · messages</span>
+                  <span className="text-xs font-semibold text-slate-700">
+                    {trialUsage.used.toLocaleString()} / {trialUsage.limit.toLocaleString()}
+                  </span>
+                </div>
+                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all",
+                      trialUsage.reached ? "bg-red-500" :
+                      trialUsage.used / trialUsage.limit >= 0.8 ? "bg-amber-400" :
+                      "bg-whatsapp-green"
+                    )}
+                    style={{ width: `${Math.min(100, (trialUsage.used / trialUsage.limit) * 100).toFixed(1)}%` }}
+                  />
+                </div>
+                {trialUsage.reached ? (
+                  <p className="text-xs text-red-500 mt-1.5">
+                    Trial limit reached — <a href="/dashboard/billing" className="font-semibold hover:underline">upgrade to keep sending</a>
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-400 mt-1.5">
+                    {trialUsage.remaining.toLocaleString()} of {trialUsage.limit.toLocaleString()} trial messages remaining ·{" "}
+                    <a href="/dashboard/billing" className="text-whatsapp-teal hover:underline">upgrade</a>
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 mt-1">
+                No active subscription — <a href="/dashboard/billing" className="text-whatsapp-teal hover:underline">upgrade to set a limit</a>
+              </p>
+            )}
           </div>
         </div>
       </div>

@@ -152,6 +152,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, message: `Saved the customer's name as ${name}.` });
   }
 
+  if (tool === "save_contact_email") {
+    const email = String(body.email ?? "").trim().toLowerCase();
+    if (!orgId || phones.length === 0) {
+      return NextResponse.json({ ok: false, message: "Missing organization or phone number." });
+    }
+    // Basic sanity check so we don't store obvious non-emails.
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ ok: false, message: "That does not look like a valid email address." });
+    }
+
+    const { data: contact } = await supabase
+      .from("contacts")
+      .select("id")
+      .eq("org_id", orgId)
+      .in("phone", phones)
+      .maybeSingle();
+
+    if (!contact) {
+      return NextResponse.json({ ok: false, message: "No matching contact was found." });
+    }
+
+    const { error } = await supabase
+      .from("contacts")
+      .update({ email, updated_at: new Date().toISOString() })
+      .eq("id", contact.id);
+
+    if (error) {
+      return NextResponse.json({ ok: false, message: error.message });
+    }
+
+    return NextResponse.json({ ok: true, message: `Saved the customer's email as ${email}.` });
+  }
+
   if (tool === "send_template") {
     const templateName = String(body.template_name ?? "").trim();
     const instanceId = String(body.instance_id ?? "").trim();

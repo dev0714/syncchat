@@ -1,12 +1,16 @@
 "use client";
 /**
- * First-run product tour for SyncChat. Renders a centered, step-by-step modal
- * that walks a new user through the platform. It auto-opens once (tracked in
- * localStorage) and can be re-opened any time by dispatching the
- * "syncchat:start-tutorial" window event (the sidebar's "Tutorial" button does
- * this). Kept dependency-free and light-theme to match the dashboard.
+ * Guided product tour for SyncChat. Instead of a static modal, this walks the
+ * user THROUGH the app: each step navigates to the relevant page and describes
+ * what it does, while the sidebar highlights the current section. The tour card
+ * floats at the bottom and lets clicks pass through, so the real page stays
+ * visible (and usable) behind it.
+ *
+ * Auto-opens once (tracked in localStorage) and can be re-opened any time via
+ * the "syncchat:start-tutorial" window event (the sidebar's Tutorial button).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Rocket, Smartphone, Zap, FileText, MessageCircle, Users, Headset,
   CalendarClock, Settings as SettingsIcon, ShieldCheck, CheckCircle2,
@@ -14,7 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const STORAGE_KEY = "syncchat_tutorial_seen_v1";
+const STORAGE_KEY = "syncchat_tutorial_seen_v2";
 export const START_TUTORIAL_EVENT = "syncchat:start-tutorial";
 
 interface Step {
@@ -22,69 +26,78 @@ interface Step {
   title: string;
   body: string;
   tip?: string;
+  /** Page this step visits. The tour navigates here as the step opens. */
+  href: string;
 }
 
 const STEPS: Step[] = [
   {
     icon: Rocket,
     title: "Welcome to SyncChat 👋",
-    body: "SyncChat turns your WhatsApp number into an AI-powered assistant that replies to customers automatically — and hands off to your team when needed. This quick tour shows you the main pieces. It takes about a minute.",
-    tip: "You can re-open this tour any time from the “Tutorial” button at the bottom of the sidebar.",
+    body: "SyncChat turns your WhatsApp number into an AI assistant that replies to customers automatically — and hands off to your team when needed. I'll walk you through each screen. It takes about a minute.",
+    tip: "This card stays out of your way — you can see each page behind it. Re-open the tour any time from the “Tutorial” button in the sidebar.",
+    href: "/dashboard",
   },
   {
     icon: Smartphone,
-    title: "1. Connect your WhatsApp",
-    body: "Head to WhatsApp Instances to link a number. Scan the QR code (or connect the official Meta Cloud API) and wait for the status to turn Connected. Everything else builds on a connected number.",
+    title: "1. WhatsApp Instances",
+    body: "This is where you link a number. Scan the QR code (or connect the official Meta Cloud API) and wait for the status to turn Connected. Everything else builds on a connected number.",
+    href: "/dashboard/instances",
   },
   {
     icon: Zap,
-    title: "2. Build your AI agent",
-    body: "AI Flows is where you create your bot. Give it a role, guardrails, tone, and business context, add Terms & Conditions, and switch on actions like Escalate to Human and Send Template. Toggle a flow off any time to silence the bot.",
-    tip: "The flow card’s on/off switch is a full kill switch — off means the AI won’t reply at all.",
+    title: "2. AI Flows — build your bot",
+    body: "Here you create your AI agent: give it a role, guardrails, tone and business context, add Terms & Conditions, and switch on actions like Escalate to Human and Send Template.",
+    tip: "Each flow card’s on/off switch is a full kill switch — off means the AI won’t reply at all.",
+    href: "/dashboard/flows",
   },
   {
     icon: FileText,
-    title: "3. Create message templates",
-    body: "Message Lab lets you compose reusable messages — text, images (you can add several), documents, and more — with variables like {{name}}. Save them once, then send in bulk or let the AI send them automatically.",
+    title: "3. Message Lab — templates",
+    body: "Compose reusable messages — text, images (add several), documents and more — with variables like {{name}}. Save them once, then send in bulk or let the AI send them automatically.",
+    href: "/dashboard/templates",
   },
   {
     icon: MessageCircle,
-    title: "4. Watch conversations live",
-    body: "Conversations shows every chat in real time. See what the AI is handling, jump in to reply yourself, or hand a chat back to the bot. When a customer asks for a human, the AI escalates here.",
+    title: "4. Conversations",
+    body: "Every chat in real time. See what the AI is handling, jump in to reply yourself, or hand a chat back to the bot. When a customer asks for a human, the AI escalates it here.",
+    href: "/dashboard/conversations",
   },
   {
     icon: Users,
-    title: "5. Manage contacts",
-    body: "Contacts is your customer list — names, numbers, and history — built automatically as people message you. Use it to target bulk campaigns.",
+    title: "5. Contacts",
+    body: "Your customer list — names, numbers and email — built automatically as people message you. The AI can even save a customer’s email to their contact when they share it. Use this list to target bulk campaigns.",
+    href: "/dashboard/contacts",
   },
   {
     icon: Headset,
-    title: "6. Add your team (Agents)",
-    body: "Invite teammates and set who’s available. When the bot escalates, SyncChat routes the conversation to an available human agent automatically.",
+    title: "6. Agents",
+    body: "Invite teammates and set who’s available. When the bot escalates, SyncChat routes the conversation to an available human agent automatically. You can also auto-return a chat to the AI after a wait.",
+    href: "/dashboard/agents",
   },
   {
     icon: CalendarClock,
-    title: "7. Schedule campaigns",
-    body: "Scheduled Bulk lets you send a template to many contacts at a chosen time — one-off or recurring — so follow-ups and promos go out on their own.",
+    title: "7. Scheduled Bulk",
+    body: "Send a template to many contacts at a chosen time — one-off or recurring — so follow-ups and promos go out on their own.",
+    href: "/dashboard/scheduled-bulk",
   },
   {
     icon: ShieldCheck,
-    title: "8. Control the AI",
-    body: "In Settings → General you’ll find AI Auto-Response — a master switch per number. Turn it off and the AI stops replying on that number (messages are still received and logged so you can answer by hand).",
-  },
-  {
-    icon: SettingsIcon,
-    title: "9. Settings & organisation",
-    body: "Settings is where you manage your organisation details, team, billing, and integrations. Super admins get extra controls under Super Admin.",
+    title: "8. Settings — control the AI",
+    body: "Under Settings → General you’ll find the AI master switch per number, plus your organisation details, team, and integrations. Turn the AI off and messages are still received and logged so you can reply by hand.",
+    href: "/dashboard/settings",
   },
   {
     icon: CheckCircle2,
     title: "You’re all set! 🎉",
-    body: "That’s the whirlwind tour. A good first path: connect a number → build a flow → save a template → send a test. Whenever you need a refresher, hit the Tutorial button in the sidebar.",
+    body: "That’s the tour. A good first path: connect a number → build a flow → save a template → send a test. Hit the Tutorial button in the sidebar whenever you need a refresher.",
+    href: "/dashboard",
   },
 ];
 
 export default function Tutorial() {
+  const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -94,6 +107,10 @@ export default function Tutorial() {
     if (markSeen) {
       try { localStorage.setItem(STORAGE_KEY, "1"); } catch { /* ignore */ }
     }
+  }, []);
+
+  const go = useCallback((next: number) => {
+    setStep(Math.max(0, Math.min(next, STEPS.length - 1)));
   }, []);
 
   // Auto-open once for first-time users.
@@ -113,17 +130,25 @@ export default function Tutorial() {
     return () => window.removeEventListener(START_TUTORIAL_EVENT, handler);
   }, []);
 
+  // Navigate to the current step's page as the tour advances.
+  useEffect(() => {
+    if (!open) return;
+    const target = STEPS[step].href;
+    if (target && pathname !== target) router.push(target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, step]);
+
   // Keyboard controls.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") close(true);
-      else if (e.key === "ArrowRight") setStep((s) => Math.min(s + 1, STEPS.length - 1));
-      else if (e.key === "ArrowLeft") setStep((s) => Math.max(s - 1, 0));
+      else if (e.key === "ArrowRight") go(step + 1);
+      else if (e.key === "ArrowLeft") go(step - 1);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, close]);
+  }, [open, close, go, step]);
 
   if (!open) return null;
 
@@ -133,20 +158,17 @@ export default function Tutorial() {
   const isLast = step === STEPS.length - 1;
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
-      onClick={() => close(true)}
-      role="dialog"
-      aria-modal="true"
-      aria-label="SyncChat tutorial"
-    >
+    // Wrapper lets clicks pass through to the page; only the card is interactive.
+    <div className="fixed inset-x-0 bottom-0 z-[100] flex justify-center p-4 pointer-events-none md:justify-end md:pr-6">
       <div
         ref={dialogRef}
-        onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
+        className="pointer-events-auto w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden"
+        role="dialog"
+        aria-modal="false"
+        aria-label="SyncChat tutorial"
       >
         {/* Header */}
-        <div className="relative bg-gradient-to-br from-whatsapp-teal/10 to-purple-50 px-6 pt-6 pb-5">
+        <div className="relative bg-gradient-to-br from-whatsapp-teal/10 to-purple-50 px-5 pt-5 pb-4">
           <button
             onClick={() => close(true)}
             className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 transition-colors"
@@ -154,14 +176,21 @@ export default function Tutorial() {
           >
             <X className="w-5 h-5" />
           </button>
-          <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center mb-3">
-            <Icon className="w-6 h-6 text-whatsapp-teal" />
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-white shadow-sm flex items-center justify-center flex-shrink-0">
+              <Icon className="w-5 h-5 text-whatsapp-teal" />
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-whatsapp-teal">
+                Step {step + 1} of {STEPS.length}
+              </p>
+              <h2 className="text-base font-bold text-slate-900 leading-tight">{current.title}</h2>
+            </div>
           </div>
-          <h2 className="text-lg font-bold text-slate-900">{current.title}</h2>
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 space-y-3">
+        <div className="px-5 py-4 space-y-3">
           <p className="text-sm text-slate-600 leading-relaxed">{current.body}</p>
           {current.tip && (
             <p className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
@@ -171,11 +200,11 @@ export default function Tutorial() {
         </div>
 
         {/* Progress dots */}
-        <div className="flex items-center justify-center gap-1.5 pb-4">
+        <div className="flex items-center justify-center gap-1.5 pb-3">
           {STEPS.map((_, i) => (
             <button
               key={i}
-              onClick={() => setStep(i)}
+              onClick={() => go(i)}
               aria-label={`Go to step ${i + 1}`}
               className={cn(
                 "h-1.5 rounded-full transition-all",
@@ -186,7 +215,7 @@ export default function Tutorial() {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-slate-100">
+        <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-slate-100">
           <button
             onClick={() => close(true)}
             className="text-xs font-medium text-slate-400 hover:text-slate-600 transition-colors"
@@ -196,7 +225,7 @@ export default function Tutorial() {
           <div className="flex items-center gap-2">
             {!isFirst && (
               <button
-                onClick={() => setStep((s) => Math.max(s - 1, 0))}
+                onClick={() => go(step - 1)}
                 className="btn-secondary inline-flex items-center gap-1.5 !py-2 !px-3 text-sm"
               >
                 <ChevronLeft className="w-4 h-4" /> Back
@@ -211,7 +240,7 @@ export default function Tutorial() {
               </button>
             ) : (
               <button
-                onClick={() => setStep((s) => Math.min(s + 1, STEPS.length - 1))}
+                onClick={() => go(step + 1)}
                 className="btn-primary inline-flex items-center gap-1.5 !py-2 !px-4 text-sm"
               >
                 Next <ChevronRight className="w-4 h-4" />

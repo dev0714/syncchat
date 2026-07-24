@@ -156,9 +156,11 @@ export default function Sidebar({ member, onNavigate }: SidebarProps) {
         )}
       </nav>
 
-      {/* Install app + Tutorial launcher */}
+      {/* Install app (mobile only — desktop web doesn't need the PWA) + Tutorial launcher */}
       <div className="px-3 pb-1 space-y-1.5">
-        <InstallPWA />
+        <div className="md:hidden">
+          <InstallPWA />
+        </div>
         <button
           onClick={() => window.dispatchEvent(new CustomEvent(START_TUTORIAL_EVENT))}
           className="w-full flex items-center gap-2 rounded-xl border border-whatsapp-teal/20 bg-whatsapp-teal/5 px-3 py-2 text-xs font-medium text-whatsapp-teal hover:bg-whatsapp-teal/10 transition-colors"
